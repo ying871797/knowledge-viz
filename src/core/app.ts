@@ -3,15 +3,21 @@ import { Player } from "./player";
 import { NumberChart, type Series } from "./numberChart";
 import { NotesPanel } from "./notes";
 
+/** 课程页清理句柄：路由离开课程页时销毁播放器定时器与场景资源，避免 interval 泄漏 */
+export interface CoursePageHandle {
+  destroy(): void;
+}
+
 /**
  * 课程页装配：布局 + 播放控制 + 曲线-场景双向联动 + 练习模式。
  * 由路由层（Task 9）调用；数据校验在注册侧经 validateCourse 完成，此处再做一层防御。
+ * 返回清理句柄，调用方须在卸载/重渲染前执行 destroy()。
  */
 export function mountCoursePage(
   root: HTMLElement,
   course: Course,
   createScene: () => SceneComponent & { destroy?: () => void },
-): void {
+): CoursePageHandle {
   // 结构校验 fail-fast：不合格渲染占位提示，禁止静默渲染错误画面
   try {
     // validateCourse 已在导入侧执行；这里再次防御（如 stages 为空直接失败）
@@ -23,7 +29,8 @@ export function mountCoursePage(
     fallback.textContent = `课程数据异常：${(err as Error).message}`;
     root.appendChild(fallback);
     console.error("[course]", err);
-    return;
+    // 数据异常路径无资源需释放，返回空清理句柄保持接口一致
+    return { destroy() {} };
   }
 
   // —— 静态骨架：返回链接、标题、两栏网格 ——
@@ -166,4 +173,12 @@ export function mountCoursePage(
 
   // 初始渲染第一阶段
   applyStage(0);
+
+  // 卸载清理：先暂停播放器定时器，再释放场景资源（如动画/监听器）
+  return {
+    destroy() {
+      player.destroy();
+      scene.destroy?.();
+    },
+  };
 }
