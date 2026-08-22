@@ -52,18 +52,33 @@ function setup(course = makeCourse()) {
     root,
     scene,
     calls,
-    slider: root.querySelector<HTMLInputElement>('.controls input[type="range"]')!,
+    // 阶段节点进度条上的全部圆点按钮
+    nodes: [...root.querySelectorAll<HTMLButtonElement>(".controls .stage-node")]!,
     buttons: [...root.querySelectorAll<HTMLButtonElement>(".controls button")],
     examBox: root.querySelector<HTMLInputElement>(".exam-toggle input")!,
+    speedSelect: root.querySelector<HTMLSelectElement>(".controls .speed-select")!,
   };
 }
 
 describe("mountCoursePage 装配", () => {
-  it("生成完整布局结构：网格 + 两张曲线卡片 + 控制条", () => {
+  it("生成完整布局结构：标题下控制条 + 网格 + 两张曲线卡片", () => {
     const { root } = setup();
+    // DOM 顺序：返回链接 → 标题 → 控制条 → course-grid → 两张曲线卡片
+    expect(root.querySelector(".controls")).toBeTruthy();
+    const children = [...root.children].map((el) => el.className);
+    expect(children.indexOf("course-title")).toBeLessThan(children.indexOf("controls"));
+    expect(children.indexOf("controls")).toBeLessThan(children.indexOf("course-grid"));
     expect(root.querySelector(".course-grid")).toBeTruthy();
     expect(root.querySelectorAll(".chart-card").length).toBe(2);
-    expect(root.querySelector(".controls")).toBeTruthy();
+  });
+
+  it("阶段节点条渲染：节点数等于阶段数，且 aria-label 为对应标题", () => {
+    const { nodes } = setup();
+    expect(nodes.length).toBe(3);
+    expect(nodes.map((n) => n.getAttribute("aria-label"))).toEqual(["阶段甲", "阶段乙", "阶段丙"]);
+    // 初始状态：第一个节点 active，无 passed
+    expect(nodes[0].classList.contains("active")).toBe(true);
+    expect(nodes.some((n) => n.classList.contains("passed"))).toBe(false);
   });
 
   it("applyStage(0) 生效：讲解面板显示第一阶段标题，场景收到渲染", () => {
@@ -75,11 +90,31 @@ describe("mountCoursePage 装配", () => {
     expect(calls.length).toBe(1);
   });
 
-  it("点击下一步按钮后滑块值同步为 1", () => {
-    const { slider, buttons } = setup();
+  it("点击下一步按钮后第 2 个节点变为 active，前一节点为 passed", () => {
+    const { nodes, buttons } = setup();
     // 控制条按钮顺序：上一步 / 播放 / 下一步 / 揭晓答案
     buttons[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(slider.value).toBe("1");
+    expect(nodes[1].classList.contains("active")).toBe(true);
+    expect(nodes[0].classList.contains("passed")).toBe(true);
+  });
+
+  it("点击第 2 个节点后讲解面板显示对应阶段标题，其余节点弱高亮", () => {
+    const { root, nodes } = setup();
+    nodes[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(root.querySelector("aside h3")!.textContent).toBe("阶段乙");
+    expect(nodes[0].classList.contains("passed")).toBe(true);
+    expect(nodes[2].classList.contains("active")).toBe(false);
+  });
+
+  it("速度选择器切到 0.25× 后不报错且节点条仍正常工作", () => {
+    const { speedSelect, nodes } = setup();
+    // 切换到最慢档：jsdom 下不验证真实定时器间隔，只验证状态不被破坏
+    speedSelect.value = "0.25";
+    speedSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    // 切速后节点条仍可正常跳转并回写状态
+    nodes[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(nodes[2].classList.contains("active")).toBe(true);
+    expect(nodes[0].classList.contains("passed")).toBe(true);
   });
 
   it("勾选练习模式后讲解面板遮蔽、揭晓按钮显示；点揭晓恢复答案", () => {

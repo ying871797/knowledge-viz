@@ -61,21 +61,46 @@ export function mountCoursePage(
   totalsCard.append(totalsTitle);
   perCard.append(perTitle);
 
-  // —— 底部控制条：上一步 / 播放 / 下一步 / 进度条 / 练习开关 / 揭晓按钮 ——
+  // —— 控制条（位于标题正下方）：上一步 / 播放 / 下一步 / 调速 / 阶段节点条 / 练习开关 / 揭晓按钮 ——
   const controls = document.createElement("div");
   controls.className = "controls";
   const btnPrev = Object.assign(document.createElement("button"), { textContent: "⏮ 上一步" });
   const btnPlay = Object.assign(document.createElement("button"), { textContent: "▶ 播放" });
   const btnNext = Object.assign(document.createElement("button"), { textContent: "下一步 ⏭" });
-  const slider = Object.assign(document.createElement("input"), { type: "range" }) as HTMLInputElement;
-  slider.min = "0"; slider.max = String(course.stages.length - 1); slider.value = "0";
+
+  // 五档速度选择器：value 为倍率字符串，基准间隔 1500ms 除以倍率
+  const speedSelect = document.createElement("select") as HTMLSelectElement;
+  speedSelect.className = "speed-select";
+  speedSelect.setAttribute("aria-label", "播放速度");
+  for (const rate of ["0.25", "0.5", "1", "1.5", "2"]) {
+    const opt = Object.assign(document.createElement("option"), {
+      value: rate,
+      textContent: `${rate}×`,
+    }) as HTMLOptionElement;
+    if (rate === "1") opt.selected = true; // 默认 1×（即原始 1500ms）
+    speedSelect.appendChild(opt);
+  }
+
+  // 阶段节点进度条：每个阶段一个可点击圆点，替代原 input[type=range]
+  const stageNodes = document.createElement("div");
+  stageNodes.className = "stage-nodes";
+  const nodeButtons = course.stages.map((s) => {
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = "stage-node";
+    node.title = s.title;
+    node.setAttribute("aria-label", s.title);
+    stageNodes.appendChild(node);
+    return node;
+  });
+
   const examToggle = Object.assign(document.createElement("label"), { className: "exam-toggle" });
   examToggle.innerHTML = `<input type="checkbox" /> 据图判断练习模式`;
   const revealBtn = Object.assign(document.createElement("button"), { textContent: "揭晓答案" });
   revealBtn.style.display = "none";
-  controls.append(btnPrev, btnPlay, btnNext, slider, examToggle, revealBtn);
+  controls.append(btnPrev, btnPlay, btnNext, speedSelect, stageNodes, examToggle, revealBtn);
 
-  root.append(back, h2, grid, totalsCard, perCard, controls);
+  root.append(back, h2, controls, grid, totalsCard, perCard);
 
   // —— 核心组件实例 ——
   const notes = new NotesPanel(notesBox);
@@ -126,10 +151,14 @@ export function mountCoursePage(
   let examMode = false;
   const player = new Player(course.stages.length, applyStage, 1500);
 
-  /** 统一的阶段应用入口：驱动滑块、讲解面板、场景、两条曲线与气泡 */
+  /** 统一的阶段应用入口：驱动节点条、讲解面板、场景、两条曲线与气泡 */
   function applyStage(i: number): void {
     const stage = course.stages[i];
-    slider.value = String(i);
+    // 节点条状态回写：当前节点高亮，已过节点弱高亮（替代原 slider.value 回写）
+    nodeButtons.forEach((node, j) => {
+      node.classList.toggle("active", j === i);
+      node.classList.toggle("passed", j < i);
+    });
     if (examMode) {
       // 练习模式遮蔽答案，仅给提示
       notes.renderMasked("看主场景画面，判断这是哪个时期，再揭晓答案");
@@ -155,7 +184,18 @@ export function mountCoursePage(
   btnPrev.addEventListener("click", () => { player.pause(); player.prev(); });
   btnNext.addEventListener("click", () => { player.pause(); player.next(); });
   btnPlay.addEventListener("click", () => { player.toggle(); applyStage(player.current); });
-  slider.addEventListener("input", () => { player.pause(); player.goTo(Number(slider.value)); });
+  // 点击节点 = 跳转该阶段（先暂停自动播放，与曲线点联动语义一致）
+  nodeButtons.forEach((node, i) => {
+    node.addEventListener("click", () => { player.pause(); player.goTo(i); });
+  });
+
+  // 速度切换：更新播放器间隔，并同步补间动画时长 CSS 变量（间隔的 90%）
+  speedSelect.addEventListener("change", () => {
+    const rate = Number(speedSelect.value);
+    const intervalMs = Math.round(1500 / rate);
+    player.setIntervalMs(intervalMs);
+    root.style.setProperty("--tween-ms", Math.round(intervalMs * 0.9) + "ms");
+  });
 
   // 练习模式开关：隐藏曲线 + 遮蔽讲解面板，显示揭晓按钮
   examToggle.querySelector("input")!.addEventListener("change", (e) => {

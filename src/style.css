@@ -7,10 +7,41 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .course-grid aside { flex: 0 0 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
 .course-grid section { flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; position: relative; }
 
-/* 曲线卡片与控制条 */
+/* 曲线卡片与控制条（控制条位于课程标题正下方，与下方内容留出间距） */
 .chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
-.controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
-.controls input[type="range"] { flex: 1; min-width: 140px; }
+.controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+.controls .speed-select { font-size: 14px; }
+
+/* 阶段节点进度条：圆点节点 + 连线（::before 横线），替代原 range 滑块 */
+.stage-nodes { display: flex; align-items: center; flex: 1; min-width: 160px; }
+.stage-node {
+  position: relative;
+  width: 16px; height: 16px;
+  flex: none;
+  border: 2px solid #94a3b8;
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  padding: 0;
+}
+/* 节点间连线：从第二个节点起，向左画一条横线 */
+.stage-node + .stage-node::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: calc(100% + 12px);
+  height: 2px;
+  background: #cbd5e1;
+  transform: translateY(-50%);
+}
+.stage-node.passed { border-color: #2563eb; background: #bfdbfe; }
+.stage-node.active {
+  border-color: #2563eb;
+  background: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, .25);
+  transform: scale(1.25);
+}
 
 /* 曲线显隐复选框组 */
 .series-toggles { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; }
@@ -19,7 +50,8 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .meiosis-scene { position: relative; }
 .chromo-bubble { position: absolute; max-width: 280px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 12px; font-size: 13px; z-index: 5; }
 .scene-controls { display: flex; gap: 14px; margin-top: 8px; }
-.chromo { transition: transform 1.5s ease; }
+/* 染色体位移用 CSS transition 补间，时长由 --tween-ms 变量控制（随播放速度联动） */
+.chromo { transition: transform var(--tween-ms, 1350ms) ease; }
 .cell-outline { transition: r .8s ease; }
 
 /* 拐点气泡与错误占位提示 */
