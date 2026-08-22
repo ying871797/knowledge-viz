@@ -68,9 +68,14 @@ export class NumberChart {
       t.textContent = String(v);
       g.appendChild(t);
     }
-    // 阶段标签（练习模式下隐藏）
+    // 阶段标签（练习模式下隐藏，重建时也需保持隐藏状态）
     this.labels.forEach((label, i) => {
-      const t = el("text", { class: "stage-label", x: xFor(i, this.labels.length), y: H - M.bottom + 18, "text-anchor": "middle", "font-size": 11, fill: "#64748b" });
+      const t = el("text", {
+        class: "stage-label", x: xFor(i, this.labels.length), y: H - M.bottom + 18,
+        "text-anchor": "middle", "font-size": 11, fill: "#64748b",
+        // 练习模式下重建的标签直接带上 visibility:hidden，避免击穿练习模式
+        ...(this.examMode ? { visibility: "hidden" } : {}),
+      });
       t.textContent = label;
       g.appendChild(t);
     });

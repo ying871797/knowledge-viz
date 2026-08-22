@@ -62,4 +62,21 @@ describe("NumberChart 渲染", () => {
     chart.setExamMode(false);
     expect(container.querySelectorAll("polyline").length).toBe(2);
   });
+
+  it("练习模式下重建坐标轴仍保持阶段标签隐藏（回归 C1）", () => {
+    const { container, chart } = mount();
+    // 模拟真实路径：先进入练习模式，再因勾选曲线显隐触发 setSeries 重建
+    chart.setSeries(series);
+    chart.setExamMode(true);
+    chart.setSeries(series);
+    const labels = container.querySelectorAll<SVGTextElement>("text.stage-label");
+    expect(labels.length).toBeGreaterThan(0);
+    labels.forEach((t) => expect(t.getAttribute("visibility")).toBe("hidden"));
+    // 曲线同样不应被重新绘制
+    expect(container.querySelectorAll("polyline").length).toBe(0);
+    // 退出练习模式后恢复可见
+    chart.setExamMode(false);
+    container.querySelectorAll<SVGTextElement>("text.stage-label")
+      .forEach((t) => expect(t.hasAttribute("visibility")).toBe(false));
+  });
 });

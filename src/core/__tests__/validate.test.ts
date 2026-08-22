@@ -42,4 +42,12 @@ describe("validateCourse", () => {
     bad.stages[1].numbers.dnaPerChromosome = 1;
     expect(() => validateCourse(bad)).toThrow(/单体/);
   });
+  it("无染色单体时 dna ≠ chromosome 抛错（回归 T2）", () => {
+    const bad = structuredClone(valid);
+    bad.stages[0].numbers.chromatid = 0;
+    // 先满足通用自洽校验（2×4=8），使特定规则（无单体时 dna 应等于 chromosome）被触发
+    bad.stages[0].numbers.dnaPerChromosome = 2;
+    bad.stages[0].numbers.dna = 8; // 与 chromosome=4 不等
+    expect(() => validateCourse(bad)).toThrow(/dna 应等于 chromosome/);
+  });
 });
