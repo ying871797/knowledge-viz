@@ -55,6 +55,21 @@ describe("减数分裂场景组件", () => {
     expect(xB2).toBe("translate(240px, 250px)");
   });
 
+  it("点击「切换自由组合方式」按钮：A1 位置镜像翻转，再点一次翻回", () => {
+    // cells:1 + separating:"homolog" 走自由组合布局分支（comboAlt 决定左右）
+    scene.render(st({ separating: "homolog" }));
+    const before = chromo("A1").style.transform;
+    // 默认组合下 A1 在左上（cx-160 = 400-160 = 240）
+    expect(before).toBe("translate(240px, 150px)");
+    const btn = host.querySelector<HTMLButtonElement>(".scene-controls button")!;
+    btn.dispatchEvent(new Event("click"));
+    // 翻转后 A1 镜像到右侧（cx+160 = 560），y 不变
+    expect(chromo("A1").style.transform).toBe("translate(560px, 150px)");
+    // 再点一次应恢复原位置
+    btn.dispatchEvent(new Event("click"));
+    expect(chromo("A1").style.transform).toBe(before);
+  });
+
   it("减Ⅱ末期 4 细胞精子形态：4 个椭圆头部与 4 条尾部", () => {
     scene.render(st({ cells: 4, spermShape: true }));
     expect(host.querySelectorAll(".cell-outline").length).toBe(4);
