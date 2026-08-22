@@ -93,13 +93,16 @@ export function mountCoursePage(
   // 曲线显隐复选框组：取消勾选即从总数图中移除该系列
   const seriesToggles = document.createElement("div");
   seriesToggles.className = "series-toggles";
-  TOTAL_SERIES.forEach((s, si) => {
+  // 创建每个开关时闭包捕获其 checkbox 引用，避免依赖 children 索引的隐式耦合
+  const toggleBoxes: HTMLInputElement[] = [];
+  TOTAL_SERIES.forEach((s) => {
     const lab = document.createElement("label");
     const box = Object.assign(document.createElement("input"), { type: "checkbox" }) as HTMLInputElement;
     box.checked = true;
+    toggleBoxes.push(box);
     box.addEventListener("change", () => {
-      // 按勾选状态过滤系列后重绘，并恢复高亮竖线位置
-      totals.setSeries(TOTAL_SERIES.filter((_, i) => i === si || (seriesToggles.children[i] as HTMLElement).querySelector("input")!.checked));
+      // 仅按各复选框勾选状态过滤系列后重绘，并恢复高亮竖线位置
+      totals.setSeries(TOTAL_SERIES.filter((_, i) => toggleBoxes[i].checked));
       totals.setActive(player.current);
     });
     lab.append(box, document.createTextNode(` ${s.label}`));
