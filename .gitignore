@@ -1,0 +1,6 @@
+node_modules/
+dist/
+# 会话与方案目录，不纳入版本控制
+.superpowers/
+.proposals/
+session.json
