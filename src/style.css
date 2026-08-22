@@ -1,0 +1,30 @@
+/* 全局基础样式 */
+body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #f8fafc; color: #1f2937; }
+#app { max-width: 1080px; margin: 0 auto; padding: 20px; }
+
+/* 课程页两栏布局：左讲解面板 / 右主场景 */
+.course-grid { display: flex; gap: 16px; }
+.course-grid aside { flex: 0 0 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
+.course-grid section { flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; position: relative; }
+
+/* 曲线卡片与控制条 */
+.chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+.controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.controls input[type="range"] { flex: 1; min-width: 140px; }
+
+/* 曲线显隐复选框组 */
+.series-toggles { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; }
+
+/* 减数分裂场景：染色体位移用 CSS transition 补间（Task 7 审查衔接点） */
+.meiosis-scene { position: relative; }
+.chromo-bubble { position: absolute; max-width: 280px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 12px; font-size: 13px; z-index: 5; }
+.scene-controls { display: flex; gap: 14px; margin-top: 8px; }
+.chromo { transition: transform 1.5s ease; }
+.cell-outline { transition: r .8s ease; }
+
+/* 拐点气泡与错误占位提示 */
+.callout { margin-top: 10px; background: #dbeafe; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; }
+.load-error { color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; }
+
+/* 窄屏单列布局 */
+@media (max-width: 720px) { .course-grid { flex-direction: column; } .course-grid aside { flex: none; } }
