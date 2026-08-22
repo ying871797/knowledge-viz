@@ -57,4 +57,38 @@ describe("Player", () => {
     vi.advanceTimersByTime(5000);
     expect(p.current).toBe(0);
   });
+
+  it("暂停状态下调整间隔后按新间隔推进", () => {
+    const { onChange, p } = make();
+    p.setIntervalMs(500);
+    p.play();
+    vi.advanceTimersByTime(500);
+    // 旧间隔为 1000ms，若未生效则此刻不应推进
+    expect(p.current).toBe(1);
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it("播放中切换间隔立即以新间隔重启且不改变状态", () => {
+    const { onChange, p } = make();
+    p.play();
+    vi.advanceTimersByTime(1000); // 推进到索引 1
+    onChange.mockClear();
+    p.setIntervalMs(200);
+    // 切换瞬间：不触发回调、索引不变
+    expect(onChange).not.toHaveBeenCalled();
+    expect(p.current).toBe(1);
+    // 400ms 内按新间隔应推进约 2 步（而非旧间隔的 0 步）
+    vi.advanceTimersByTime(400);
+    expect(p.current).toBe(3);
+  });
+
+  it.each([0, -100, NaN])("非法参数 %p 被忽略，节奏保持原间隔", (bad) => {
+    const { p } = make();
+    p.play();
+    p.setIntervalMs(bad as number);
+    // 1000ms（原间隔）恰好推进 1 步；若间隔被改为非法值导致异常则此断言失败
+    vi.advanceTimersByTime(1000);
+    expect(p.current).toBe(1);
+    expect(p.isPlaying).toBe(true);
+  });
 });

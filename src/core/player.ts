@@ -60,6 +60,20 @@ export class Player {
     else this.play();
   }
 
+  /** 调整自动播放间隔；播放中切换时以新间隔立即重启，不改变当前索引 */
+  setIntervalMs(ms: number): void {
+    // 参数非法（非有限数或 <= 0）时忽略：不抛错、不改变状态
+    if (!Number.isFinite(ms) || ms <= 0) return;
+    if (this.timer !== null) {
+      // 播放中：销毁旧定时器 → 更新间隔 → 以新间隔重启（索引不变、不触发 onChange）
+      this.pause();
+      this.intervalMs = ms;
+      this.play();
+    } else {
+      this.intervalMs = ms;
+    }
+  }
+
   destroy(): void {
     this.pause();
   }
