@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createMeiosisScene, computeSlots, usableRadius } from "../scene";
+import { createMeiosisScene, computeSlots, usableRadius, CELL_CENTERS, CELL_RADIUS } from "../scene";
 import { meiosisCourse } from "../data";
 import type { MeiosisState } from "../data";
 
@@ -47,28 +47,48 @@ describe("减数分裂场景组件", () => {
     });
   });
 
-  it("减Ⅰ后期：同源分离，染色体位置镜像取决于自由组合方向", () => {
+  it("减Ⅰ后期：同源分离，默认组合方式一（A 与 B 同极）", () => {
     scene.render(st({ replicated: true, pairing: true, separating: "homolog" }));
     const xA1 = chromo("A1").style.transform;
     const xB2 = chromo("B2").style.transform;
-    // 默认组合下 A1 在左上、B2 在左下（cx∓Ru*0.7 = 400∓53）；y 按 ±Ru*0.5 上下错开
+    // 默认组合下 A1 在上极左侧、B2 在下极左侧（cx∓Ru*0.7 = 400∓53）；y 按 ±Ru*0.5 上下错开
     expect(xA1).toBe("translate(347px, 162px)");
     expect(xB2).toBe("translate(347px, 238px)");
   });
 
-  it("点击「切换自由组合方式」按钮：A1 位置镜像翻转，再点一次翻回", () => {
-    // cells:1 + separating:"homolog" 走减Ⅰ后期布局分支（comboAlt 仅镜像 x 符号）
+  it("点击「切换自由组合方式」：B 对对调极性（A 与 b 同极），再点一次还原", () => {
+    // cells:1 + separating:"homolog" 走减Ⅰ后期布局分支
     scene.render(st({ separating: "homolog" }));
-    const before = chromo("A1").style.transform;
-    // 默认组合下 A1 在左上（cx - 53 = 347，cy - 38 = 162）
-    expect(before).toBe("translate(347px, 162px)");
+    // 默认组合方式一：A1 上极左（347,162）、B2 下极左（347,238）
+    expect(chromo("A1").style.transform).toBe("translate(347px, 162px)");
+    expect(chromo("B2").style.transform).toBe("translate(347px, 238px)");
     const btn = host.querySelector<HTMLButtonElement>(".scene-controls button")!;
     btn.dispatchEvent(new Event("click"));
-    // 翻转后 A1 镜像到右侧（cx + 53 = 453），y 不变
-    expect(chromo("A1").style.transform).toBe("translate(453px, 162px)");
+    // 方式二：A 对不动，B2 对调到上极与 A1 紧贴（-53+26=-27 → x=373，y=162）
+    expect(chromo("A1").style.transform).toBe("translate(347px, 162px)");
+    expect(chromo("B2").style.transform).toBe("translate(373px, 162px)");
+    // 说明文字随切换而变化且常驻显示
+    const hint = host.querySelector<HTMLDivElement>(".combo-hint")!;
+    expect(hint.style.display).toBe("inline-block");
+    expect(hint.textContent).toContain("方式二");
     // 再点一次应恢复原位置
     btn.dispatchEvent(new Event("click"));
-    expect(chromo("A1").style.transform).toBe(before);
+    expect(chromo("A1").style.transform).toBe("translate(347px, 162px)");
+    expect(chromo("B2").style.transform).toBe("translate(347px, 238px)");
+    expect(hint.textContent).toContain("方式一");
+  });
+
+  it("非减Ⅰ后期阶段：自由组合按钮禁用、文案提示可用时机、点击无效", () => {
+    scene.render(st({ replicated: true, pairing: true })); // 减Ⅰ中期，非 homolog 分离
+    const btn = host.querySelector<HTMLButtonElement>(".scene-controls button")!;
+    expect(btn.disabled).toBe(true);
+    expect(btn.textContent).toBe("自由组合（减Ⅰ后期可用）");
+    // 说明文字隐藏
+    expect(host.querySelector<HTMLDivElement>(".combo-hint")!.style.display).toBe("none");
+    btn.dispatchEvent(new Event("click")); // 被守卫忽略，comboAlt 保持 false
+    // 之后进入减Ⅰ后期仍为默认组合方式一（B2 在下极），证明禁用期点击未生效
+    scene.render(st({ separating: "homolog" }));
+    expect(chromo("B2").style.transform).toBe("translate(347px, 238px)");
   });
 
   it("减Ⅱ末期 4 细胞精子形态：4 个椭圆头部与 4 条尾部", () => {
@@ -119,6 +139,30 @@ describe("减数分裂场景组件", () => {
       expect(chromo(key).style.transform).toBe(`translate(${400 + dx}px, ${200 + dy}px)`);
     }
   });
+
+  it("分裂后布局自适应：两细胞上下排列、四细胞 2×2 网格、半径放大", () => {
+    // 布局常量符合本轮设计规格
+    expect(CELL_CENTERS[2]).toEqual([[400, 105], [400, 295]]);
+    expect(CELL_CENTERS[4]).toEqual([[270, 115], [530, 115], [270, 285], [530, 285]]);
+    expect(CELL_RADIUS[2]).toBe(95);
+    expect(CELL_RADIUS[4]).toBe(82);
+    // 两细胞期（减Ⅰ末期）：染色体跟随新中心 (400,105)，h=Ru*0.5=round(10.5)=11
+    scene.render(st({ cells: 2, replicated: true }));
+    expect(chromo("A1").style.transform).toBe("translate(389px, 105px)");
+    // 四细胞期轮廓为四个圆（非精子形态）
+    scene.render(st({ cells: 4 }));
+    expect(host.querySelectorAll(".cell-outline").length).toBe(4);
+    expect(host.querySelectorAll(".sperm-tail").length).toBe(0);
+  });
+
+  it("基因标注字号随所属细胞半径自适应", () => {
+    // 单细胞 R=150 → max(13, round(150*0.16)=24) = 24
+    scene.render(st({ replicated: true, pairing: true }));
+    expect(chromo("A1").querySelector("text")!.getAttribute("font-size")).toBe("24");
+    // 四细胞期 R=82 → max(13, round(82*0.16)=13) = 13
+    scene.render(st({ cells: 4 }));
+    expect(chromo("A1").querySelector("text")!.getAttribute("font-size")).toBe("13");
+  });
 });
 
 /** 两点间欧氏距离 */
@@ -152,17 +196,20 @@ describe.each(meiosisCourse.stages.map((s) => [s.id, s.sceneState] as const))(
   },
 );
 
-it("comboAlt 切换仅镜像 x 符号：所有阶段 |x| 与 y 均不变", () => {
-  // comboAlt 仅在减Ⅰ后期布局分支生效：非零 x 必须变号
+it("comboAlt 切换组合方式：A 对位置不变，B 对两成员对调极性；其余阶段不受影响", () => {
+  // comboAlt 仅在减Ⅰ后期布局分支生效：A 对保持原位，B 对 y 取反（换到另一极）
   const anaphase = meiosisCourse.stages.find((s) => s.id === "anaphase-I")!.sceneState as unknown as MeiosisState;
   const base = computeSlots(anaphase, false).offsets;
   const alt = computeSlots(anaphase, true).offsets;
-  for (const key of Object.keys(base)) {
-    expect(Math.abs(alt[key][0])).toBe(Math.abs(base[key][0]));
-    expect(alt[key][1]).toBe(base[key][1]);
-    if (base[key][0] !== 0) {
-      expect(Math.sign(alt[key][0])).toBe(-Math.sign(base[key][0]));
-    }
+  for (const key of ["A1", "A2"]) {
+    expect(alt[key]).toEqual(base[key]);
+  }
+  for (const key of ["B1", "B2"]) {
+    // 方式二下 B 对成员换极（y 取反），并与同极的 A 对成员紧贴（x 向 A 对靠拢 PAIR_CENTER_DIST）
+    expect(alt[key][1]).toBe(-base[key][1]);
+    const partner = key === "B1" ? "A2" : "A1";
+    expect(Math.abs(alt[key][0] - base[partner][0])).toBe(26); // = PAIR_CENTER_DIST
+    expect(dist(alt[key], alt[partner])).toBeGreaterThanOrEqual(20);
   }
   // 其余阶段不受 comboAlt 影响：坐标完全一致
   for (const stage of meiosisCourse.stages) {

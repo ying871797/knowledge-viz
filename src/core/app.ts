@@ -65,8 +65,11 @@ export function mountCoursePage(
   const controls = document.createElement("div");
   controls.className = "controls";
   const btnPrev = Object.assign(document.createElement("button"), { textContent: "⏮ 上一步" });
+  btnPrev.className = "btn-ghost";
   const btnPlay = Object.assign(document.createElement("button"), { textContent: "▶ 播放" });
+  btnPlay.className = "btn-primary";
   const btnNext = Object.assign(document.createElement("button"), { textContent: "下一步 ⏭" });
+  btnNext.className = "btn-ghost";
 
   // 五档速度选择器：value 为倍率字符串，基准间隔 1500ms 除以倍率
   const speedSelect = document.createElement("select") as HTMLSelectElement;
@@ -97,6 +100,7 @@ export function mountCoursePage(
   const examToggle = Object.assign(document.createElement("label"), { className: "exam-toggle" });
   examToggle.innerHTML = `<input type="checkbox" /> 据图判断练习模式`;
   const revealBtn = Object.assign(document.createElement("button"), { textContent: "揭晓答案" });
+  revealBtn.className = "btn-primary";
   revealBtn.style.display = "none";
   controls.append(btnPrev, btnPlay, btnNext, speedSelect, stageNodes, examToggle, revealBtn);
 
@@ -108,7 +112,12 @@ export function mountCoursePage(
   scene.mount(stageBox);
 
   const labels = course.stages.map((s) => s.title);
-  const totals = new NumberChart(totalsCard, labels);
+  // 纵轴 n 表示法：n 取课程最后阶段的染色体数（即配子 n，本课程为 2）；
+  // 刻度在 v 为 n 的整数倍（且非 0）时显示为「1n / 2n / …」，其余保持原数值
+  const gameteN = course.stages[course.stages.length - 1].numbers.chromosome;
+  const totals = new NumberChart(totalsCard, labels, (v) =>
+    v > 0 && v % gameteN === 0 ? `${v / gameteN}n` : String(v),
+  );
   const perChr = new NumberChart(perCard, labels);
 
   // 总数图三条曲线 + 显隐开关（可隐藏单条曲线让学生预测变化）

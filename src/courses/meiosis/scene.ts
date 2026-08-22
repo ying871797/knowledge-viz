@@ -24,15 +24,16 @@ const CHROMOSOMES: ChromoSpec[] = [
 ];
 
 // 各细胞的中心坐标（按 cells 数量取前 n 个）
-const CELL_CENTERS: Record<number, [number, number][]> = {
+// 两细胞期上下排列、四细胞期 2×2 网格：配合放大的半径让单细胞与基因标注更易读
+export const CELL_CENTERS: Record<number, [number, number][]> = {
   1: [[400, 200]],
-  2: [[230, 200], [570, 200]],
-  4: [[115, 200], [305, 200], [495, 200], [685, 200]],
+  2: [[400, 105], [400, 295]],
+  4: [[270, 115], [530, 115], [270, 285], [530, 285]],
 };
 
 // ---------- 参数化槽位布局的几何要素 ----------
-// 细胞半径：cells 数量 → 半径（维持现状）
-export const CELL_RADIUS: Record<number, number> = { 1: 150, 2: 105, 4: 62 };
+// 细胞半径：cells 数量 → 半径（分裂后显著放大，提升可读性）
+export const CELL_RADIUS: Record<number, number> = { 1: 150, 2: 95, 4: 82 };
 const SAFE_MARGIN = 14;   // 安全边距：染色体外缘与细胞膜的最小距离
 const HALF_LEN_MAX = 60;  // 最长染色体（A 对，len=120）的半长
 const CHROMO_WIDTH = 10;  // 染色体描边宽度
@@ -42,7 +43,7 @@ const PAIR_CENTER_DIST = CHROMO_WIDTH * 2 + 6;
 /**
  * 可用半径 Ru = R - 安全边距 - halfLen。
  * 所有槽位坐标必须满足 |pos| ≤ Ru，从根源杜绝染色体出界；
- * 四细胞期（R=62）容不下整条染色体时收敛为 0（每格中心 1 条）。
+ * 四细胞期（R=82）容不下整条染色体时收敛为 0（每格中心 1 条）。
  */
 export function usableRadius(cells: number): number {
   return Math.max((CELL_RADIUS[cells] ?? 0) - SAFE_MARGIN - HALF_LEN_MAX, 0);
@@ -61,7 +62,7 @@ export interface SlotTable {
  * 只做几何计算、不触碰 DOM，便于对不变式直接单元测试：
  * 1. 任意染色体中心到所属细胞中心的距离 ≤ 该细胞 Ru
  * 2. 同一细胞内任意两条染色体中心距 ≥ 20
- * 3. comboAlt 切换仅镜像 x 符号（|x| 与 y 不变）
+ * 3. comboAlt 切换仅改变 B 对的极性归属（A 对位置不变），对应两种自由组合方式
  */
 export function computeSlots(s: MeiosisState, comboAlt = false): SlotTable {
   const offsets: Record<string, [number, number]> = {};
@@ -74,13 +75,23 @@ export function computeSlots(s: MeiosisState, comboAlt = false): SlotTable {
   if (s.cells === 1) {
     if (s.separating === "homolog") {
       // 减Ⅰ后期：两极各 2 条。每一极内两条按 y=±Ru*0.5 上下错开（不再共点），
-      // x=±Ru*0.7；comboAlt 仅镜像 x 符号（自由组合两种方式）
+      // x=±Ru*0.7；comboAlt 切换两种真实的自由组合方式——
+      //   方式一（默认）：A1(A)+B1(B) 移向上极、A2(a)+B2(b) 移向下极；
+      //   方式二：B 对两成员对调极性 → A1(A)+B2(b) 同极（对内以 PAIR_CENTER_DIST 紧贴）。
+      // 注意：不能只镜像 x（镜像不改变「谁与谁同极」，组合方式并未变化）
       const sx = Math.round(ru * 0.7), sy = Math.round(ru * 0.5);
-      const m = comboAlt ? -1 : 1;
-      Object.assign(offsets, {
-        A1: [-sx * m, -sy], A2: [sx * m, sy],
-        B1: [sx * m, -sy], B2: [-sx * m, sy],
-      });
+      const d = PAIR_CENTER_DIST;
+      if (!comboAlt) {
+        Object.assign(offsets, {
+          A1: [-sx, -sy], B1: [sx, -sy],
+          A2: [sx, sy], B2: [-sx, sy],
+        });
+      } else {
+        Object.assign(offsets, {
+          A1: [-sx, -sy], B2: [-sx + d, -sy],
+          A2: [sx, sy], B1: [sx - d, sy],
+        });
+      }
     } else if (s.equatorial === "paired") {
       // 减Ⅰ中期：两对同源沿赤道板（水平中线）左右分置，
       // 对心距 = 2.2×halfLen = 132；对内上下紧贴（中心距 = PAIR_CENTER_DIST）
@@ -196,6 +207,8 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
   let lastState: MeiosisState | null = null;
   let showGenes = false;
   let comboAlt = false;          // 自由组合两种方式切换
+  let comboBtn: HTMLButtonElement;      // 自由组合切换按钮（仅减Ⅰ后期可用）
+  let comboHint: HTMLDivElement;        // 当前组合方式的常驻说明文字
 
   /** 气泡文案：描述该染色体的单体数与同源染色体有无 */
   function describe(spec: ChromoSpec): string {
@@ -262,10 +275,23 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       // 交叉互换色带：仅在「互换标记可见且已复制」时显示
       const swapMark = g.querySelector("rect")!;
       swapMark.style.display = s.crossingOver && s.replicated ? "" : "none";
-      // 基因标注可见性由开关统一控制
+      // 基因标注可见性由开关统一控制；字号随所属细胞半径自适应（小细胞时保底 13）
+      // 精子变形期无需特殊处理：染色体组级 scale(0.3) 会自动同步缩小标注（选择实现简单者）
       const label = g.querySelector("text")!;
       label.setAttribute("visibility", showGenes ? "visible" : "hidden");
+      label.setAttribute("font-size", String(Math.max(13, Math.round(radius * 0.16))));
     });
+
+    // 自由组合按钮与说明文字：仅减Ⅰ后期（同源分离）可用，说明文字常驻显示于场景上方
+    const canCombo = s.separating === "homolog";
+    comboBtn.disabled = !canCombo;
+    comboBtn.textContent = canCombo ? "切换自由组合方式" : "自由组合（减Ⅰ后期可用）";
+    comboHint.style.display = canCombo ? "inline-block" : "none";
+    if (canCombo) {
+      comboHint.textContent = comboAlt
+        ? "自由组合方式二：A 与 b 移向同一极（a 与 B 移向另一极）"
+        : "自由组合方式一：A 与 B 移向同一极（a 与 b 移向另一极）";
+    }
   }
 
   return {
@@ -278,7 +304,11 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
-      wrap.append(svgRoot, bubble);
+      // 当前组合方式说明文字：位于场景（SVG）上方，随 comboAlt 切换内容
+      comboHint = document.createElement("div");
+      comboHint.className = "combo-hint";
+      comboHint.style.display = "none";
+      wrap.append(comboHint, svgRoot, bubble);
 
       // 场景专属开关：基因标注 / 自由组合对比
       const bar = document.createElement("div");
@@ -290,8 +320,13 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
         if (lastState) layout(lastState);
       });
       const comboToggle = document.createElement("button");
-      comboToggle.textContent = "切换自由组合方式";
-      comboToggle.addEventListener("click", () => {
+      comboBtn = comboToggle;
+      // 初始（未渲染任何阶段前）不可用，文案提示可用时机
+      comboBtn.disabled = true;
+      comboBtn.textContent = "自由组合（减Ⅰ后期可用）";
+      comboBtn.addEventListener("click", () => {
+        // disabled 状态下忽略点击（防御浏览器差异，保证行为一致）
+        if (comboBtn.disabled) return;
         comboAlt = !comboAlt;
         if (lastState) layout(lastState);
       });

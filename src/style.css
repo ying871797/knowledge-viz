@@ -7,47 +7,116 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .course-grid aside { flex: 0 0 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
 .course-grid section { flex: 1; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px; position: relative; }
 
-/* 曲线卡片与控制条（控制条位于课程标题正下方，与下方内容留出间距） */
+/* 曲线卡片与控制条（控制条位于课程标题正下方，卡片化半透明底 + 圆角） */
 .chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
-.controls { display: flex; gap: 10px; align-items: center; margin-top: 12px; margin-bottom: 16px; flex-wrap: wrap; }
-.controls .speed-select { font-size: 14px; }
-
-/* 阶段节点进度条：圆点节点 + 连线（::before 横线），替代原 range 滑块 */
-.stage-nodes { display: flex; align-items: center; flex: 1; min-width: 160px; }
-.stage-node {
-  position: relative;
-  width: 16px; height: 16px;
-  flex: none;
-  border: 2px solid #94a3b8;
-  border-radius: 50%;
-  background: #fff;
-  cursor: pointer;
-  padding: 0;
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;               /* 移动端正常换行 */
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, .8);
+  backdrop-filter: blur(6px);
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
 }
-/* 节点间连线：从第二个节点起，向左画一条横线 */
-.stage-node + .stage-node::before {
+
+/* 播放控件：胶囊圆角、主次分明（主色实心 / 描边幽灵），hover/active 有明显反馈 */
+.controls button {
+  font-size: 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: filter .15s ease, transform .06s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.controls .btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; padding: 7px 18px; }
+.controls .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(37, 99, 235, .35); }
+.controls .btn-primary:active { filter: brightness(.92); transform: translateY(1px); box-shadow: none; }
+.controls .btn-ghost { background: #fff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 6px 16px; }
+.controls .btn-ghost:hover { background: #eff6ff; border-color: #2563eb; }
+.controls .btn-ghost:active { transform: translateY(1px); background: #dbeafe; }
+
+/* 速度选择器：与按钮风格一致的胶囊外形 */
+.controls .speed-select {
+  font-size: 14px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1.5px solid #bfdbfe;
+  background: #fff;
+  color: #1f2937;
+  cursor: pointer;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.controls .speed-select:hover { border-color: #2563eb; }
+.controls .speed-select:focus-visible { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .2); }
+
+/* 阶段节点进度条：实心圆节点（三态填充色区分），节点间距统一；
+   连线画在容器层、位于所有按钮之下，不参与命中测试 */
+.stage-nodes { position: relative; display: flex; align-items: center; gap: 4px; flex: 1; min-width: 160px; }
+.stage-nodes::before {
   content: "";
   position: absolute;
-  right: 100%;
+  left: 16px; right: 16px;
   top: 50%;
-  width: calc(100% + 12px);
   height: 2px;
-  background: #cbd5e1;
   transform: translateY(-50%);
+  background: #e2e8f0;
+  pointer-events: none;          /* 连线绝不拦截点击 */
+  z-index: 0;
 }
-.stage-node.passed { border-color: #2563eb; background: #bfdbfe; }
-.stage-node.active {
-  border-color: #2563eb;
+.stage-node {
+  position: relative;
+  z-index: 1;                    /* 按钮整体高于连线，保证可点 */
+  width: 32px; height: 32px;     /* 触控热区 ≥ 32×32 */
+  flex: none;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;    /* 消除移动端双击缩放延迟 */
+  transition: transform .15s ease;
+}
+/* 实心圆点用 ::after 绘制并居中；三态以填充色区分 */
+.stage-node::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 12px; height: 12px;
+  margin: -6px 0 0 -6px;
+  border-radius: 50%;
+  background: #cbd5e1;           /* default 态 */
+  transition: background-color .15s ease, box-shadow .15s ease;
+}
+.stage-node:hover::after { background: #94a3b8; }
+.stage-node.passed::after { background: #60a5fa; }   /* passed 态 */
+.stage-node.passed:hover::after { background: #3b82f6; }
+.stage-node.active { transform: scale(1.15); }
+.stage-node.active::after {                          /* active 态 + 光晕 */
   background: #2563eb;
   box-shadow: 0 0 0 4px rgba(37, 99, 235, .25);
-  transform: scale(1.25);
 }
+.stage-node.active:hover::after { background: #1d4ed8; }
+.stage-node:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
 /* 曲线显隐复选框组 */
 .series-toggles { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; }
 
 /* 减数分裂场景：染色体位移用 CSS transition 补间（Task 7 审查衔接点） */
 .meiosis-scene { position: relative; }
+/* 自由组合方式说明文字：常驻显示于场景上方（仅减Ⅰ后期） */
+.combo-hint {
+  display: inline-block;
+  margin: 2px 4px 6px;
+  padding: 4px 12px;
+  font-size: 13px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  border: 1px dashed #93c5fd;
+  border-radius: 999px;
+}
 .chromo-bubble { position: absolute; max-width: 280px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 12px; font-size: 13px; z-index: 5; }
 .scene-controls { display: flex; gap: 14px; margin-top: 8px; }
 /* 染色体位移用 CSS transition 补间，时长由 --tween-ms 变量控制（随播放速度联动） */

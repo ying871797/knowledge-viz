@@ -45,7 +45,12 @@ export class NumberChart {
   private examMode = false;
   private clickCb: ((i: number) => void) | null = null;
 
-  constructor(private container: HTMLElement, private labels: string[]) {
+  constructor(
+    private container: HTMLElement,
+    private labels: string[],
+    /** 纵轴刻度格式化器（默认直接输出数值），如以 n 表示法显示 */
+    private tickFormat: (v: number) => string = String,
+  ) {
     this.svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" });
     this.axisGroup = el("g", {});
     this.seriesLayer = el("g", {});
@@ -65,7 +70,7 @@ export class NumberChart {
       const y = yFor(v, yMax);
       if (v > 0) g.appendChild(el("line", { x1: M.left, y1: y, x2: W - M.right, y2: y, stroke: "#e2e8f0" }));
       const t = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 12, fill: "#64748b" });
-      t.textContent = String(v);
+      t.textContent = this.tickFormat(v);
       g.appendChild(t);
     }
     // 阶段标签（练习模式下隐藏，重建时也需保持隐藏状态）

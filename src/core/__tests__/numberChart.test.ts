@@ -54,6 +54,16 @@ describe("NumberChart 渲染", () => {
     expect(cb).toHaveBeenCalledWith(1); // 第 5 个点 = 第 2 系列 × 第 2 列
   });
 
+  it("tickFormat 自定义纵轴刻度文本（n 表示法）", () => {
+    const container = document.createElement("div");
+    const chart = new NumberChart(container, ["甲"], (v) => (v > 0 && v % 2 === 0 ? `${v / 2}n` : String(v)));
+    chart.setSeries([{ label: "染色体", values: [4] }]);
+    const texts = [...container.querySelectorAll("text")].map((t) => t.textContent);
+    expect(texts).toContain("1n");
+    expect(texts).toContain("2n");
+    expect(texts).not.toContain("4"); // 4 已被格式化为 2n
+  });
+
   it("练习模式隐藏曲线与图例", () => {
     const { container, chart } = mount();
     chart.setSeries(series);
