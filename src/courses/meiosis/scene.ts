@@ -30,6 +30,110 @@ const CELL_CENTERS: Record<number, [number, number][]> = {
   4: [[115, 200], [305, 200], [495, 200], [685, 200]],
 };
 
+// ---------- 参数化槽位布局的几何要素 ----------
+// 细胞半径：cells 数量 → 半径（维持现状）
+export const CELL_RADIUS: Record<number, number> = { 1: 150, 2: 105, 4: 62 };
+const SAFE_MARGIN = 14;   // 安全边距：染色体外缘与细胞膜的最小距离
+const HALF_LEN_MAX = 60;  // 最长染色体（A 对，len=120）的半长
+const CHROMO_WIDTH = 10;  // 染色体描边宽度
+// 同源对内中心距：宽度 2×10 基础上再留 6 余量（满足不变式 2：任意两条中心距 ≥ 20）
+const PAIR_CENTER_DIST = CHROMO_WIDTH * 2 + 6;
+
+/**
+ * 可用半径 Ru = R - 安全边距 - halfLen。
+ * 所有槽位坐标必须满足 |pos| ≤ Ru，从根源杜绝染色体出界；
+ * 四细胞期（R=62）容不下整条染色体时收敛为 0（每格中心 1 条）。
+ */
+export function usableRadius(cells: number): number {
+  return Math.max((CELL_RADIUS[cells] ?? 0) - SAFE_MARGIN - HALF_LEN_MAX, 0);
+}
+
+/** 槽位表：各染色体相对其所属细胞中心的偏移及所属细胞下标 */
+export interface SlotTable {
+  /** key -> 相对所属细胞中心的偏移 [dx, dy]（已取整，避免 transform 出现长小数） */
+  offsets: Record<string, [number, number]>;
+  /** key -> 所属细胞在 CELL_CENTERS[cells] 中的下标 */
+  cellOf: Record<string, number>;
+}
+
+/**
+ * 纯函数：给定阶段状态 → 槽位表。
+ * 只做几何计算、不触碰 DOM，便于对不变式直接单元测试：
+ * 1. 任意染色体中心到所属细胞中心的距离 ≤ 该细胞 Ru
+ * 2. 同一细胞内任意两条染色体中心距 ≥ 20
+ * 3. comboAlt 切换仅镜像 x 符号（|x| 与 y 不变）
+ */
+export function computeSlots(s: MeiosisState, comboAlt = false): SlotTable {
+  const offsets: Record<string, [number, number]> = {};
+  const cellOf: Record<string, number> = {};
+  const ru = usableRadius(s.cells);
+  // 极坐标辅助：角度（度）、半径 → 取整后的直角坐标
+  const polar = (deg: number, r: number): [number, number] =>
+    [Math.round(r * Math.cos(deg * Math.PI / 180)), Math.round(r * Math.sin(deg * Math.PI / 180))];
+
+  if (s.cells === 1) {
+    if (s.separating === "homolog") {
+      // 减Ⅰ后期：两极各 2 条。每一极内两条按 y=±Ru*0.5 上下错开（不再共点），
+      // x=±Ru*0.7；comboAlt 仅镜像 x 符号（自由组合两种方式）
+      const sx = Math.round(ru * 0.7), sy = Math.round(ru * 0.5);
+      const m = comboAlt ? -1 : 1;
+      Object.assign(offsets, {
+        A1: [-sx * m, -sy], A2: [sx * m, sy],
+        B1: [sx * m, -sy], B2: [-sx * m, sy],
+      });
+    } else if (s.equatorial === "paired") {
+      // 减Ⅰ中期：两对同源沿赤道板（水平中线）左右分置，
+      // 对心距 = 2.2×halfLen = 132；对内上下紧贴（中心距 = PAIR_CENTER_DIST）
+      const pc = Math.round(2.2 * HALF_LEN_MAX) / 2; // 66
+      const h = PAIR_CENTER_DIST / 2;                // 13
+      Object.assign(offsets, {
+        A1: [-pc, -h], A2: [-pc, h],
+        B1: [pc, -h], B2: [pc, h],
+      });
+    } else if (s.equatorial === "single") {
+      // 单列赤道板（有丝分裂式逐条排列）：短对外侧、长对内侧
+      const inner = Math.round(ru * 0.4), outer = Math.round(ru * 0.85);
+      Object.assign(offsets, {
+        A1: [-inner, 0], A2: [inner, 0],
+        B1: [-outer, 0], B2: [outer, 0],
+      });
+    } else if (s.pairing) {
+      // 联会/四分体：两对分别置于左上/右下象限区域，对间明显间隔；
+      // 对内水平并排、中心距 = PAIR_CENTER_DIST（紧贴）
+      const gx = Math.round(ru * 0.55), gy = Math.round(ru * 0.35), h = PAIR_CENTER_DIST / 2;
+      Object.assign(offsets, {
+        A1: [-gx - h, -gy], A2: [-gx + h, -gy],
+        B1: [gx - h, gy], B2: [gx + h, gy],
+      });
+    } else {
+      // 基态（散布）/间期/复制态：四象限均匀分布——
+      // 45°/135°/225°/315° 方向、距离 Ru*0.75；长对占上方两象限、短对占下方
+      const d = Math.round(ru * 0.75);
+      Object.assign(offsets, {
+        A1: polar(135, d), A2: polar(45, d),
+        B1: polar(225, d), B2: polar(315, d),
+      });
+    }
+    Object.keys(offsets).forEach((k) => { cellOf[k] = 0; });
+  } else if (s.cells === 2) {
+    // 两细胞期：每个细胞 2 条染色体对称分布于 x=±Ru*0.5，y 居中；
+    // 减Ⅱ后期姐妹分开时 x 幅度拉大到 Ru*0.85
+    const h = Math.round(ru * (s.separating === "sister" ? 0.85 : 0.5));
+    Object.assign(offsets, {
+      A1: [-h, 0], B2: [h, 0],   // 左细胞：一长一短
+      B1: [-h, 0], A2: [h, 0],   // 右细胞：另一长一短
+    });
+    cellOf.A1 = 0; cellOf.B2 = 0;
+    cellOf.B1 = 1; cellOf.A2 = 1;
+  } else {
+    // 四细胞期 / 精子变形：每格中心 1 条（顺序对应两对染色体的四种组合之一）
+    const order = ["A1", "B2", "B1", "A2"];
+    order.forEach((key, i) => { offsets[key] = [0, 0]; cellOf[key] = i; });
+  }
+
+  return { offsets, cellOf };
+}
+
 /** 创建带属性的 SVG 元素的便捷工厂 */
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
   const node = document.createElementNS(NS, tag);
@@ -118,7 +222,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
     const centers = CELL_CENTERS[s.cells];
     // 细胞轮廓（变形期画精子形态：椭圆头部 + 尾部）；先清除旧轮廓再重建
     root.querySelectorAll(".cell-outline, .sperm-tail").forEach((n) => n.remove());
-    const radius = s.cells === 1 ? 150 : s.cells === 2 ? 105 : 62;
+    const radius = CELL_RADIUS[s.cells] ?? 62;
     centers.forEach(([cx, cy]) => {
       if (s.spermShape) {
         // 精子形态：椭圆头部 + 波浪形尾部
@@ -132,56 +236,14 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       }
     });
 
-    // 目标位置表：key -> [cx, cy]
+    // 目标位置表：由参数化槽位表（纯函数）换算为画布绝对坐标
+    const slots = computeSlots(s, comboAlt);
     const pos: Record<string, [number, number]> = {};
-    if (s.cells === 1) {
-      const [cx, cy] = centers[0];
-      if (s.equatorial !== "none") {
-        // 中期：排在赤道板（水平中线 y=cy）
-        if (s.equatorial === "paired") {
-          pos.A1 = [cx - 130, cy]; pos.A2 = [cx - 130 + (s.separating === "homolog" ? 90 : 24), cy]; // 联会后分开
-          pos.B1 = [cx + 130, cy]; pos.B2 = [cx + 130 - (s.separating === "homolog" ? 90 : 24), cy];
-        } else {
-          pos.A1 = [cx - 40, cy]; pos.A2 = [cx + 40, cy];
-          pos.B1 = [cx - 130, cy]; pos.B2 = [cx + 130, cy];
-        }
-        if (s.separating === "homolog") {
-          // 减Ⅰ后期：同源分离移向两极；comboAlt 决定非同源的自由组合方向
-          pos.A1 = [comboAlt ? cx + 170 : cx - 170, cy - 60]; pos.A2 = [comboAlt ? cx - 170 : cx + 170, cy + 60];
-          pos.B1 = [comboAlt ? cx - 170 : cx + 170, cy - 60]; pos.B2 = [comboAlt ? cx + 170 : cx - 170, cy + 60];
-        }
-      } else if (s.pairing) {
-        // 联会/四分体：同源紧贴
-        pos.A1 = [cx - 90, cy - 20]; pos.A2 = [cx - 66, cy + 20];
-        pos.B1 = [cx + 90, cy - 20]; pos.B2 = [cx + 66, cy + 20];
-        if (s.separating === "homolog") {
-          // 后期：同源分离、非同源自由组合（comboAlt 切换组合方式）
-          pos.A1 = [comboAlt ? cx + 160 : cx - 160, cy - 50]; pos.A2 = [comboAlt ? cx - 160 : cx + 160, cy + 50];
-          pos.B1 = [comboAlt ? cx - 160 : cx + 160, cy - 50]; pos.B2 = [comboAlt ? cx + 160 : cx - 160, cy + 50];
-        }
-      } else if (s.separating === "homolog") {
-        pos.A1 = [comboAlt ? cx + 160 : cx - 160, cy - 50]; pos.A2 = [comboAlt ? cx - 160 : cx + 160, cy + 50];
-        pos.B1 = [comboAlt ? cx - 160 : cx + 160, cy - 50]; pos.B2 = [comboAlt ? cx + 160 : cx - 160, cy + 50];
-      } else {
-        // 散布基态
-        pos.A1 = [cx - 110, cy - 40]; pos.A2 = [cx - 80, cy + 50];
-        pos.B1 = [cx + 110, cy - 30]; pos.B2 = [cx + 85, cy + 45];
-      }
-    } else if (s.cells === 2) {
-      const [c1, c2] = centers;
-      // 减Ⅱ：每个细胞 2 条染色体（一长一短，互为非同源），默认即排在各自赤道板位置
-      pos.A1 = [c1[0] - 25, c1[1]]; pos.B2 = [c1[0] + 25, c1[1]];
-      pos.B1 = [c2[0] - 25, c2[1]]; pos.A2 = [c2[0] + 25, c2[1]];
-      if (s.separating === "sister") {
-        // 姐妹染色单体分开：X 形拆开（用位移表现分离趋势）
-        pos.A1 = [c1[0] - 55, c1[1]]; pos.B2 = [c1[0] + 55, c1[1]];
-        pos.B1 = [c2[0] - 55, c2[1]]; pos.A2 = [c2[0] + 55, c2[1]];
-      }
-    } else {
-      // 4 个精细胞：每格 1 条（顺序对应两对染色体的四种组合之一）
-      const order = ["A1", "B2", "B1", "A2"];
-      order.forEach((key, i) => { pos[key] = centers[i]; });
-    }
+    CHROMOSOMES.forEach(({ key }) => {
+      const [cx, cy] = centers[slots.cellOf[key]];
+      const [dx, dy] = slots.offsets[key];
+      pos[key] = [cx + dx, cy + dy];
+    });
 
     // 应用位置（CSS transition 补间约 1.5s）与形态
     CHROMOSOMES.forEach(({ key }) => {
