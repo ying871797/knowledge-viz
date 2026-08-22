@@ -75,6 +75,10 @@ describe("减数分裂场景组件", () => {
     scene.render(st({ cells: 4, spermShape: true }));
     expect(host.querySelectorAll(".cell-outline").length).toBe(4);
     expect(host.querySelectorAll(".sperm-tail").length).toBe(4);
+    // 缩放适配：精子期每条染色体 transform 需含 scale(0.3)，避免穿出椭圆头部
+    host.querySelectorAll<SVGGElement>(".chromo").forEach((g) => {
+      expect(g.style.transform).toContain("scale(0.3)");
+    });
   });
 
   it("点击染色体显示气泡，再次 render 后隐藏", () => {

@@ -107,7 +107,8 @@ export function computeSlots(s: MeiosisState, comboAlt = false): SlotTable {
       });
     } else {
       // 基态（散布）/间期/复制态：四象限均匀分布——
-      // 45°/135°/225°/315° 方向、距离 Ru*0.75；长对占上方两象限、短对占下方
+      // 45°/135°/225°/315° 方向、距离 Ru*0.75；
+      // 注意 SVG y 轴向下，sin>0 表示屏幕下方：长对（135°/45°）占下方两象限、短对占上方
       const d = Math.round(ru * 0.75);
       Object.assign(offsets, {
         A1: polar(135, d), A2: polar(45, d),
@@ -245,11 +246,13 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       pos[key] = [cx + dx, cy + dy];
     });
 
-    // 应用位置（CSS transition 补间约 1.5s）与形态
+    // 应用位置（CSS transition 补间约 1.5s）与形态。
+    // 精子变形期（cells:4、每格 1 条）：染色体竖向包络（半长 60 + 描边余量约 11）
+    // 远超头部椭圆 ry≈26，统一缩放至约 ry*0.8/(60+11) ≈ 0.3 以适配头部轮廓
     CHROMOSOMES.forEach(({ key }) => {
       const g = groups.get(key)!;
       const [x, y] = pos[key];
-      g.style.transform = `translate(${x}px, ${y}px)`;
+      g.style.transform = `translate(${x}px, ${y}px)${s.spermShape ? " scale(0.3)" : ""}`;
     });
     CHROMOSOMES.forEach(({ key }) => {
       const g = groups.get(key)!;
