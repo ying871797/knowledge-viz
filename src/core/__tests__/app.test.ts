@@ -65,6 +65,13 @@ describe("mountCoursePage 装配", () => {
     const { root } = setup();
     // DOM 顺序：返回链接 → 标题 → 控制条 → course-grid → 两张曲线卡片
     expect(root.querySelector(".controls")).toBeTruthy();
+    // 高频播放控件应归入 .player-bar 子容器（窄屏吸底的挂载点）
+    expect(root.querySelector(".controls .player-bar")).toBeTruthy();
+    // 窄屏吸底条宽度有限：只放三个导航按钮，调速器留在页内控制区
+    const bar = root.querySelector(".controls .player-bar")!;
+    expect(bar.querySelectorAll("button").length).toBe(3);
+    expect(bar.querySelector("select")).toBeNull();
+    expect(root.querySelector(".controls > .speed-select")).toBeTruthy();
     const children = [...root.children].map((el) => el.className);
     expect(children.indexOf("course-title")).toBeLessThan(children.indexOf("controls"));
     expect(children.indexOf("controls")).toBeLessThan(children.indexOf("course-grid"));
@@ -145,6 +152,37 @@ describe("mountCoursePage 装配", () => {
     box.checked = true;
     box.dispatchEvent(new Event("change", { bubbles: true }));
     expect(countPolylines()).toBe(3);
+  });
+
+  it("导航三键为图标+文字双 span 结构并带 aria-label（移动端图标化挂载点）", () => {
+    const { root } = setup();
+    const barButtons = [...root.querySelectorAll<HTMLButtonElement>(".player-bar button")];
+    expect(barButtons.length).toBe(3);
+    // 每键含 .btn-icon / .btn-text 两个 span，供窄屏 CSS 只留图标
+    for (const b of barButtons) {
+      expect(b.querySelector(".btn-icon")).toBeTruthy();
+      expect(b.querySelector(".btn-text")).toBeTruthy();
+      expect(b.getAttribute("aria-label")).toBeTruthy();
+    }
+    const [prev, play] = barButtons;
+    expect(prev.querySelector(".btn-icon")!.textContent).toBe("⏮");
+    expect(prev.querySelector(".btn-text")!.textContent).toBe("上一步");
+    // 初始播放键图标为 ▶；点击后切为 ⏸、文字切为「暂停」
+    expect(play.querySelector(".btn-icon")!.textContent).toBe("▶");
+    play.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(play.querySelector(".btn-icon")!.textContent).toBe("⏸");
+    expect(play.querySelector(".btn-text")!.textContent).toBe("暂停");
+  });
+
+  it("场景区右上角步数徽标显示「第x/N步」并随阶段更新", () => {
+    const { root } = setup();
+    const section = root.querySelector("section")!;
+    const badge = section.querySelector(".step-badge")!;
+    expect(badge.textContent).toBe("第1/3步");
+    // 点击「下一步」后徽标同步更新
+    [...root.querySelectorAll(".player-bar button")][2]
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(badge.textContent).toBe("第2/3步");
   });
 
   it("stages 为空时 fail-fast 渲染占位提示", () => {

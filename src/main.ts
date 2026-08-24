@@ -4,22 +4,29 @@ import "./style.css";
 import { mountCoursePage, type CoursePageHandle } from "./core/app";
 import { validateCourse } from "./core/types";
 import type { Course, SceneComponent } from "./core/types";
-import { meiosisCourse } from "./courses/meiosis/data";
+import { meiosisCourse, oogenesisCourse } from "./courses/meiosis/data";
 import { createMeiosisScene } from "./courses/meiosis/scene";
 
-/** 课程注册表条目：新增知识点时在此登记即可 */
+/** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
   meta: Course["meta"];
-  load: () => Course;
+  load: (mode?: string) => Course;
   createScene: () => SceneComponent & { destroy?: () => void };
 }
 
 const registry: CourseEntry[] = [];
 
 // 注册时经 validateCourse 校验，不合格 fail-fast（仅记录并跳过该课程，不阻塞其它课程）
+// 两种模式的数据都须过校验门禁——运行时 load() 返回的课程同样要有部署期保证
 try {
   const course = validateCourse(meiosisCourse);
-  registry.push({ meta: course.meta, load: () => course, createScene: createMeiosisScene });
+  const ooCourse = validateCourse(oogenesisCourse);
+  // 减数分裂页内双模式：精子形成 / 卵细胞形成，由路由参数 ?mode=oocyte 区分
+  registry.push({
+    meta: course.meta,
+    load: (mode?: string) => (mode === "oocyte" ? ooCourse : meiosisCourse),
+    createScene: createMeiosisScene,
+  });
 } catch (err) {
   console.error("[registry]", err);
 }
@@ -49,22 +56,22 @@ function renderHome(): void {
   root.append(h1, ul);
 }
 
-/** 渲染课程页；未知 id 回退目录页 */
-function renderCourse(id: string): void {
+/** 渲染课程页；未知 id 回退目录页。mode 为可选路由参数（如减数分裂页的卵细胞模式） */
+function renderCourse(id: string, mode?: string): void {
   const entry = registry.find((e) => e.meta.id === id);
   if (!entry) { renderHome(); return; }
-  // 先清理上一次课程页资源，再整体重建 DOM
+  // 先清理上一次课程页资源，再整体重建 DOM（切换模式即重挂载 → 自然重置到第 0 步）
   cleanup?.destroy();
   cleanup = null;
   root.innerHTML = "";
-  cleanup = mountCoursePage(root, entry.load(), entry.createScene);
+  cleanup = mountCoursePage(root, entry.load(mode), entry.createScene);
 }
 
-/** 路由分发：解析 hash 决定渲染目录页或课程页 */
+/** 路由分发：解析 hash 决定渲染目录页或课程页（支持 ?mode= 查询参数） */
 function route(): void {
   const hash = location.hash || "#/";
-  const match = /^#\/course\/([\w-]+)/.exec(hash);
-  if (match) renderCourse(match[1]);
+  const match = /^#\/course\/([\w-]+)(?:\?mode=(\w+))?/.exec(hash);
+  if (match) renderCourse(match[1], match[2]);
   else renderHome();
 }
 

@@ -69,7 +69,7 @@ export class NumberChart {
     for (let v = 0; v <= yMax; v++) {
       const y = yFor(v, yMax);
       if (v > 0) g.appendChild(el("line", { x1: M.left, y1: y, x2: W - M.right, y2: y, stroke: "#e2e8f0" }));
-      const t = el("text", { x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 12, fill: "#64748b" });
+      const t = el("text", { class: "axis-text", x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 12, fill: "#64748b" });
       t.textContent = this.tickFormat(v);
       g.appendChild(t);
     }
@@ -124,10 +124,16 @@ export class NumberChart {
         this.seriesLayer.appendChild(dot);
       });
     });
-    // 图例（虚线系列加 "-- " 前缀）
+    // 图例（虚线系列加 "-- " 前缀）；右端对齐锚定 + 加大间距，
+    // 避免长标签超出画布右缘被裁剪，并为移动端字号补偿留出空间
     series.forEach((s, si) => {
       const color = s.color ?? COLORS[si % COLORS.length];
-      const t = el("text", { x: W - M.right - 150 + si * 80, y: M.top + 4, "font-size": 12, fill: color });
+      const t = el("text", {
+        class: "legend-text",
+        x: W - M.right - (series.length - 1 - si) * 110,
+        y: M.top + 4,
+        "text-anchor": "end", "font-size": 12, fill: color,
+      });
       t.textContent = `${s.dashed ? "-- " : ""}${s.label}`;
       this.seriesLayer.appendChild(t);
     });

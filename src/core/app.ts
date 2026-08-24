@@ -62,14 +62,26 @@ export function mountCoursePage(
   perCard.append(perTitle);
 
   // —— 控制条（位于标题正下方）：上一步 / 播放 / 下一步 / 调速 / 阶段节点条 / 练习开关 / 揭晓按钮 ——
+  // 导航键为「图标+文字」双 span 结构：窄屏媒体查询隐藏文字只留图标，aria-label 兜底语义
+  function navButton(icon: string, text: string, cls: string): HTMLButtonElement {
+    const b = document.createElement("button");
+    b.className = cls;
+    const ic = document.createElement("span");
+    ic.className = "btn-icon";
+    ic.textContent = icon;
+    const tx = document.createElement("span");
+    tx.className = "btn-text";
+    tx.textContent = text;
+    b.append(ic, tx);
+    b.setAttribute("aria-label", `${text}`);
+    return b;
+  }
+  const btnPrev = navButton("⏮", "上一步", "btn-ghost");
+  const btnPlay = navButton("▶", "播放", "btn-primary");
+  const btnNext = navButton("⏭", "下一步", "btn-ghost");
+
   const controls = document.createElement("div");
   controls.className = "controls";
-  const btnPrev = Object.assign(document.createElement("button"), { textContent: "⏮ 上一步" });
-  btnPrev.className = "btn-ghost";
-  const btnPlay = Object.assign(document.createElement("button"), { textContent: "▶ 播放" });
-  btnPlay.className = "btn-primary";
-  const btnNext = Object.assign(document.createElement("button"), { textContent: "下一步 ⏭" });
-  btnNext.className = "btn-ghost";
 
   // 五档速度选择器：value 为倍率字符串，基准间隔 1500ms 除以倍率
   const speedSelect = document.createElement("select") as HTMLSelectElement;
@@ -102,7 +114,12 @@ export function mountCoursePage(
   const revealBtn = Object.assign(document.createElement("button"), { textContent: "揭晓答案" });
   revealBtn.className = "btn-primary";
   revealBtn.style.display = "none";
-  controls.append(btnPrev, btnPlay, btnNext, speedSelect, stageNodes, examToggle, revealBtn);
+  // 高频播放控件归入 .player-bar 子容器：窄屏吸底且只放三个导航按钮（宽度有限），
+  // 调速器留在页内控制区；桌面端两者同排、视觉不变
+  const playerBar = document.createElement("div");
+  playerBar.className = "player-bar";
+  playerBar.append(btnPrev, btnPlay, btnNext);
+  controls.append(playerBar, speedSelect, stageNodes, examToggle, revealBtn);
 
   root.append(back, h2, controls, grid, totalsCard, perCard);
 
@@ -110,6 +127,11 @@ export function mountCoursePage(
   const notes = new NotesPanel(notesBox);
   const scene = createScene();
   scene.mount(stageBox);
+
+  // 场景区右上角步数徽标：通用 UI 组件（不侵入 SceneComponent 接口），applyStage 随阶段更新
+  const stepBadge = document.createElement("div");
+  stepBadge.className = "step-badge";
+  stageBox.appendChild(stepBadge);
 
   const labels = course.stages.map((s) => s.title);
   // 纵轴 n 表示法：n 取课程最后阶段的染色体数（即配子 n，本课程为 2）；
@@ -175,6 +197,8 @@ export function mountCoursePage(
       notes.render(stage.title, stage.narration);
     }
     scene.render(stage.sceneState);
+    // 步数徽标：第 x/N 步
+    stepBadge.textContent = `第${i + 1}/${course.stages.length}步`;
     totals.setActive(i);
     perChr.setActive(i);
     if (stage.callout && !examMode) {
@@ -183,7 +207,11 @@ export function mountCoursePage(
     } else {
       callout.style.display = "none";
     }
-    btnPlay.textContent = player.isPlaying ? "⏸ 暂停" : "▶ 播放";
+    // 播放键文案切分更新：图标与文字分属不同 span（窄屏仅显示图标）
+    const playIcon = btnPlay.querySelector(".btn-icon") as HTMLElement;
+    const playText = btnPlay.querySelector(".btn-text") as HTMLElement;
+    playIcon.textContent = player.isPlaying ? "⏸" : "▶";
+    playText.textContent = player.isPlaying ? "暂停" : "播放";
   }
 
   // 双向联动：曲线数据点点击 → 跳转该阶段（先暂停自动播放）

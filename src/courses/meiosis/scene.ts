@@ -24,19 +24,38 @@ const CHROMOSOMES: ChromoSpec[] = [
 ];
 
 // 各细胞的中心坐标（按 cells 数量取前 n 个）
-// 两细胞期上下排列、四细胞期 2×2 网格：配合放大的半径让单细胞与基因标注更易读
+// 两细胞期左右横排（满幅利用 800×400 画布宽度）、四细胞期 2×2 网格
 export const CELL_CENTERS: Record<number, [number, number][]> = {
   1: [[400, 200]],
-  2: [[400, 105], [400, 295]],
-  4: [[270, 115], [530, 115], [270, 285], [530, 285]],
+  2: [[215, 200], [585, 200]],
+  4: [[175, 98], [480, 98], [175, 302], [480, 302]],
 };
 
 // ---------- 参数化槽位布局的几何要素 ----------
-// 细胞半径：cells 数量 → 半径（分裂后显著放大，提升可读性）
-export const CELL_RADIUS: Record<number, number> = { 1: 150, 2: 95, 4: 82 };
+// 细胞半径：cells 数量 → 半径；两细胞期横排后半径从 95 提升到 150（Ru 21→76，染色体活动空间 ×3.6）；
+// 四细胞期列心左移 + R 提至 95（竖排两行圆不相切的几何上限约 96），精子尾右伸与左移抵消、整体居中
+export const CELL_RADIUS: Record<number, number> = { 1: 150, 2: 150, 4: 95 };
+
+// ---------- 卵细胞模式（细胞质不均等分裂）的渲染几何 ----------
+const OO_CENTER: [number, number] = [240, 200];  // 大细胞（次级卵母细胞/卵）中心
+const OO_RADIUS = 140;                            // 大细胞半径
+const PB_R = 46;                                  // 极体小圆半径
+// 极体按数量的分布角度（度）：1 个在上方；3 个沿右上弧线展开
+const PB_ANGLES: Record<number, number[]> = { 1: [-50], 3: [-50, -5, 40] };
+// 极体圆心到大细胞中心的距离（轻微搭接，视觉上「贴边」）
+const PB_DIST = OO_RADIUS + PB_R - 4;
+
+/** 极坐标转直角：极体中心相对大细胞中心的位置 */
+function pbCenter(deg: number): [number, number] {
+  return [
+    Math.round(OO_CENTER[0] + PB_DIST * Math.cos(deg * Math.PI / 180)),
+    Math.round(OO_CENTER[1] + PB_DIST * Math.sin(deg * Math.PI / 180)),
+  ];
+}
 const SAFE_MARGIN = 14;   // 安全边距：染色体外缘与细胞膜的最小距离
 const HALF_LEN_MAX = 60;  // 最长染色体（A 对，len=120）的半长
 const CHROMO_WIDTH = 10;  // 染色体描边宽度
+const ARM_DX = 12;        // X 形对角臂端点横向偏移：两臂过原点在着丝粒处交合
 // 同源对内中心距：宽度 2×10 基础上再留 6 余量（满足不变式 2：任意两条中心距 ≥ 20）
 const PAIR_CENTER_DIST = CHROMO_WIDTH * 2 + 6;
 
@@ -127,20 +146,47 @@ export function computeSlots(s: MeiosisState, comboAlt = false): SlotTable {
       });
     }
     Object.keys(offsets).forEach((k) => { cellOf[k] = 0; });
+  } else if (s.cells === 2 && s.unequal) {
+    // 卵细胞模式（细胞质不均等分裂）：只有 1 个大细胞（次级卵母细胞/卵）承载可见染色体。
+    // 减Ⅱ中期：可见对并排居中（±13）落在赤道板上；减Ⅱ后期：组中心错开排布（双杆分极由渲染层完成）；
+    // 其余阶段：可见对分居大细胞两极。极体对槽位错开居中区域，
+    // 由渲染层缩小并锚定到极体小圆（不变式仍以同一中心校验，全部偏移 ≤ Ru 且两两 ≥ 20）
+    let ox: Record<string, [number, number]>;
+    if (s.separating === "sister") {
+      ox = { A1: [-13, -13], B1: [13, 13], A2: [13, -13], B2: [-13, 13] };
+    } else if (s.equatorial === "single") {
+      ox = { A1: [-13, 0], B1: [13, 0], A2: [0, 24], B2: [0, -24] };
+    } else {
+      const h = Math.round(ru * 0.5);
+      ox = { A1: [-h, 0], B1: [h, 0], A2: [0, 24], B2: [0, -24] };
+    }
+    Object.assign(offsets, ox);
+    Object.keys(offsets).forEach((k) => { cellOf[k] = 0; });
   } else if (s.cells === 2) {
-    // 两细胞期：每个细胞 2 条染色体对称分布于 x=±Ru*0.5，y 居中；
-    // 减Ⅱ后期姐妹分开时 x 幅度拉大到 Ru*0.85
-    const h = Math.round(ru * (s.separating === "sister" ? 0.85 : 0.5));
-    Object.assign(offsets, {
-      A1: [-h, 0], B2: [h, 0],   // 左细胞：一长一短
-      B1: [-h, 0], A2: [h, 0],   // 右细胞：另一长一短
-    });
+    // 减Ⅱ后期：组中心错开排布（双杆分极由渲染层呈现）；其余阶段一长一短对称分布两极
+    if (s.separating === "sister") {
+      Object.assign(offsets, {
+        A1: [-13, -13], B2: [13, -13],
+        B1: [13, 13], A2: [-13, 13],
+      });
+    } else {
+      const h = Math.round(ru * 0.5);
+      Object.assign(offsets, {
+        A1: [-h, 0], B2: [h, 0],
+        B1: [-h, 0], A2: [h, 0],
+      });
+    }
     cellOf.A1 = 0; cellOf.B2 = 0;
     cellOf.B1 = 1; cellOf.A2 = 1;
   } else {
-    // 四细胞期 / 精子变形：每格中心 1 条（顺序对应两对染色体的四种组合之一）
-    const order = ["A1", "B2", "B1", "A2"];
-    order.forEach((key, i) => { offsets[key] = [0, 0]; cellOf[key] = i; });
+    // 四细胞期 / 精子变形：每个子细胞含一长一短两条染色体（对应数目 n=2）——
+    // 左上格(A1,B2)、右下格(B1,A2)为本体所在；姊妹杆由渲染层平移至同行兄弟格
+    Object.assign(offsets, {
+      A1: [-13, -13], B2: [13, -13],
+      B1: [-13, 13], A2: [13, 13],
+    });
+    cellOf.A1 = 0; cellOf.B2 = 0;
+    cellOf.B1 = 2; cellOf.A2 = 2;
   }
 
   return { offsets, cellOf };
@@ -159,34 +205,47 @@ function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
  */
 function buildChromosome(spec: ChromoSpec, showGenes: boolean, onClick: (spec: ChromoSpec) => void): SVGGElement {
   const g = el("g", { class: `chromo chromo-${spec.key}`, cursor: "pointer" });
-  const w = 10;
+  const w = CHROMO_WIDTH;
+  const half = spec.len / 2;
   g.dataset.key = spec.key;
   g.addEventListener("click", () => onClick(spec));
 
-  // 单体路径：以组内原点为中心的竖直杆；X 形由两条微弯 path 组成
-  const arm = (dx: number, flip: boolean) =>
-    `M ${flip ? dx : -dx} ${-spec.len / 2} Q 0 ${-spec.len / 6} ${flip ? -dx : dx} 0 Q 0 ${spec.len / 6} ${flip ? dx : -dx} ${spec.len / 2}`;
-  const paths: SVGPathElement[] = [];
-  const addArm = (d: string, color: string) => {
-    const p = el("path", { d, fill: "none", stroke: color, "stroke-width": w, "stroke-linecap": "round" });
-    paths.push(p);
-    g.appendChild(p);
-  };
-  addArm(arm(6, false), spec.color);
-  addArm(arm(6, true), spec.color);
-  // 第二对臂默认隐藏，replicated=true 时显示（X 形）
-  paths[1].style.display = "none";
+  // 三段结构：竖直单杆（未复制时显示）+ 两条对角臂（复制后显示，过原点在着丝粒处交合成真 X 形）
+  const rod = el("path", { d: `M 0 ${-half} L 0 ${half}`, fill: "none", stroke: spec.color, "stroke-width": w, "stroke-linecap": "round" });
+  const diagA = el("path", { d: `M ${-ARM_DX} ${-half} L ${ARM_DX} ${half}`, fill: "none", stroke: spec.color, "stroke-width": w, "stroke-linecap": "round" });
+  const diagB = el("path", { d: `M ${ARM_DX} ${-half} L ${-ARM_DX} ${half}`, fill: "none", stroke: spec.color, "stroke-width": w, "stroke-linecap": "round" });
+  // 姊妹杆：减Ⅱ后期着丝点分裂后与本体杆一一对应（双杆分极）；
+  // 减Ⅱ末期限则平移至同行兄弟子细胞，使每格呈现一长一短两条染色体
+  const sisterRod = el("path", { d: `M 0 ${-half} L 0 ${half}`, fill: "none", stroke: spec.color, "stroke-width": w, "stroke-linecap": "round" });
+  // 姊妹杆的配套部件：着丝点圆点克隆与基因标注副本（永远复制姊妹杆的 transform）
+  const sisterCentro = el("circle", { class: "sister-centro", r: 5, fill: "#111827" });
+  const sisterLabel = el("text", {
+    class: "sister-label",
+    x: 0, y: Math.round(-spec.len / 4) + 4,
+    "text-anchor": "middle", "font-size": 13, "font-weight": "bold",
+    fill: "#ffffff", stroke: "#334155", "stroke-width": 3, "paint-order": "stroke",
+    visibility: showGenes ? "visible" : "hidden",
+  });
+  sisterLabel.textContent = spec.gene;
+  g.append(rod, diagA, diagB, sisterRod, sisterCentro, sisterLabel);
+  // 对角臂与姊妹杆系默认隐藏，由 layout 按阶段统一切换
+  diagA.style.display = "none";
+  diagB.style.display = "none";
+  sisterRod.style.display = "none";
+  sisterCentro.style.display = "none";
 
   // 着丝粒
-  g.appendChild(el("circle", { r: 5, fill: "#111827" }));
+  g.appendChild(el("circle", { class: "centro", r: 5, fill: "#111827" }));
 
-  // 交叉互换标记：非姐妹单体末端互换色带（默认隐藏）
-  const swap = el("rect", { x: -w / 2, y: -spec.len / 2 - 4, width: w + 6, height: 8, fill: spec.mateColor, rx: 2 });
-  swap.style.display = "none";
-  g.appendChild(swap);
-
-  // 基因标注
-  const label = el("text", { y: -spec.len / 2 - 12, "text-anchor": "middle", "font-size": 13, fill: "#334155", visibility: showGenes ? "visible" : "hidden" });
+  // 基因标注：居中徽标式——写在染色体上半段中点，白字深描边（paint-order 先描后填）任何底色可读；
+  // 染色体永不相叠（布局不变式保证），故标注几何上不可能重叠
+  const label = el("text", {
+    class: "gene-label",
+    x: 0, y: Math.round(-spec.len / 4) + 4,
+    "text-anchor": "middle", "font-size": 13, "font-weight": "bold",
+    fill: "#ffffff", stroke: "#334155", "stroke-width": 3, "paint-order": "stroke",
+    visibility: showGenes ? "visible" : "hidden",
+  });
   label.textContent = spec.gene;
   g.appendChild(label);
 
@@ -213,7 +272,8 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
   /** 气泡文案：描述该染色体的单体数与同源染色体有无 */
   function describe(spec: ChromoSpec): string {
     const s = lastState!;
-    const mono = s.cells >= 4 || (s.separating === "sister");
+    // 减Ⅰ结束后（进入两个细胞，或正处于任一分离期）细胞中已无同源染色体
+    const mono = s.cells >= 2 || s.separating !== "none";
     return `${spec.pair === "A" ? "长" : "短"}染色体（${spec.key}，基因 ${spec.gene}）：` +
       `当前${s.replicated ? "含 2 条姐妹染色单体" : "无染色单体"}；` +
       `${mono ? "同源染色体已分离，细胞中不存在其同源染色体" : "细胞中存在它的同源染色体"}`;
@@ -233,53 +293,170 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
   /** 核心：根据状态计算每条染色体应处的目标位置与形态 */
   function layout(s: MeiosisState): void {
     if (!root) return;
+    // 卵细胞模式 cells=2（不均等分裂）：单一「大细胞」承载可见染色体，极体小圆贴边环绕
+    const oocyteSplit = s.cells === 2 && s.unequal;
     const centers = CELL_CENTERS[s.cells];
     // 细胞轮廓（变形期画精子形态：椭圆头部 + 尾部）；先清除旧轮廓再重建
-    root.querySelectorAll(".cell-outline, .sperm-tail").forEach((n) => n.remove());
+    root.querySelectorAll(".cell-outline, .sperm-tail, .polar-body").forEach((n) => n.remove());
     const radius = CELL_RADIUS[s.cells] ?? 62;
-    centers.forEach(([cx, cy]) => {
-      if (s.spermShape) {
-        // 精子形态：椭圆头部 + 波浪形尾部
-        const head = el("ellipse", { class: "cell-outline", cx: cx - 14, cy, rx: radius * 0.55, ry: radius * 0.42, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
-        const tail = el("path", { class: "sperm-tail", d: `M ${cx + radius * 0.38} ${cy} q ${radius * 0.5} ${-18} ${radius * 0.95} 0 q ${radius * 0.45} ${18} ${radius * 0.85} ${-4}`, fill: "none", stroke: "#94a3b8", "stroke-width": 2 });
-        root!.append(head, tail);
-      } else {
-        // 圆形细胞轮廓
-        const c = el("circle", { class: "cell-outline", cx, cy, r: radius, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
-        root!.appendChild(c);
+    if (oocyteSplit) {
+      // 大细胞轮廓
+      root!.appendChild(el("circle", { class: "cell-outline", cx: OO_CENTER[0], cy: OO_CENTER[1], r: OO_RADIUS, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 }));
+      // 极体小圆：按数量沿右上弧线贴边分布（第一极体在上方，后续依次向右展开）
+      for (const deg of PB_ANGLES[s.polarBodies ?? 0] ?? []) {
+        const [px, py] = pbCenter(deg);
+        root!.appendChild(el("circle", { class: "polar-body cell-outline", cx: px, cy: py, r: PB_R, fill: "#fef9c388", stroke: "#94a3b8", "stroke-width": 2 }));
       }
-    });
+    } else {
+      centers.forEach(([cx, cy]) => {
+        if (s.spermShape) {
+          // 精子形态：椭圆头部中心与染色体簇中心对齐（同为细胞中心），波浪形尾部向右延伸
+          const head = el("ellipse", { class: "cell-outline", cx, cy, rx: radius * 0.6, ry: radius * 0.52, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
+          const tail = el("path", { class: "sperm-tail", d: `M ${cx + radius * 0.38} ${cy} q ${radius * 0.5} ${-18} ${radius * 0.95} 0 q ${radius * 0.45} ${18} ${radius * 0.85} ${-4}`, fill: "none", stroke: "#94a3b8", "stroke-width": 2 });
+          root!.append(head, tail);
+        } else if (s.unequal && s.cells === 1) {
+          // 卵细胞模式减Ⅰ后期：轮廓偏心拉长，暗示细胞质将不均等分裂
+          const c = el("ellipse", { class: "cell-outline", cx, cy: cy + Math.round(radius * 0.08), rx: Math.round(radius * 0.92), ry: Math.round(radius * 1.06), fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
+          root!.appendChild(c);
+        } else {
+          // 圆形细胞轮廓
+          const c = el("circle", { class: "cell-outline", cx, cy, r: radius, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
+          root!.appendChild(c);
+        }
+      });
+    }
 
-    // 目标位置表：由参数化槽位表（纯函数）换算为画布绝对坐标
+    // 目标位置表：由参数化槽位表（纯函数）换算为画布绝对坐标；
+    // 卵细胞模式以大细胞中心为基准（槽位不变式仍按原中心成立）
     const slots = computeSlots(s, comboAlt);
+    const base: [number, number] = oocyteSplit ? OO_CENTER : centers[0];
     const pos: Record<string, [number, number]> = {};
     CHROMOSOMES.forEach(({ key }) => {
-      const [cx, cy] = centers[slots.cellOf[key]];
+      // 卵细胞模式以大细胞中心为基准，其余按所属细胞中心（原逻辑）
+      const [cx, cy] = oocyteSplit ? base : centers[slots.cellOf[key]];
       const [dx, dy] = slots.offsets[key];
       pos[key] = [cx + dx, cy + dy];
     });
 
     // 应用位置（CSS transition 补间约 1.5s）与形态。
-    // 精子变形期（cells:4、每格 1 条）：染色体竖向包络（半长 60 + 描边余量约 11）
-    // 远超头部椭圆 ry≈26，统一缩放至约 ry*0.8/(60+11) ≈ 0.3 以适配头部轮廓
+    // 精子变形期（cells:4、每格 1 条）：染色体竖向包络（半长 60 + 描边余量约 11）= 71，
+    // 头部椭圆加大后 ry = R*0.52 ≈ 49.4，取 scale(0.45)：71*0.45 ≈ 32 ≤ ry*0.8 ≈ 39.5，
+    // 既不穿出轮廓又比旧值 0.3 放大 50%，改善可读性
+    // 极体内染色体：缩小后锚定到对应极体小圆中心（与极体一一配对）
+    const HIDDEN_KEYS = ["A2", "B2"];   // 卵细胞模式：进入极体的另一对组合
+    const pbAnchors: Record<string, [number, number]> = {};   // 记录实际锚位，供末期限分配向量计算
     CHROMOSOMES.forEach(({ key }) => {
       const g = groups.get(key)!;
+      if (oocyteSplit && HIDDEN_KEYS.includes(key)) {
+        const angles = PB_ANGLES[s.polarBodies ?? 0] ?? [];
+        // 无极体可容纳时整组隐藏（避免出现无轮廓支撑的幽灵染色体）
+        if (!angles.length) {
+          g.style.display = "none";
+          return;
+        }
+        g.style.display = "";
+        // 谱系配对锚定：A2 与 B2 同属第一极体，始终落在同一个极体小圆内
+        // （横向 ±8 错开）；减Ⅱ末期限它们的姊妹杆才迁往另一子极体（见 EGG_MAP）
+        const hi = HIDDEN_KEYS.indexOf(key);
+        const [px, py] = pbCenter(angles[0]);
+        const dx = Math.round((hi - (HIDDEN_KEYS.length - 1) / 2) * 16);
+        pbAnchors[key] = [px + dx, py];
+        g.style.transform = `translate(${px + dx}px, ${py}px) scale(0.35)`;
+        return;
+      }
       const [x, y] = pos[key];
-      g.style.transform = `translate(${x}px, ${y}px)${s.spermShape ? " scale(0.3)" : ""}`;
+      g.style.transform = `translate(${x}px, ${y}px)${s.spermShape ? " scale(0.45)" : ""}`;
     });
     CHROMOSOMES.forEach(({ key }) => {
       const g = groups.get(key)!;
-      // X 形显隐由 replicated 决定：第二条臂 display 控制
-      const second = g.querySelectorAll<SVGPathElement>("path")[1];
-      second.style.display = s.replicated ? "" : "none";
-      // 交叉互换色带：仅在「互换标记可见且已复制」时显示
-      const swapMark = g.querySelector("rect")!;
-      swapMark.style.display = s.crossingOver && s.replicated ? "" : "none";
-      // 基因标注可见性由开关统一控制；字号随所属细胞半径自适应（小细胞时保底 13）
-      // 精子变形期无需特殊处理：染色体组级 scale(0.3) 会自动同步缩小标注（选择实现简单者）
-      const label = g.querySelector("text")!;
+      // 四段显隐：未复制→竖杆；复制后→两条对角臂（过着丝点交叉）；
+      // 减Ⅱ后期（cells=2）：本体杆移向左极、姊妹杆移向右极（双杆分极）；
+      // 减Ⅱ末期限/精子期（cells=4）：本体杆在主子细胞，姊妹杆平移至同行兄弟子细胞
+      const [rod, diagA, diagB, sisterRod] = g.querySelectorAll<SVGPathElement>("path");
+      const splitting = !s.replicated && s.separating === "sister" && s.cells === 2;
+      const gametePairing = s.cells === 4;   // 末期与变形期都保持每头部 2 条（向量按组缩放补偿）
+      // 卵细胞减Ⅱ末期限：8 根杆守恒分配——姊妹杆按 EGG_MAP 进入指定极体
+      const eggDistribution = oocyteSplit && !splitting && (s.polarBodies ?? 0) >= 3;
+      // 着丝点与基因标注提前取用：双杆分极时须随本体杆同步平移（避免滞留细胞中央成游离伪影）
+      const centro = g.querySelector<SVGCircleElement>("circle.centro")!;
+      const label = g.querySelector("text.gene-label")!;
+      const sisterCentro = g.querySelector<SVGCircleElement>(".sister-centro")!;
+      const sisterLabel = g.querySelector("text.sister-label")!;
+      // 减Ⅱ尾部三帧（后期分极/末期限配对/变形期、卵细胞分配）瞬切：
+      // 滑行补间会让着丝点在途偏离中心，暗示错误的生物学过程；标记 no-tween 交由 CSS 禁用过渡
+      g.classList.toggle("no-tween", splitting || gametePairing || eggDistribution);
+      rod.style.display = s.replicated ? "none" : "";
+      diagA.style.display = s.replicated ? "" : "none";
+      diagB.style.display = s.replicated ? "" : "none";
+      if (splitting) {
+        const H = oocyteSplit ? Math.round(OO_RADIUS * 0.6) : Math.round(usableRadius(s.cells) * 0.85);
+        const off = `translate(${-H},0)`;
+        const sib = `translate(${H},0)`;
+        rod.setAttribute("transform", off);
+        sisterRod.setAttribute("transform", sib);
+        sisterRod.style.display = "";
+        centro.setAttribute("transform", off);
+        label.setAttribute("transform", off);
+        // 姊妹着丝点随姊妹杆移向另一极
+        sisterCentro.setAttribute("transform", sib);
+        sisterCentro.style.display = "";
+        sisterLabel.setAttribute("transform", sib);
+      } else if (gametePairing) {
+        rod.removeAttribute("transform");
+        // 兄弟子细胞位于同行右侧：列间距 = CELL_CENTERS[4][1][0] - [0][0]；
+        // 变形期组级 scale(0.45)，向量需除以缩放才能让姊妹杆准确落在兄弟头部中心
+        const vec = CELL_CENTERS[4][1][0] - CELL_CENTERS[4][0][0];
+        const k = s.spermShape ? Math.round(vec / 0.45) : vec;
+        const sib = `translate(${k},0)`;
+        sisterRod.setAttribute("transform", sib);
+        sisterRod.style.display = "";
+        sisterCentro.setAttribute("transform", sib);
+        sisterCentro.style.display = "";
+        sisterLabel.setAttribute("transform", sib);
+        label.removeAttribute("transform");
+      } else if (eggDistribution) {
+        // 卵细胞末期限分配表（父坐标绝对锚点）：
+        // own=本体杆所在（组级 transform 已锚定），sis=姊妹杆目标极体位（带 scale 0.35 适配极体大小）
+        const EGG_MAP: Record<string, { sis: [number, number] }> = {
+          A1: { sis: [371, 317] },   // 极体③ 左半
+          B1: { sis: [387, 317] },   // 极体③ 右半
+          A2: { sis: [413, 184] },   // 极体② 左半
+          B2: { sis: [429, 184] },   // 极体② 右半
+        };
+        const dest = EGG_MAP[key];
+        // 隐藏对（A2/B2）的组自带 scale(0.35)，路径向量需除回组缩放；
+        // 基准锚位必须用组的「实际」位置（极体中心），而非槽位推算值——否则姊妹杆飞出极体
+        const anchor = pbAnchors[key] ?? pos[key];
+        const gs = HIDDEN_KEYS.includes(key) ? 0.35 : 1;
+        const tx = Math.round((dest.sis[0] - anchor[0]) / gs);
+        const ty = Math.round((dest.sis[1] - anchor[1]) / gs);
+        const sib = `translate(${tx},${ty}) scale(${gs === 1 ? 0.35 : 1})`;
+        sisterRod.setAttribute("transform", sib);
+        sisterRod.style.display = "";
+        // 着丝点全覆盖：进入极体的姊妹杆同样有随行着丝点
+        sisterCentro.setAttribute("transform", sib);
+        sisterCentro.style.display = "";
+        sisterLabel.setAttribute("transform", sib);
+        label.removeAttribute("transform");
+      } else {
+        rod.removeAttribute("transform");
+        sisterRod.style.display = "none";
+        centro.removeAttribute("transform");
+        label.removeAttribute("transform");
+        sisterCentro.style.display = "none";
+        sisterLabel.removeAttribute("transform");
+      }
+      // 基因标注可见性由开关统一控制（本体与副本同源）；字号随所属细胞半径自适应（小细胞时保底 13）
       label.setAttribute("visibility", showGenes ? "visible" : "hidden");
-      label.setAttribute("font-size", String(Math.max(13, Math.round(radius * 0.16))));
+      sisterLabel.setAttribute("visibility", showGenes ? "visible" : "hidden");
+      // 字号档位类：大字号档（单细胞期）加 gene-label-lg，供窄屏 CSS 区分补偿幅度、保留层次；
+      // 精子变形期染色体组被整体缩放（scale 0.45），组内文字随之变小，
+      // 需反向补偿字号（fs / 0.45），否则标注小到不可读——副本标注与本体同参数
+      const fs = Math.max(13, Math.round(radius * 0.16));
+      label.setAttribute("font-size", String(s.spermShape ? Math.round(fs / 0.45) : fs));
+      label.classList.toggle("gene-label-lg", fs >= 18);
+      sisterLabel.setAttribute("font-size", String(s.spermShape ? Math.round(fs / 0.45) : fs));
+      sisterLabel.classList.toggle("gene-label-lg", fs >= 18);
     });
 
     // 自由组合按钮与说明文字：仅减Ⅰ后期（同源分离）可用，说明文字常驻显示于场景上方
@@ -331,6 +508,18 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
         if (lastState) layout(lastState);
       });
       bar.append(geneToggle, comboToggle);
+
+      // 模式切换按钮：精子/卵细胞形成互切，通过路由参数触发整页重挂载（重置到第 0 步）
+      // 当前模式在挂载时从路由读取；点击仅改 hash，重挂载由入口层路由分发完成
+      const inOocyte = /mode=oocyte/.test(location.hash);
+      const modeBtn = document.createElement("button");
+      modeBtn.className = "mode-switch";
+      modeBtn.textContent = inOocyte ? "切换到精子形成" : "切换到卵细胞形成";
+      modeBtn.addEventListener("click", () => {
+        location.hash = inOocyte ? "#/course/meiosis" : "#/course/meiosis?mode=oocyte";
+      });
+      bar.append(modeBtn);
+
       wrap.appendChild(bar);
 
       CHROMOSOMES.forEach((spec) => {
@@ -339,7 +528,9 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
           if (!lastState) return;
           const rect = (g as unknown as HTMLElement).getBoundingClientRect();
           const hostRect = wrap!.getBoundingClientRect();
-          showBubble(describe(s), rect.left - hostRect.left, rect.top - hostRect.top - 46);
+          // 水平钳制：气泡锚点靠近容器右缘时左移，防止窄屏溢出视口（jsdom 宽度为 0 时钳到 0，不影响测试）
+          const x = Math.min(rect.left - hostRect.left, Math.max(0, hostRect.width - 300));
+          showBubble(describe(s), x, rect.top - hostRect.top - 46);
         });
         groups.set(spec.key, g);
         svgRoot.appendChild(g);
