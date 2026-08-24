@@ -1,7 +1,9 @@
 import type { Course, Stage } from "../../core/types";
 
-/** 场景状态字段约定，见计划文档 Task 6 说明（用 type 别名以兼容 Stage 的 Record<string, unknown>） */
+/** 场景状态字段约定（用 type 别名以兼容 Stage 的 Record<string, unknown>） */
 export type MeiosisState = {
+  /** 阶段 id：场景据此查槽位表（重构后渲染的唯一阶段标识） */
+  stage: string;
   cells: 1 | 2 | 4;
   replicated: boolean;
   pairing: boolean;
@@ -15,15 +17,15 @@ export type MeiosisState = {
   polarBodies?: number;
 }
 
-// 构造单个阶段的辅助函数，减少重复样板
+// 构造单个阶段的辅助函数：自动把阶段 id 注入 sceneState（场景查槽位表用）
 const st = (
   id: string,
   title: string,
   narration: string[],
-  sceneState: MeiosisState,
+  sceneState: Omit<MeiosisState, "stage">,
   numbers: Stage["numbers"],
   callout?: string,
-): Stage => ({ id, title, narration, sceneState, numbers, callout });
+): Stage => ({ id, title, narration, sceneState: { ...sceneState, stage: id }, numbers, callout });
 
 export const meiosisCourse: Course = {
   meta: { id: "meiosis", title: "减数分裂", chapter: "必修二 第一章第2节", difficulty: 4 },

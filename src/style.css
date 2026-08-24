@@ -123,17 +123,10 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 /* 染色体讲解气泡：宽度上限取固定值与容器净宽的较小者，防止窄屏溢出视口右缘 */
 .chromo-bubble { position: absolute; max-width: min(280px, calc(100% - 16px)); background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 12px; font-size: 13px; z-index: 5; overflow-wrap: break-word; }
 .scene-controls { display: flex; gap: 14px; margin-top: 8px; }
-/* 染色体位移用 CSS transition 补间，时长由 --tween-ms 变量控制（随播放速度联动） */
-.chromo { transition: transform var(--tween-ms, 1350ms) ease; }
-/* 组内部件（杆/着丝点/色带）的 per-path transform 同步补间——
-   消除分极帧↔子细胞帧切换时姊妹杆/本体杆的瞬移（凭空消失感） */
-.chromo path, .chromo circle, .chromo rect { transition: transform var(--tween-ms, 1350ms) ease; }
-/* 减Ⅱ尾部三帧（后期分极/末期限配对/变形期、卵细胞分配）：教科书式瞬切，
-   避免着丝点在滑行途中偏离染色体中心的中间态 */
-.chromo.no-tween,
-.chromo.no-tween path,
-.chromo.no-tween circle,
-.chromo.no-tween rect { transition: none; }
+/* 染色单体位移用 CSS transition 补间，时长由 --tween-ms 变量控制（随播放速度联动） */
+.chromatid { transition: transform var(--tween-ms, 1350ms) ease; }
+/* 单体内部件（杆/着丝点）与标注副本的 transform 同步补间 */
+.chromatid path, .chromatid circle, .chromatid text { transition: transform var(--tween-ms, 1350ms) ease; }
 .cell-outline { transition: r .8s ease; }
 
 /* 拐点气泡与错误占位提示 */
