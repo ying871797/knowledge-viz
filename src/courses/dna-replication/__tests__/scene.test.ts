@@ -79,6 +79,18 @@ describe("DNA 复制场景（固定元素池）", () => {
     expect(host.querySelector<SVGGElement>(".flat-layer")!.hasAttribute("display")).toBe(false);
   });
 
+  it("场景控件栏：DNA 专属控件（碱基字母开关+视图切换），无减数分裂控件串入", () => {
+    // 减数分裂专属控件不得串入 DNA 课程
+    expect(host.querySelector<HTMLButtonElement>(".mode-switch")).toBeNull();
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>(".scene-controls button")];
+    expect(buttons.map((b) => b.textContent)).not.toContain("自由组合（减Ⅰ后期可用）");
+    // DNA 专属：视图切换按钮
+    expect(host.querySelector<HTMLButtonElement>(".view-switch")!.textContent).toContain("螺旋视图");
+    // 碱基字母开关（语义适配 DNA 语境）
+    const toggle = host.querySelector<HTMLInputElement>(".scene-controls input")!;
+    expect(toggle.closest("label")!.textContent).toContain("碱基");
+  });
+
   it("拓展角标：引物/冈崎/切除相关帧显示，其余帧隐藏", () => {
     const badge = host.querySelector<HTMLDivElement>(".ext-badge")!;
     scene.render({ stage: "priming" });

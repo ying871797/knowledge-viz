@@ -172,8 +172,6 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
   let helixLayer: SVGGElement;
   let extBadge: HTMLDivElement;
   let bubble: HTMLDivElement;
-  let comboHint: HTMLDivElement;
-  let comboBtn: HTMLButtonElement;
   const hbonds: SVGLineElement[] = [];
   const daughters = new Map<string, SVGRectElement>();
   const enzymes = new Map<string, SVGGElement>();
@@ -269,16 +267,6 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     // 拓展角标 + 螺旋视图渲染（方案 B）
     extBadge.style.display = EXT_STAGES.has(String(s.stage)) ? "block" : "none";
     if (view === "helix") renderHelix(geom);
-    // 自由组合按钮与说明文字：仅减Ⅰ后期（同源分离）可用
-    const canCombo = Boolean(s.separating && s.separating === "homolog");
-    comboBtn.disabled = !canCombo;
-    comboBtn.textContent = canCombo ? "切换自由组合方式" : "自由组合（减Ⅰ后期可用）";
-    comboHint.style.display = canCombo ? "inline-block" : "none";
-    if (canCombo) {
-      comboHint.textContent = comboAlt
-        ? "自由组合方式二：A 与 b 移向同一极（a 与 B 移向另一极）"
-        : "自由组合方式一：A 与 B 移向同一极（a 与 b 移向另一极）";
-    }
   }
 
   return {
@@ -443,30 +431,15 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
       });
       flatLayer.appendChild(legendGroup());
 
-      // —— 控制栏：基因标注 / 自由组合 / 模式切换 / 视图切换 ——
+      // —— 控制栏：DNA 专属控件（碱基字母开关 + 视图切换）——
+      // 不复用减数分裂控制栏模板（自由组合/模式切换为减数分裂专属）
       const bar = document.createElement("div");
       bar.className = "scene-controls";
       const geneToggle = document.createElement("label");
-      geneToggle.innerHTML = `<input type="checkbox" /> 显示基因标注`;
+      geneToggle.innerHTML = `<input type="checkbox" /> 显示碱基字母`;
       geneToggle.querySelector("input")!.addEventListener("change", (e) => {
         showGenes = (e.target as HTMLInputElement).checked;
         if (lastState) layout(lastState);
-      });
-      comboBtn = document.createElement("button");
-      comboBtn.disabled = true;
-      comboBtn.textContent = "自由组合（减Ⅰ后期可用）";
-      comboBtn.addEventListener("click", () => {
-        if (comboBtn.disabled) return;
-        comboAlt = !comboAlt;
-        if (lastState) layout(lastState);
-      });
-      // 模式切换：精子/卵细胞形成互切，路由参数触发整页重挂载（重置到第 0 步）
-      const inOocyte = /mode=oocyte/.test(location.hash);
-      const modeBtn = document.createElement("button");
-      modeBtn.className = "mode-switch";
-      modeBtn.textContent = inOocyte ? "切换到精子形成" : "切换到卵细胞形成";
-      modeBtn.addEventListener("click", () => {
-        location.hash = inOocyte ? "#/course/meiosis" : "#/course/meiosis?mode=oocyte";
       });
       // 视图切换：平面（过程细节）⟷ 螺旋（分子结构概览）
       const viewBtn = document.createElement("button");
@@ -478,18 +451,15 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
         setView();
         if (lastState) layout(lastState);
       });
-      bar.append(geneToggle, comboBtn, modeBtn, viewBtn);
+      bar.append(geneToggle, viewBtn);
       wrap.appendChild(bar);
 
-      // 气泡（点击染色体显示讲解）
+      // 气泡（预留：点击元素显示讲解）
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
-      comboHint = document.createElement("div");
-      comboHint.className = "combo-hint";
-      comboHint.style.display = "none";
-      wrap.append(comboHint, bubble);
-      setView();   // 初始显隐统一经 style 通道（避免属性回退陷阱）
+      wrap.append(bubble);
+      setView();   // 初始显隐统一经 style 通道（螺旋层初始隐藏）
       container.appendChild(wrap);
     },
 
@@ -517,12 +487,13 @@ function legendGroup(): SVGGElement {
   ];
   ITEMS.forEach(([color, label], i) => {
     const rect = document.createElementNS(NS, "rect");
-    rect.setAttribute("x", "24"); rect.setAttribute("y", String(28 + i * 26));
+    // 左下角空区（避开顶行角标/聚合酶与底部片段行）
+    rect.setAttribute("x", "24"); rect.setAttribute("y", String(350 + i * 26));
     rect.setAttribute("width", "26"); rect.setAttribute("height", "13");
     rect.setAttribute("rx", "3"); rect.setAttribute("fill", color);
     legend.appendChild(rect);
     const t = document.createElementNS(NS, "text");
-    t.setAttribute("x", "56"); t.setAttribute("y", String(28 + i * 26 + 11));
+    t.setAttribute("x", "56"); t.setAttribute("y", String(350 + i * 26 + 11));
     t.setAttribute("font-size", "13"); t.setAttribute("fill", "#334155");
     t.textContent = label;
     legend.appendChild(t);
