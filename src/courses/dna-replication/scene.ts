@@ -18,6 +18,10 @@ const HELIX_AMP = 45;               // 螺旋振幅
 const HELIX_PHASE = 1.05;           // 每碱基位相位步进（弧度）
 const SEP_TOP = 110, SEP_BOT = 290; // 解旋后两链分离纵坐标
 const ORIGIN_X = 400;               // 复制起点（画布中心）
+// 子链条带基础纵坐标（y 属性恒为此值；终态收拢位移经 style.transform 施加，属性不动以保既有断言）
+const STRIP_TOP_BASE = 82, STRIP_BOT_BASE = 304;
+// 子链顶行归属：显式声明集合——不可用键名后缀猜测（r1/r2 等数字结尾键会被误判到底行）
+const TOP_ROW = new Set(["da-lt", "da-r1", "da-r2", "da-r3"]);
 
 // ============ 阶段几何状态（声明式状态表） ============
 interface DnaGeom {
@@ -26,6 +30,10 @@ interface DnaGeom {
   hbond: boolean[];                  // 12 个氢键是否可见（false = 已解旋）
   helicase: [number, number] | null; // 解旋酶位置（左右叉）
   markers?: boolean;                 // 引物切除阶段：缺口虚线标记
+  pairTicks?: boolean;               // 终态：母链-新链配对刻度 ×24 显隐
+  labels?: boolean;                  // 终态：「母链/新链」成分标注显隐
+  stripTopY?: number;                // 终态上行子链条带目标 y（缺省回退 STRIP_TOP_BASE）
+  stripBotY?: number;                // 终态下行子链条带目标 y（缺省回退 STRIP_BOT_BASE）
   bars: Record<string, ElBar>;
   enzymes: Record<string, { x: number; y: number; o: number }>;
 }
@@ -141,8 +149,13 @@ const GEOM: Record<string, DnaGeom> = {
     enzymes: { ...NO_ENZ, ligase: { x: 480, y: 89, o: 1 }, "ligase-L": { x: 332, y: 336, o: 1 } },
   },
   done: {
-    // 完成：酶全部退场，两条完整 DNA（半保留：母链深带 + 彩色子链）
-    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: null,
+    // 完成：两对「母链带+新链条」各自贴紧成双链体、彼此远离——接近性分组直观呈现半保留。
+    // 几何核算：上带缘 76~100、上新链条 56~70（组内净距 6）；下带缘 286~310、下新链条 316~330（净距 6）；
+    // 两分子净空 = 286 − 100 = 186px（断言下限 100）。组内净距内浮现配对刻度，成分由「母链/新链」标注说破。
+    topY: 88, botY: 298,
+    hbond: [...ALL_OPEN], helicase: null,
+    pairTicks: true, labels: true,
+    stripTopY: 56, stripBotY: 316,
     bars: {
       ...NO_BARS,
       "da-rb": { x: 400, w: 230, o: 1 }, "da-lt": { x: 170, w: 230, o: 1 },
@@ -176,6 +189,8 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
   const daughters = new Map<string, SVGRectElement>();
   const enzymes = new Map<string, SVGGElement>();
   const gapMarkers: SVGRectElement[] = [];
+  const pairTicks: SVGLineElement[] = [];   // 终态配对刻度（索引 i=上双链体、12+i=下双链体）
+  const duplexLabels: SVGTextElement[] = []; // 终态「母链/新链」成分标注
   // 双视图：flat（方案 A 过程细节）/ helix（方案 B 分子结构概览）
   const helixStrands: SVGPathElement[] = [];
   const helixRungs: SVGLineElement[] = [];
@@ -239,13 +254,19 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
       line.setAttribute("y2", String(geom.botY - BAND_H / 2));
       line.style.opacity = geom.hbond[i] ? "1" : "0";
     });
-    // 子链带：查表设位置/宽度/透明度（w=0 即不可见）
+    // 子链带：查表设位置/宽度/透明度（w=0 即不可见）；终态竖移走 transform 通道（y 属性保持基础值，可插值）
     daughters.forEach((rect, key) => {
       const st = geom.bars[key] ?? HIDE(0);
       rect.setAttribute("x", String(st.x));
       rect.setAttribute("width", String(st.w));
       rect.style.opacity = String(st.o);
+      const base = TOP_ROW.has(key) ? STRIP_TOP_BASE : STRIP_BOT_BASE;
+      const target = TOP_ROW.has(key) ? (geom.stripTopY ?? base) : (geom.stripBotY ?? base);
+      rect.style.transform = `translate(0px, ${target - base}px)`;
     });
+    // 终态配对刻度与成分标注：仅 done 阶段经布尔通道显示（同 markers 通道模式）
+    pairTicks.forEach((t) => { t.style.opacity = geom.pairTicks ? "1" : "0"; });
+    duplexLabels.forEach((t) => { t.style.opacity = geom.labels ? "1" : "0"; });
     // 酶：查表设位置/透明度
     enzymes.forEach((g, key) => {
       const st = geom.enzymes[key] ?? NO_ENZ[key] ?? { x: 0, y: 0, o: 0 };
@@ -273,6 +294,8 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     /** 挂载：创建固定元素池（双图层 + 全部部件）。可重入：先清空闭包数组防止跨挂载累积 */
     mount(container: HTMLElement) {
       hbonds.length = 0;
+      pairTicks.length = 0;
+      duplexLabels.length = 0;
       wrap = document.createElement("div");
       wrap.className = "dna-scene";
       const svgRoot = el("svg", { viewBox: `0 0 ${VB_W} ${VB_H}`, width: "100%" });
@@ -423,13 +446,47 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
         flatLayer.appendChild(icon);
       });
 
-      // 子链带的纵向位置：行归属显式声明（顶行=上链系，底行=下链系）——
-      // 不可用键名后缀猜测（r1/r2 等数字结尾键会被误判到底行）
-      const TOP_ROW = new Set(["da-lt", "da-r1", "da-r2", "da-r3"]);
+      // 子链带的纵向位置：行归属见模块级 TOP_ROW（显式声明防误判）；y 属性恒为基础值，终态位移走 transform
       daughters.forEach((r, key) => {
-        r.setAttribute("y", TOP_ROW.has(key) ? "82" : "304");
+        r.setAttribute("y", TOP_ROW.has(key) ? String(STRIP_TOP_BASE) : String(STRIP_BOT_BASE));
       });
       flatLayer.appendChild(legendGroup());
+
+      // —— 终态配对刻度 ×24：done 阶段在母链与新链 6px 净距内浮现的短横线，粗细沿用氢键语义 ——
+      // 分组布局（两趟循环保证索引稳定）：索引 i=上双链体（新链条底 70 → 带顶 76）、索引 12+i=下双链体（带底 310 → 新链条顶 316）
+      const mkTick = (i: number, y1: number, y2: number, pairAT: boolean): void => {
+        const tick = el("line", {
+          class: "pair-tick", x1: X0 + i * STEP, y1, x2: X0 + i * STEP, y2,
+          stroke: "#94a3b8", "stroke-width": pairAT ? 2 : 3.5, opacity: 0,
+        });
+        pairTicks.push(tick);
+        flatLayer.appendChild(tick);
+      };
+      SEQ_TOP.forEach((top, i) => {
+        const pairAT = (top === "A" && SEQ_BOT[i] === "T") || (top === "T" && SEQ_BOT[i] === "A");
+        mkTick(i, 70, 76, pairAT);
+      });
+      SEQ_TOP.forEach((top, i) => {
+        const pairAT = (top === "A" && SEQ_BOT[i] === "T") || (top === "T" && SEQ_BOT[i] === "A");
+        mkTick(i, 310, 316, pairAT);
+      });
+
+      // —— 终态成分标注 ×4：「母链/新链」小字标（x=92 左缘区，避开带体与 5′/3′ 端标）——
+      const LABEL_DEFS: [string, number][] = [
+        ["新链", 67],   // 上双链体新链条中心 y≈63
+        ["母链", 92],   // 上双链体母链带中心 y=88
+        ["母链", 302],  // 下双链体母链带中心 y=298
+        ["新链", 327],  // 下双链体新链条中心 y≈323
+      ];
+      LABEL_DEFS.forEach(([txt, ly]) => {
+        const t = el("text", {
+          class: "duplex-label", x: 92, y: ly, "text-anchor": "middle",
+          "font-size": 12, fill: "#334155", opacity: 0,
+        });
+        t.textContent = txt;
+        duplexLabels.push(t);
+        flatLayer.appendChild(t);
+      });
 
       // —— 控制栏：DNA 专属控件（碱基字母开关 + 视图切换）——
       // 不复用减数分裂控制栏模板（自由组合/模式切换为减数分裂专属）
@@ -476,24 +533,25 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
   };
 }
 
-/** 图例（固定注释层） */
+/** 图例（固定注释层）：单行三项横排于画布底部——终态双链体下缘 330、酶最低缘约 365，y=378 避让两者 */
 function legendGroup(): SVGGElement {
   const NS = "http://www.w3.org/2000/svg";
   const legend = document.createElementNS(NS, "g");
   legend.setAttribute("class", "legend-group");
-  const ITEMS: [string, string][] = [
-    ["#10b981", "前导链——连续合成"],
-    ["#f59e0b", "冈崎片段——分段合成（拓展）"],
+  // x 锚点依次错开：三项文本宽度约 120/185/135px，互不重叠且右端不越画布（800）
+  const ITEMS: [string, string, number][] = [
+    ["#10b981", "前导链——连续合成", 24],
+    ["#f59e0b", "冈崎片段——分段合成（拓展）", 260],
+    ["#64748b", "灰色长带——亲代母链", 540],
   ];
-  ITEMS.forEach(([color, label], i) => {
+  ITEMS.forEach(([color, label, x]) => {
     const rect = document.createElementNS(NS, "rect");
-    // 左下角空区（避开顶行角标/聚合酶与底部片段行）
-    rect.setAttribute("x", "24"); rect.setAttribute("y", String(350 + i * 26));
+    rect.setAttribute("x", String(x)); rect.setAttribute("y", "378");
     rect.setAttribute("width", "26"); rect.setAttribute("height", "13");
     rect.setAttribute("rx", "3"); rect.setAttribute("fill", color);
     legend.appendChild(rect);
     const t = document.createElementNS(NS, "text");
-    t.setAttribute("x", "56"); t.setAttribute("y", String(350 + i * 26 + 11));
+    t.setAttribute("x", String(x + 32)); t.setAttribute("y", "389");
     t.setAttribute("font-size", "13"); t.setAttribute("fill", "#334155");
     t.textContent = label;
     legend.appendChild(t);

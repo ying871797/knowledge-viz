@@ -8,6 +8,8 @@ import { meiosisCourse, oogenesisCourse } from "./courses/meiosis/data";
 import { createMeiosisScene } from "./courses/meiosis/scene";
 import { dnaReplicationCourse } from "./courses/dna-replication/data";
 import { createDnaReplicationScene } from "./courses/dna-replication/scene";
+import { mitosisCourse } from "./courses/mitosis/data";
+import { createMitosisScene } from "./courses/mitosis/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -40,6 +42,18 @@ try {
     meta: dnaCourse.meta,
     load: () => dnaCourse,
     createScene: createDnaReplicationScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
+// 有丝分裂：独立课程（复用 8 杆染色体模型）
+try {
+  const mitoCourse = validateCourse(mitosisCourse);
+  registry.push({
+    meta: mitoCourse.meta,
+    load: () => mitoCourse,
+    createScene: createMitosisScene,
   });
 } catch (err) {
   console.error("[registry]", err);
