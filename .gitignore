@@ -4,3 +4,5 @@ dist/
 .superpowers/
 .proposals/
 session.json
+# git worktree 隔离工作区目录
+.worktrees/
