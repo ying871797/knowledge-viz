@@ -131,6 +131,13 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 
 /* DNA 复制场景：定位上下文（拓展角标绝对定位基准） */
 .dna-scene { position: relative; }
+/* 基因表达场景：同上；并为其全部 SVG 部件挂幕间补间（时长随播放速度联动），
+   使"核糖体步距/tRNA 下坠离场/肽链生长"具有方向感——运动即语义 */
+.gene-scene { position: relative; }
+.gene-scene svg path, .gene-scene svg rect, .gene-scene svg circle,
+.gene-scene svg line, .gene-scene svg text, .gene-scene svg g {
+  transition: transform var(--tween-ms, 1350ms) ease, opacity var(--tween-ms, 1350ms) ease;
+}
 /* 拓展知识点角标（超纲内容提示） */
 .ext-badge {
   position: absolute;

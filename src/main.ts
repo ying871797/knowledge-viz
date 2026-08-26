@@ -10,6 +10,8 @@ import { dnaReplicationCourse } from "./courses/dna-replication/data";
 import { createDnaReplicationScene } from "./courses/dna-replication/scene";
 import { mitosisCourse } from "./courses/mitosis/data";
 import { createMitosisScene } from "./courses/mitosis/scene";
+import { geneExpressionCourse } from "./courses/gene-expression/data";
+import { createGeneExpressionScene } from "./courses/gene-expression/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -54,6 +56,18 @@ try {
     meta: mitoCourse.meta,
     load: () => mitoCourse,
     createScene: createMitosisScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
+// 基因的表达：转录 + 翻译全程（hideCharts，无数目曲线）
+try {
+  const geCourse = validateCourse(geneExpressionCourse);
+  registry.push({
+    meta: geCourse.meta,
+    load: () => geCourse,
+    createScene: createGeneExpressionScene,
   });
 } catch (err) {
   console.error("[registry]", err);
