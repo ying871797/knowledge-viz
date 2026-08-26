@@ -146,8 +146,8 @@ const BG: Record<string, MitoBg> = {
     nuc2: { ...NUC_HIDDEN },
     plate: null,
     spindle: [
-      [280, 110], [360, 110], [440, 110], [520, 110],
-      [280, 110], [360, 110], [440, 110], [520, 110],
+      [280, 200], [360, 200], [440, 200], [520, 200],
+      [280, 200], [360, 200], [440, 200], [520, 200],
     ],
   },
   anaphase: {
@@ -156,8 +156,8 @@ const BG: Record<string, MitoBg> = {
     nuc2: { ...NUC_HIDDEN },
     plate: null,
     spindle: [
-      [280, 110], [360, 110], [440, 110], [520, 110],
-      [280, 290], [360, 290], [440, 290], [520, 290],
+      [280, 125], [360, 125], [440, 125], [520, 125],
+      [280, 275], [360, 275], [440, 275], [520, 275],
     ],
   },
   telophase: {
@@ -213,7 +213,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
     const bg = BG[String(s.stage)] ?? BG_FALLBACK;
 
     // 背景元素：细胞轮廓（方形·植物壁）+ 核膜 + 细胞板
-    root.querySelectorAll(".cell-wall, .nuclear-membrane, .cell-plate").forEach((n) => n.remove());
+    root.querySelectorAll(".cell-wall, .nuclear-membrane, .cell-plate, .spindle-line").forEach((n) => n.remove());
     if (String(s.stage) === "daughter") {
       // 子细胞：两个独立的细胞轮廓（细胞板成壁后分开）
       root.appendChild(el("rect", { class: "cell-wall", x: 200, y: 30, width: 400, height: 150, rx: 16, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
