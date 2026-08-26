@@ -2,6 +2,7 @@ import type { Course, SceneComponent } from "./types";
 import { Player } from "./player";
 import { NumberChart, type Series } from "./numberChart";
 import { NotesPanel } from "./notes";
+import { ZoomController } from "./zoomController";
 
 /** 课程页清理句柄：路由离开课程页时销毁播放器定时器与场景资源，避免 interval 泄漏 */
 export interface CoursePageHandle {
@@ -130,6 +131,27 @@ export function mountCoursePage(
   const notes = new NotesPanel(notesBox);
   const scene = createScene();
   scene.mount(stageBox);
+
+  // —— 场景缩放控制（ZoomController + +/−/⊙ 按钮）——
+  const svg = stageBox.querySelector("svg");
+  let zoomCtrl: ZoomController | null = null;
+  if (svg) {
+    zoomCtrl = new ZoomController(svg, stageBox);
+
+    const zoomBar = document.createElement("div");
+    zoomBar.className = "zoom-controls";
+    const btnZoomOut = Object.assign(document.createElement("button"), { textContent: "−" });
+    const btnZoomReset = Object.assign(document.createElement("button"), { textContent: "⊙" });
+    const btnZoomIn = Object.assign(document.createElement("button"), { textContent: "+" });
+    btnZoomOut.title = "缩小";
+    btnZoomIn.title = "放大";
+    btnZoomReset.title = "重置视图";
+    btnZoomOut.addEventListener("click", () => zoomCtrl!.zoom(0.8));
+    btnZoomIn.addEventListener("click", () => zoomCtrl!.zoom(1.25));
+    btnZoomReset.addEventListener("click", () => zoomCtrl!.reset());
+    zoomBar.append(btnZoomOut, btnZoomReset, btnZoomIn);
+    stageBox.appendChild(zoomBar);
+  }
 
   // 场景区右上角步数徽标：通用 UI 组件（不侵入 SceneComponent 接口），applyStage 随阶段更新
   const stepBadge = document.createElement("div");
@@ -268,6 +290,7 @@ export function mountCoursePage(
   // 卸载清理：先暂停播放器定时器，再释放场景资源（如动画/监听器）
   return {
     destroy() {
+      zoomCtrl?.destroy();
       player.destroy();
       scene.destroy?.();
     },
