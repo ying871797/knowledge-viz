@@ -6,6 +6,8 @@ import { validateCourse } from "./core/types";
 import type { Course, SceneComponent } from "./core/types";
 import { meiosisCourse, oogenesisCourse } from "./courses/meiosis/data";
 import { createMeiosisScene } from "./courses/meiosis/scene";
+import { dnaReplicationCourse } from "./courses/dna-replication/data";
+import { createDnaReplicationScene } from "./courses/dna-replication/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -26,6 +28,18 @@ try {
     meta: course.meta,
     load: (mode?: string) => (mode === "oocyte" ? ooCourse : meiosisCourse),
     createScene: createMeiosisScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
+// DNA 分子复制：独立课程（hideCharts，无数目曲线）
+try {
+  const dnaCourse = validateCourse(dnaReplicationCourse);
+  registry.push({
+    meta: dnaCourse.meta,
+    load: () => dnaCourse,
+    createScene: createDnaReplicationScene,
   });
 } catch (err) {
   console.error("[registry]", err);

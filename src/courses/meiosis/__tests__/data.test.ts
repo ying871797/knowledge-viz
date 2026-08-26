@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { meiosisCourse, oogenesisCourse } from "../data";
 import { validateCourse } from "../../../core/types";
 import type { MeiosisState } from "../data";
@@ -13,7 +13,7 @@ describe("减数分裂课程数据", () => {
     expect(new Set(ids).size).toBe(10);
   });
   it("关键数目节点正确：间期后 DNA 加倍、减Ⅰ末期减半、减Ⅱ后期暂时加倍", () => {
-    const n = (i: number) => meiosisCourse.stages[i].numbers;
+    const n = (i: number) => meiosisCourse.stages[i].numbers!;
     expect(n(1)).toMatchObject({ dna: 8, chromatid: 8 });
     expect(n(5)).toMatchObject({ chromosome: 2 });   // 减Ⅰ末期
     expect(n(7)).toMatchObject({ chromosome: 4, chromatid: 0 }); // 减Ⅱ后期
@@ -25,7 +25,7 @@ describe("卵细胞模式课程数据（oogenesisCourse）", () => {
   it("通过结构校验（含数目自洽性），且与精子版共用同一套数目模板", () => {
     expect(() => validateCourse(oogenesisCourse)).not.toThrow();
     oogenesisCourse.stages.forEach((s, i) => {
-      expect(s.numbers).toMatchObject(meiosisCourse.stages[i].numbers);
+      expect(s.numbers).toMatchObject(meiosisCourse.stages[i].numbers!);
     });
   });
   it("包含 10 个阶段且 id 唯一", () => {

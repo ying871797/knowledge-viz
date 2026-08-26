@@ -129,6 +129,20 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .chromatid path, .chromatid circle, .chromatid text { transition: transform var(--tween-ms, 1350ms) ease; }
 .cell-outline { transition: r .8s ease; }
 
+/* DNA 复制场景：定位上下文（拓展角标绝对定位基准） */
+.dna-scene { position: relative; }
+/* 拓展知识点角标（超纲内容提示） */
+.ext-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: #ffffff;
+  background: #8b5cf6;
+  border-radius: 999px;
+}
+
 /* 拐点气泡与错误占位提示 */
 .callout { margin-top: 10px; background: #dbeafe; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; }
 .load-error { color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; }

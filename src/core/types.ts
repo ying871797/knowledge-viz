@@ -9,14 +9,16 @@ export interface StageNumbers {
 export interface Stage {
   id: string;
   title: string;
-  narration: string[];                  // 讲解要点与易错提示
-  sceneState: Record<string, unknown>;  // 场景渲染参数，由各课程自定义
-  numbers: StageNumbers;
+  narration: string[];
+  sceneState: Record<string, unknown>;
+  /** 数目数据（曲线图表数据源）；hideCharts 课程可省略 */
+  numbers?: StageNumbers;
   callout?: string;                     // 关键拐点气泡文案（如数目突变说明）
 }
 
 export interface Course {
-  meta: { id: string; title: string; chapter: string; difficulty: number };
+  meta: { id: string; title: string; chapter: string; difficulty: number; /** 隐藏数目曲线图表（如 DNA 复制等无数目语义的课程） */
+    hideCharts?: boolean; };
   stages: Stage[];
 }
 
@@ -42,6 +44,8 @@ export function validateCourse(input: unknown): Course {
     const tag = s.id ?? `stage[${i}]`;
     if (!s.id || !s.title) throw new Error(`${tag} 缺少 id/title`);
     if (!Array.isArray(s.narration)) throw new Error(`${tag}.narration 必须是数组`);
+    // hideCharts 课程无数目语义，跳过数目校验
+    if (c.meta.hideCharts) return;
     const n = s.numbers;
     if (!n) throw new Error(`${tag} 缺少 numbers`);
     (["chromosome", "dna", "chromatid", "dnaPerChromosome"] as const).forEach((k) => {

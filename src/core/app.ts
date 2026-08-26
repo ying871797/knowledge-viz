@@ -34,6 +34,7 @@ export function mountCoursePage(
   }
 
   // —— 静态骨架：返回链接、标题、两栏网格 ——
+  const chartsEnabled = !course.meta.hideCharts;   // 无数目语义的课程（如 DNA 复制）隐藏曲线图表
   const back = document.createElement("a");
   back.href = "#/";
   back.textContent = "← 返回目录";
@@ -119,9 +120,11 @@ export function mountCoursePage(
   const playerBar = document.createElement("div");
   playerBar.className = "player-bar";
   playerBar.append(btnPrev, btnPlay, btnNext);
-  controls.append(playerBar, speedSelect, stageNodes, examToggle, revealBtn);
+  controls.append(playerBar, speedSelect, stageNodes);
+  if (chartsEnabled) controls.append(examToggle, revealBtn);
 
-  root.append(back, h2, controls, grid, totalsCard, perCard);
+  root.append(back, h2, controls, grid);
+  if (chartsEnabled) root.append(totalsCard, perCard);
 
   // —— 核心组件实例 ——
   const notes = new NotesPanel(notesBox);
@@ -133,45 +136,50 @@ export function mountCoursePage(
   stepBadge.className = "step-badge";
   stageBox.appendChild(stepBadge);
 
-  const labels = course.stages.map((s) => s.title);
-  // 纵轴 n 表示法：n 取课程最后阶段的染色体数（即配子 n，本课程为 2）；
-  // 刻度在 v 为 n 的整数倍（且非 0）时显示为「1n / 2n / …」，其余保持原数值
-  const gameteN = course.stages[course.stages.length - 1].numbers.chromosome;
-  const totals = new NumberChart(totalsCard, labels, (v) =>
-    v > 0 && v % gameteN === 0 ? `${v / gameteN}n` : String(v),
-  );
-  const perChr = new NumberChart(perCard, labels);
+  // 曲线图表：仅对有数目语义的课程装配（hideCharts 课程跳过，避免空图表占位）
+  let totals: NumberChart | null = null;
+  let perChr: NumberChart | null = null;
+  if (chartsEnabled) {
+    const labels = course.stages.map((s) => s.title);
+    // 纵轴 n 表示法：n 取课程最后阶段的染色体数（即配子 n，本课程为 2）；
+    // 刻度在 v 为 n 的整数倍（且非 0）时显示为「1n / 2n / …」，其余保持原数值
+    const gameteN = course.stages[course.stages.length - 1].numbers!.chromosome;
+    totals = new NumberChart(totalsCard, labels, (v) =>
+      v > 0 && v % gameteN === 0 ? `${v / gameteN}n` : String(v),
+    );
+    perChr = new NumberChart(perCard, labels);
 
-  // 总数图三条曲线 + 显隐开关（可隐藏单条曲线让学生预测变化）
-  const TOTAL_SERIES: Series[] = [
-    { label: "DNA数", values: course.stages.map((s) => s.numbers.dna), color: "#2563eb" },
-    { label: "染色体数", values: course.stages.map((s) => s.numbers.chromosome), color: "#dc2626" },
-    { label: "染色单体数", values: course.stages.map((s) => s.numbers.chromatid), color: "#b45309", dashed: true },
-  ];
-  totals.setSeries(TOTAL_SERIES);
-  perChr.setSeries([
-    { label: "每条染色体DNA", values: course.stages.map((s) => s.numbers.dnaPerChromosome), color: "#059669" },
-  ]);
+    // 总数图三条曲线 + 显隐开关（可隐藏单条曲线让学生预测变化）
+    const TOTAL_SERIES: Series[] = [
+      { label: "DNA数", values: course.stages.map((s) => s.numbers!.dna), color: "#2563eb" },
+      { label: "染色体数", values: course.stages.map((s) => s.numbers!.chromosome), color: "#dc2626" },
+      { label: "染色单体数", values: course.stages.map((s) => s.numbers!.chromatid), color: "#b45309", dashed: true },
+    ];
+    totals.setSeries(TOTAL_SERIES);
+    perChr.setSeries([
+      { label: "每条染色体DNA", values: course.stages.map((s) => s.numbers!.dnaPerChromosome), color: "#059669" },
+    ]);
 
-  // 曲线显隐复选框组：取消勾选即从总数图中移除该系列
-  const seriesToggles = document.createElement("div");
-  seriesToggles.className = "series-toggles";
-  // 创建每个开关时闭包捕获其 checkbox 引用，避免依赖 children 索引的隐式耦合
-  const toggleBoxes: HTMLInputElement[] = [];
-  TOTAL_SERIES.forEach((s) => {
-    const lab = document.createElement("label");
-    const box = Object.assign(document.createElement("input"), { type: "checkbox" }) as HTMLInputElement;
-    box.checked = true;
-    toggleBoxes.push(box);
-    box.addEventListener("change", () => {
-      // 仅按各复选框勾选状态过滤系列后重绘，并恢复高亮竖线位置
-      totals.setSeries(TOTAL_SERIES.filter((_, i) => toggleBoxes[i].checked));
-      totals.setActive(player.current);
+    // 曲线显隐复选框组：取消勾选即从总数图中移除该系列
+    const seriesToggles = document.createElement("div");
+    seriesToggles.className = "series-toggles";
+    // 创建每个开关时闭包捕获其 checkbox 引用，避免依赖 children 索引的隐式耦合
+    const toggleBoxes: HTMLInputElement[] = [];
+    TOTAL_SERIES.forEach((s) => {
+      const lab = document.createElement("label");
+      const box = Object.assign(document.createElement("input"), { type: "checkbox" }) as HTMLInputElement;
+      box.checked = true;
+      toggleBoxes.push(box);
+      box.addEventListener("change", () => {
+        // 仅按各复选框勾选状态过滤系列后重绘，并恢复高亮竖线位置
+        totals!.setSeries(TOTAL_SERIES.filter((_, i) => toggleBoxes[i].checked));
+      totals!.setActive(player.current);
     });
     lab.append(box, document.createTextNode(` ${s.label}`));
     seriesToggles.appendChild(lab);
   });
   totalsCard.appendChild(seriesToggles);
+  }
 
   // 拐点气泡：进入含 callout 的阶段时显示关键数目变化说明
   const callout = document.createElement("div");
@@ -199,8 +207,10 @@ export function mountCoursePage(
     scene.render(stage.sceneState);
     // 步数徽标：第 x/N 步
     stepBadge.textContent = `第${i + 1}/${course.stages.length}步`;
-    totals.setActive(i);
-    perChr.setActive(i);
+    if (chartsEnabled) {
+      totals!.setActive(i);
+      perChr!.setActive(i);
+    }
     if (stage.callout && !examMode) {
       callout.textContent = `💡 ${stage.callout}`;
       callout.style.display = "block";
@@ -215,8 +225,10 @@ export function mountCoursePage(
   }
 
   // 双向联动：曲线数据点点击 → 跳转该阶段（先暂停自动播放）
-  totals.onPointClick((i) => { player.pause(); player.goTo(i); });
-  perChr.onPointClick((i) => { player.pause(); player.goTo(i); });
+  if (chartsEnabled) {
+    totals!.onPointClick((i) => { player.pause(); player.goTo(i); });
+    perChr!.onPointClick((i) => { player.pause(); player.goTo(i); });
+  }
 
   btnPrev.addEventListener("click", () => { player.pause(); player.prev(); });
   btnNext.addEventListener("click", () => { player.pause(); player.next(); });
@@ -234,19 +246,21 @@ export function mountCoursePage(
     root.style.setProperty("--tween-ms", Math.round(intervalMs * 0.9) + "ms");
   });
 
-  // 练习模式开关：隐藏曲线 + 遮蔽讲解面板，显示揭晓按钮
-  examToggle.querySelector("input")!.addEventListener("change", (e) => {
-    examMode = (e.target as HTMLInputElement).checked;
-    totals.setExamMode(examMode);
-    perChr.setExamMode(examMode);
-    revealBtn.style.display = examMode ? "" : "none";
-    applyStage(player.current);
-  });
-  // 揭晓答案：恢复讲解面板但保持练习模式其余状态
-  revealBtn.addEventListener("click", () => {
-    const stage = course.stages[player.current];
-    notes.render(`答案：${stage.title}`, stage.narration);
-  });
+  // 练习模式开关：隐藏曲线 + 遮蔽讲解面板，显示揭晓按钮（仅图表课程）
+  if (chartsEnabled) {
+    examToggle.querySelector("input")!.addEventListener("change", (e) => {
+      examMode = (e.target as HTMLInputElement).checked;
+      totals!.setExamMode(examMode);
+      perChr!.setExamMode(examMode);
+      revealBtn.style.display = examMode ? "" : "none";
+      applyStage(player.current);
+    });
+    // 揭晓答案：恢复讲解面板但保持练习模式其余状态
+    revealBtn.addEventListener("click", () => {
+      const stage = course.stages[player.current];
+      notes.render(`答案：${stage.title}`, stage.narration);
+    });
+  }
 
   // 初始渲染第一阶段
   applyStage(0);
