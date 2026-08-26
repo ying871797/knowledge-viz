@@ -137,7 +137,15 @@ export function mountCoursePage(
   let zoomCtrl: ZoomController | null = null;
   if (svg) {
     zoomCtrl = new ZoomController(svg, stageBox);
+  }
 
+  // 场景区右上角步数徽标 + 缩放按钮（同一容器，避免 z-index 冲突）
+  const sceneHUD = document.createElement("div");
+  sceneHUD.className = "scene-hud";
+  const stepBadge = document.createElement("div");
+  stepBadge.className = "step-badge";
+  sceneHUD.appendChild(stepBadge);
+  if (zoomCtrl) {
     const zoomBar = document.createElement("div");
     zoomBar.className = "zoom-controls";
     const btnZoomOut = Object.assign(document.createElement("button"), { textContent: "−" });
@@ -150,13 +158,9 @@ export function mountCoursePage(
     btnZoomIn.addEventListener("click", () => zoomCtrl!.zoom(1.25));
     btnZoomReset.addEventListener("click", () => zoomCtrl!.reset());
     zoomBar.append(btnZoomOut, btnZoomReset, btnZoomIn);
-    stageBox.appendChild(zoomBar);
+    sceneHUD.appendChild(zoomBar);
   }
-
-  // 场景区右上角步数徽标：通用 UI 组件（不侵入 SceneComponent 接口），applyStage 随阶段更新
-  const stepBadge = document.createElement("div");
-  stepBadge.className = "step-badge";
-  stageBox.appendChild(stepBadge);
+  stageBox.appendChild(sceneHUD);
 
   // 曲线图表：仅对有数目语义的课程装配（hideCharts 课程跳过，避免空图表占位）
   let totals: NumberChart | null = null;
