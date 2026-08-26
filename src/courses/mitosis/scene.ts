@@ -54,7 +54,7 @@ function split(S: Slots, k: string, x1: number, y1: number, x2: number, y2: numb
 }
 
 /** 有丝分裂逐阶段槽位表（纯声明数据） */
-function mitosisSlots(id: string): Slots {
+export function mitosisSlots(id: string): Slots {
   const S: Slots = {};
   switch (id) {
     case "interphase": {
@@ -140,6 +140,40 @@ const BG: Record<string, MitoBg> = {
       [340, 160], [450, 155], [360, 240], [455, 235],
     ],
   },
+  metaphase: {
+    // 中期：纺锤丝连两极↔赤道板上着丝点；核膜不可见
+    nuc1: { ...NUC_HIDDEN },
+    nuc2: { ...NUC_HIDDEN },
+    plate: null,
+    spindle: [
+      [280, 200], [360, 200], [440, 200], [520, 200],
+      [280, 200], [360, 200], [440, 200], [520, 200],
+    ],
+  },
+  anaphase: {
+    // 后期：纺锤丝牵引姐妹单体分赴两极
+    nuc1: { ...NUC_HIDDEN },
+    nuc2: { ...NUC_HIDDEN },
+    plate: null,
+    spindle: [
+      [280, 125], [360, 125], [440, 125], [520, 125],
+      [280, 275], [360, 275], [440, 275], [520, 275],
+    ],
+  },
+  telophase: {
+    // 末期：两现（核膜重现）+ 细胞板形成；纺锤丝消失
+    nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
+    nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
+    plate: 200,
+    spindle: NO_SPINDLE,
+  },
+  daughter: {
+    // 子细胞：两核膜完整，细胞板成壁
+    nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
+    nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
+    plate: 200,
+    spindle: NO_SPINDLE,
+  },
 };
 const BG_FALLBACK = BG.interphase;
 
@@ -179,8 +213,14 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
     const bg = BG[String(s.stage)] ?? BG_FALLBACK;
 
     // 背景元素：细胞轮廓（方形·植物壁）+ 核膜 + 细胞板
-    root.querySelectorAll(".cell-wall, .nuclear-membrane, .cell-plate").forEach((n) => n.remove());
-    root.appendChild(el("rect", { class: "cell-wall", x: CELL.x, y: CELL.y, width: CELL.w, height: CELL.h, rx: 24, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
+    root.querySelectorAll(".cell-wall, .nuclear-membrane, .cell-plate, .spindle-line").forEach((n) => n.remove());
+    if (String(s.stage) === "daughter") {
+      // 子细胞：两个独立的细胞轮廓（细胞板成壁后分开）
+      root.appendChild(el("rect", { class: "cell-wall", x: 200, y: 30, width: 400, height: 150, rx: 16, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
+      root.appendChild(el("rect", { class: "cell-wall", x: 200, y: 220, width: 400, height: 150, rx: 16, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
+    } else {
+      root.appendChild(el("rect", { class: "cell-wall", x: CELL.x, y: CELL.y, width: CELL.w, height: CELL.h, rx: 24, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
+    }
     for (const nuc of [bg.nuc1, bg.nuc2]) {
       if (nuc.o > 0) {
         root.appendChild(el("ellipse", { class: "nuclear-membrane", cx: nuc.cx, cy: nuc.cy, rx: nuc.rx, ry: nuc.ry, fill: "none", stroke: "#94a3b8", "stroke-width": 2, "stroke-dasharray": "6 4", opacity: nuc.o }));
