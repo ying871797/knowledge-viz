@@ -248,10 +248,10 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     // 链带分离：上下平移
     bandTop.style.transform = `translate(0px, ${geom.topY - Y_TOP}px)`;
     bandBot.style.transform = `translate(0px, ${geom.botY - Y_BOT}px)`;
-    // 氢键：随链带分离拉伸，断开则淡出
+    // 氢键：固定基础几何位置，纵向偏移走 translateY（可被 CSS transition 补间），断开则淡出
     hbonds.forEach((line, i) => {
-      line.setAttribute("y1", String(geom.topY + BAND_H / 2));
-      line.setAttribute("y2", String(geom.botY - BAND_H / 2));
+      const dy = geom.topY - Y_TOP;
+      line.style.transform = `translateY(${dy}px)`;
       line.style.opacity = geom.hbond[i] ? "1" : "0";
     });
     // 子链带：查表设位置/宽度/透明度（w=0 即不可见）；终态竖移走 transform 通道（y 属性保持基础值，可插值）
@@ -267,23 +267,23 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     // 终态配对刻度与成分标注：仅 done 阶段经布尔通道显示（同 markers 通道模式）
     pairTicks.forEach((t) => { t.style.opacity = geom.pairTicks ? "1" : "0"; });
     duplexLabels.forEach((t) => { t.style.opacity = geom.labels ? "1" : "0"; });
-    // 酶：查表设位置/透明度
+    // 酶：查表设位置/透明度（style.transform 走 CSS transition 通道）
     enzymes.forEach((g, key) => {
       const st = geom.enzymes[key] ?? NO_ENZ[key] ?? { x: 0, y: 0, o: 0 };
-      g.setAttribute("transform", `translate(${st.x}, ${st.y})`);
+      g.style.transform = `translate(${st.x}px, ${st.y}px)`;
       g.style.opacity = String(st.o);
     });
     // 缺口虚线标记：仅引物切除阶段显示
     gapMarkers.forEach((m) => {
       m.style.opacity = geom.markers ? "1" : "0";
     });
-    // 解旋酶：显示于两叉位置
+    // 解旋酶：显示于两叉位置（style.transform 走 CSS transition 通道）
     helicaseGroup.style.opacity = geom.helicase ? "1" : "0";
     if (geom.helicase) {
       const [hx1, hx2] = geom.helicase;
       const icons = helicaseGroup.querySelectorAll<SVGGElement>(".helicase-icon");
-      icons[0].setAttribute("transform", `translate(${hx1}, 200)`);
-      icons[1].setAttribute("transform", `translate(${hx2}, 200)`);
+      icons[0].style.transform = `translate(${hx1}px, 200px)`;
+      icons[1].style.transform = `translate(${hx2}px, 200px)`;
     }
     // 拓展角标 + 螺旋视图渲染（方案 B）
     extBadge.style.display = EXT_STAGES.has(String(s.stage)) ? "block" : "none";

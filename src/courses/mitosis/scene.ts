@@ -123,25 +123,21 @@ const NO_SPINDLE: [number, number][] | null = null;
 /** 逐阶段背景状态表 */
 const BG: Record<string, MitoBg> = {
   interphase: {
-    // 间期：核膜完整（细胞核内染色质态），无纺锤体
     nuc1: { cx: 400, cy: 200, rx: 130, ry: 100, o: 1 },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
     spindle: NO_SPINDLE,
   },
   prophase: {
-    // 前期：核膜消失（两消），纺锤丝出现（两现）
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
-    // 纺锤丝连两极↔散乱 X 中心
     spindle: [
       [340, 160], [450, 155], [360, 240], [455, 235],
       [340, 160], [450, 155], [360, 240], [455, 235],
     ],
   },
   metaphase: {
-    // 中期：纺锤丝连两极↔赤道板上着丝点；核膜不可见
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
@@ -151,7 +147,6 @@ const BG: Record<string, MitoBg> = {
     ],
   },
   anaphase: {
-    // 后期：纺锤丝牵引姐妹单体分赴两极
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
@@ -161,14 +156,12 @@ const BG: Record<string, MitoBg> = {
     ],
   },
   telophase: {
-    // 末期：两现（核膜重现）+ 细胞板形成；纺锤丝消失
     nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
     nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
     plate: 200,
     spindle: NO_SPINDLE,
   },
   daughter: {
-    // 子细胞：两核膜完整，细胞板成壁
     nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
     nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
     plate: 200,
@@ -176,6 +169,62 @@ const BG: Record<string, MitoBg> = {
   },
 };
 const BG_FALLBACK = BG.interphase;
+
+// ============ 背景元素池（预声明 DOM，全程不 remove+reappend） ============
+const mitoPool = {
+  cellWallSingle: null as SVGRectElement | null,
+  cellWallTop: null as SVGRectElement | null,
+  cellWallBot: null as SVGRectElement | null,
+  nuc1: null as SVGEllipseElement | null,
+  nuc2: null as SVGEllipseElement | null,
+  cellPlate: null as SVGLineElement | null,
+  spindleLines: [] as SVGLineElement[],
+};
+
+/** 更新背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend） */
+function updateMitoPool(s: Record<string, unknown>): void {
+  const bg = BG[String(s.stage)] ?? BG_FALLBACK;
+  const isDaughter = String(s.stage) === "daughter";
+
+  // 细胞壁：单壁 vs 双壁互斥
+  mitoPool.cellWallSingle!.style.opacity = isDaughter ? "0" : "1";
+  mitoPool.cellWallTop!.style.opacity = isDaughter ? "1" : "0";
+  mitoPool.cellWallBot!.style.opacity = isDaughter ? "1" : "0";
+
+  // 核膜
+  for (const [key, nuc] of [["nuc1", bg.nuc1], ["nuc2", bg.nuc2]] as const) {
+    const el = mitoPool[key]!;
+    el.setAttribute("cx", String(nuc.cx));
+    el.setAttribute("cy", String(nuc.cy));
+    el.setAttribute("rx", String(nuc.rx));
+    el.setAttribute("ry", String(nuc.ry));
+    el.style.opacity = String(nuc.o);
+  }
+
+  // 细胞板
+  if (bg.plate !== null) {
+    mitoPool.cellPlate!.setAttribute("y1", String(bg.plate));
+    mitoPool.cellPlate!.setAttribute("y2", String(bg.plate));
+    mitoPool.cellPlate!.style.opacity = "1";
+  } else {
+    mitoPool.cellPlate!.style.opacity = "0";
+  }
+
+  // 纺锤丝 ×8
+  mitoPool.spindleLines.forEach((line, i) => {
+    if (bg.spindle) {
+      const [tx, ty] = bg.spindle[i];
+      const pole = i % 2 === 0 ? POLE_TOP : POLE_BOT;
+      line.setAttribute("x1", String(pole[0]));
+      line.setAttribute("y1", String(pole[1]));
+      line.setAttribute("x2", String(tx));
+      line.setAttribute("y2", String(ty));
+      line.style.opacity = "1";
+    } else {
+      line.style.opacity = "0";
+    }
+  });
+}
 
 // ============ 工具 ============
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
@@ -210,32 +259,9 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
   function layout(s: Record<string, unknown>): void {
     if (!root) return;
     const slots = mitosisSlots(String(s.stage));
-    const bg = BG[String(s.stage)] ?? BG_FALLBACK;
 
-    // 背景元素：细胞轮廓（方形·植物壁）+ 核膜 + 细胞板
-    root.querySelectorAll(".cell-wall, .nuclear-membrane, .cell-plate, .spindle-line").forEach((n) => n.remove());
-    if (String(s.stage) === "daughter") {
-      // 子细胞：两个独立的细胞轮廓（细胞板成壁后分开）
-      root.appendChild(el("rect", { class: "cell-wall", x: 200, y: 30, width: 400, height: 150, rx: 16, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
-      root.appendChild(el("rect", { class: "cell-wall", x: 200, y: 220, width: 400, height: 150, rx: 16, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
-    } else {
-      root.appendChild(el("rect", { class: "cell-wall", x: CELL.x, y: CELL.y, width: CELL.w, height: CELL.h, rx: 24, fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 }));
-    }
-    for (const nuc of [bg.nuc1, bg.nuc2]) {
-      if (nuc.o > 0) {
-        root.appendChild(el("ellipse", { class: "nuclear-membrane", cx: nuc.cx, cy: nuc.cy, rx: nuc.rx, ry: nuc.ry, fill: "none", stroke: "#94a3b8", "stroke-width": 2, "stroke-dasharray": "6 4", opacity: nuc.o }));
-      }
-    }
-    if (bg.plate !== null) {
-      root.appendChild(el("line", { class: "cell-plate", x1: CELL.x + 40, y1: bg.plate, x2: CELL.x + CELL.w - 40, y2: bg.plate, stroke: "#059669", "stroke-width": 4 }));
-    }
-    // 纺锤丝 ×8：从两极到各染色体着丝点（前期/中期/后期可见）
-    if (bg.spindle) {
-      bg.spindle.forEach(([tx, ty], i) => {
-        const pole = i % 2 === 0 ? POLE_TOP : POLE_BOT;
-        root!.appendChild(el("line", { class: "spindle-line", x1: pole[0], y1: pole[1], x2: tx, y2: ty, stroke: "#d4a574", "stroke-width": 1.5 }));
-      });
-    }
+    // 背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend）
+    updateMitoPool(s);
 
     // 染色体：查槽位设 translate+rotate
     CHROMATIDS.forEach((spec) => {
@@ -255,8 +281,12 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
   return {
     /** 挂载：创建 SVG、8 个单体组、背景元素与交互控件。可重入：清空闭包数组 */
     mount(container: HTMLElement) {
-      spindleLines.length = 0;
-      nuclearMembranes.length = 0;
+      // 测试隔离：清空残留的 DOM 池
+      for (const k of ["cellWallSingle", "cellWallTop", "cellWallBot", "nuc1", "nuc2", "cellPlate"] as const) {
+        if (mitoPool[k]) { mitoPool[k]!.remove(); mitoPool[k] = null; }
+      }
+      mitoPool.spindleLines.forEach((l) => l.remove());
+      mitoPool.spindleLines.length = 0;
       wrap = document.createElement("div");
       wrap.className = "mito-scene";
       const svgRoot = el("svg", { viewBox: `0 0 800 400`, width: "100%" });
@@ -282,6 +312,23 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       });
       bar.append(geneToggle);
       wrap.appendChild(bar);
+
+      // 背景元素池：一次创建全程复用，由 updateMitoPool 按阶段切换显隐
+      const BG_BASE = { fill: "#f8fafc66", stroke: "#94a3b8", "stroke-width": 3 };
+      mitoPool.cellWallSingle = el("rect", { class: "cell-wall", ...BG_BASE, x: CELL.x, y: CELL.y, width: CELL.w, height: CELL.h, rx: 24, opacity: 1 });
+      mitoPool.cellWallTop = el("rect", { class: "cell-wall", ...BG_BASE, x: 200, y: 30, width: 400, height: 150, rx: 16, opacity: 0 });
+      mitoPool.cellWallBot = el("rect", { class: "cell-wall", ...BG_BASE, x: 200, y: 220, width: 400, height: 150, rx: 16, opacity: 0 });
+      svgRoot.append(mitoPool.cellWallSingle, mitoPool.cellWallTop, mitoPool.cellWallBot);
+      mitoPool.nuc1 = el("ellipse", { class: "nuclear-membrane", fill: "none", stroke: "#94a3b8", "stroke-width": 2, "stroke-dasharray": "6 4", opacity: 0 });
+      mitoPool.nuc2 = el("ellipse", { class: "nuclear-membrane", fill: "none", stroke: "#94a3b8", "stroke-width": 2, "stroke-dasharray": "6 4", opacity: 0 });
+      svgRoot.append(mitoPool.nuc1, mitoPool.nuc2);
+      mitoPool.cellPlate = el("line", { class: "cell-plate", x1: CELL.x + 40, x2: CELL.x + CELL.w - 40, stroke: "#059669", "stroke-width": 4, opacity: 0 });
+      svgRoot.appendChild(mitoPool.cellPlate);
+      for (let i = 0; i < 8; i++) {
+        const line = el("line", { class: "spindle-line", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        mitoPool.spindleLines.push(line);
+        svgRoot.appendChild(line);
+      }
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）
       CHROMATIDS.forEach((spec) => {

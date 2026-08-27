@@ -136,8 +136,11 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     scene.render(st({ stage: "sperm", replicated: false, cells: 4, spermShape: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(162px, 85px)");
     expect(chromatid("A1a").style.transform).toContain("rotate(0deg)");
-    expect(host.querySelectorAll(".sperm-tail").length).toBe(4);
-    expect(host.querySelectorAll(".cell-outline").length).toBe(4);
+    // 背景元素预声明池：计数可见（opacity=1）的精子尾和细胞轮廓
+    const visibleTails = [...host.querySelectorAll<SVGElement>(".sperm-tail")].filter((e) => e.style.opacity === "1");
+    const visibleOutlines = [...host.querySelectorAll<SVGElement>(".cell-outline")].filter((e) => e.style.opacity === "1");
+    expect(visibleTails.length).toBe(4);
+    expect(visibleOutlines.length).toBe(4);
   });
 
   it("卵细胞阶段6 减Ⅰ末期：大细胞+极体①不均等分配", () => {
@@ -147,7 +150,8 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("B1a").style.transform).toContain("translate(253px, 200px)");
     expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
     expect(chromatid("B2b").style.transform).toContain("translate(365px, 61px)");
-    expect(host.querySelectorAll(".polar-body").length).toBe(1);
+    const visiblePBs = [...host.querySelectorAll<SVGElement>(".polar-body")].filter((e) => e.style.opacity === "1");
+    expect(visiblePBs.length).toBe(1);
   });
 
   it("卵细胞阶段8 减Ⅱ后期：大细胞双杆分极、极体①保持 X", () => {
@@ -175,7 +179,8 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
       // 极体③ {A1b,B1b}
       expect(chromatid("A1b").style.transform).toContain("translate(371px, 317px)");
       expect(chromatid("B1b").style.transform).toContain("translate(387px, 317px)");
-      expect(host.querySelectorAll(".polar-body").length).toBe(3);
+      const visiblePBs = [...host.querySelectorAll<SVGElement>(".polar-body")].filter((e) => e.style.opacity === "1");
+      expect(visiblePBs.length).toBe(3);
     }
   });
 

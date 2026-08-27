@@ -26,6 +26,9 @@ describe("有丝分裂场景", () => {
     host.remove();
   });
   const chr = (key: string) => host.querySelector<SVGGElement>(`.chromatid.chromo-${key}`)!;
+  /** 计算可见元素数量（style.opacity > 0，优先于初始 attribute） */
+  const visibleCount = (sel: string) =>
+    [...host.querySelectorAll(sel)].filter((el) => parseFloat((el as SVGElement).style.opacity || el.getAttribute("opacity") || "1") > 0).length;
 
   it("挂载 8 单体（杆+着丝点+标注）", () => {
     expect(host.querySelectorAll(".chromatid").length).toBe(8);
@@ -41,20 +44,20 @@ describe("有丝分裂场景", () => {
     expect(a.style.transform).toContain("rotate(-11deg)");
     expect(b.style.transform).toContain("rotate(11deg)");
     expect(a.style.transform.split("rotate")[0]).toBe(b.style.transform.split("rotate")[0]);
-    expect(host.querySelectorAll(".nuclear-membrane").length).toBe(1);
+    expect(visibleCount(".nuclear-membrane")).toBe(1);
   });
 
   it("前期：散乱 + 核膜消 + 纺锤丝现", () => {
     scene.render(st({ stage: "prophase", replicated: true }));
     expect(chromatid("A1a").style.transform).not.toBe(chromatid("A2a").style.transform);
-    expect(host.querySelectorAll(".nuclear-membrane").length).toBe(0);
-    expect(host.querySelectorAll(".spindle-line").length).toBe(8);
+    expect(visibleCount(".nuclear-membrane")).toBe(0);
+    expect(visibleCount(".spindle-line")).toBe(8);
   });
 
   it("中期：赤道板横排", () => {
     scene.render(st({ stage: "metaphase", replicated: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(280px, 200px)");
-    expect(host.querySelectorAll(".spindle-line").length).toBe(8);
+    expect(visibleCount(".spindle-line")).toBe(8);
   });
 
   it("后期：着丝点分裂——姐妹分赴两极", () => {
@@ -66,13 +69,13 @@ describe("有丝分裂场景", () => {
 
   it("末期：核膜重现 + 细胞板", () => {
     scene.render(st({ stage: "telophase" }));
-    expect(host.querySelectorAll(".nuclear-membrane").length).toBe(2);
-    expect(host.querySelectorAll(".cell-plate").length).toBe(1);
+    expect(visibleCount(".nuclear-membrane")).toBe(2);
+    expect(visibleCount(".cell-plate")).toBe(1);
   });
 
   it("子细胞：两细胞各 4 条", () => {
     scene.render(st({ stage: "daughter" }));
-    expect(host.querySelectorAll(".cell-wall").length).toBe(2);
+    expect(visibleCount(".cell-wall")).toBe(2);
     expect(chromatid("A1a").style.transform).toContain("translate(280px, 110px)");
   });
 

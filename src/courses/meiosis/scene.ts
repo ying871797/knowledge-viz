@@ -288,34 +288,88 @@ export function slotsFor(s: MeiosisState, comboAlt = false): Slots {
   return s.stage?.startsWith("oo-") ? oocyteSlots(s.stage) : spermSlots(s.stage, comboAlt);
 }
 
-// ============ 细胞轮廓（声明式绘制） ============
-function drawOutlines(root: SVGSVGElement, s: MeiosisState): void {
-  root.querySelectorAll(".cell-outline, .sperm-tail, .polar-body").forEach((n) => n.remove());
-  const radius = CELL_RADIUS[s.cells] ?? 62;
-  const oocyteSplit = s.cells === 2 && s.unequal;
+// ============ 细胞轮廓（预声明 DOM 池 + updatePool 按阶段切换显隐） ============
+// 池元素在 mount() 中创建，全程不 remove+reappend，由 CSS transition 补间显隐与形变
+const bgPool = {
+  spermCircles: [] as SVGCircleElement[],
+  spermEllipses: [] as SVGEllipseElement[],
+  spermTails: [] as SVGPathElement[],
+  oocyteLarge: null as SVGCircleElement | null,
+  polarBodies: [] as SVGCircleElement[],
+  oocyteEccentric: null as SVGEllipseElement | null,
+};
 
-  if (oocyteSplit) {
-    // 大细胞 + 极体小圆
-    root.appendChild(el("circle", { class: "cell-outline", cx: OO_CENTER[0], cy: OO_CENTER[1], r: OO_RADIUS, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 }));
-    for (const deg of PB_ANGLES[s.polarBodies ?? 0] ?? []) {
-      const [px, py] = pbCenter(deg);
-      root.appendChild(el("circle", { class: "polar-body cell-outline", cx: px, cy: py, r: PB_R, fill: "#fef9c388", stroke: "#94a3b8", "stroke-width": 2 }));
-    }
-    return;
-  }
+/** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
+function updatePool(root: SVGSVGElement, s: MeiosisState): void {
+  const radius = CELL_RADIUS[s.cells] ?? 62;
+  const isOocyte = s.cells === 2 && s.unequal;
   const centers = CELL_CENTERS[s.cells] ?? [];
-  centers.forEach(([cx, cy]) => {
-    if (s.spermShape) {
-      const head = el("ellipse", { class: "cell-outline", cx, cy, rx: radius * 0.6, ry: radius * 0.52, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 });
-      const tail = el("path", { class: "sperm-tail", d: `M ${cx + radius * 0.38} ${cy} q ${radius * 0.5} ${-18} ${radius * 0.95} 0 q ${radius * 0.45} ${18} ${radius * 0.85} ${-4}`, fill: "none", stroke: "#94a3b8", "stroke-width": 2 });
-      root.append(head, tail);
-    } else if (s.unequal && s.cells === 1) {
-      // 卵细胞减Ⅰ后期：轮廓偏心拉长（不均等分裂暗示）
-      root.appendChild(el("ellipse", { class: "cell-outline", cx, cy: cy + Math.round(radius * 0.08), rx: Math.round(radius * 0.92), ry: Math.round(radius * 1.06), fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 }));
+  const pbCount = s.polarBodies ?? 0;
+  const pbAngles = PB_ANGLES[pbCount] ?? [];
+
+  // 精子模式
+  const showSperm = !isOocyte;
+  for (let i = 0; i < 4; i++) {
+    const c = bgPool.spermCircles[i];
+    const e = bgPool.spermEllipses[i];
+    const t = bgPool.spermTails[i];
+    if (showSperm && i < centers.length && !s.spermShape) {
+      const [cx, cy] = centers[i];
+      c.setAttribute("cx", String(cx));
+      c.setAttribute("cy", String(cy));
+      c.setAttribute("r", String(radius));
+      c.style.opacity = "1";
+      e.style.opacity = "0";
+      t.style.opacity = "0";
+    } else if (showSperm && i < centers.length && s.spermShape) {
+      const [cx, cy] = centers[i];
+      e.setAttribute("cx", String(cx));
+      e.setAttribute("cy", String(cy));
+      e.setAttribute("rx", String(Math.round(radius * 0.6)));
+      e.setAttribute("ry", String(Math.round(radius * 0.52)));
+      e.style.opacity = "1";
+      t.setAttribute("d", `M ${cx + radius * 0.38} ${cy} q ${radius * 0.5} ${-18} ${radius * 0.95} 0 q ${radius * 0.45} ${18} ${radius * 0.85} ${-4}`);
+      t.style.opacity = "1";
+      c.style.opacity = "0";
     } else {
-      root.appendChild(el("circle", { class: "cell-outline", cx, cy, r: radius, fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 }));
+      c.style.opacity = "0";
+      e.style.opacity = "0";
+      t.style.opacity = "0";
     }
-  });
+  }
+
+  // 卵细胞模式
+  if (isOocyte) {
+    bgPool.oocyteLarge!.setAttribute("cx", String(OO_CENTER[0]));
+    bgPool.oocyteLarge!.setAttribute("cy", String(OO_CENTER[1]));
+    bgPool.oocyteLarge!.style.opacity = "1";
+    bgPool.oocyteEccentric!.style.opacity = "0";
+    for (let i = 0; i < 3; i++) {
+      const pb = bgPool.polarBodies[i];
+      if (i < pbAngles.length) {
+        const [px, py] = pbCenter(pbAngles[i]);
+        pb.setAttribute("cx", String(px));
+        pb.setAttribute("cy", String(py));
+        pb.style.opacity = "1";
+      } else {
+        pb.style.opacity = "0";
+      }
+    }
+  } else if (s.cells === 1 && s.unequal) {
+    // 卵细胞减Ⅰ后期：偏心椭圆
+    const [cx, cy] = centers[0] ?? [400, 200];
+    bgPool.oocyteLarge!.style.opacity = "0";
+    bgPool.oocyteEccentric!.setAttribute("cx", String(cx));
+    bgPool.oocyteEccentric!.setAttribute("cy", String(cy + Math.round(radius * 0.08)));
+    bgPool.oocyteEccentric!.setAttribute("rx", String(Math.round(radius * 0.92)));
+    bgPool.oocyteEccentric!.setAttribute("ry", String(Math.round(radius * 1.06)));
+    bgPool.oocyteEccentric!.style.opacity = "1";
+    bgPool.polarBodies.forEach((pb) => { pb.style.opacity = "0"; });
+  } else {
+    bgPool.oocyteLarge!.style.opacity = "0";
+    bgPool.oocyteEccentric!.style.opacity = "0";
+    bgPool.polarBodies.forEach((pb) => { pb.style.opacity = "0"; });
+  }
 }
 
 // ============ 工具 ============
@@ -350,7 +404,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
   /** 核心：查槽位表 → 每单体设置 translate+rotate（唯一渲染路径，无特判） */
   function layout(s: MeiosisState): void {
     if (!root) return;
-    drawOutlines(root, s);
+    updatePool(root, s);
     const slots = slotsFor(s, comboAlt);
     const centers = CELL_CENTERS[s.cells] ?? [];
     const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞 cells=2 阶段：槽位即绝对坐标
@@ -393,6 +447,13 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       wrap.className = "meiosis-scene";
       const svgRoot = el("svg", { viewBox: `0 0 ${VB_W} ${VB_H}`, width: "100%" });
       root = svgRoot;
+      // 可重入：清空池引用防止跨挂载累积
+      bgPool.spermCircles.length = 0;
+      bgPool.spermEllipses.length = 0;
+      bgPool.spermTails.length = 0;
+      bgPool.polarBodies.length = 0;
+      bgPool.oocyteLarge = null;
+      bgPool.oocyteEccentric = null;
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
@@ -427,6 +488,33 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       });
       bar.append(geneToggle, comboBtn, modeBtn);
       wrap.appendChild(bar);
+
+      // 细胞背景元素池：一次创建全程复用，由 updatePool 按阶段切换显隐（禁止每帧 remove+reappend）
+      const BG_STYLE = { fill: "#f8fafc88", stroke: "#94a3b8", "stroke-width": 2 };
+      for (let i = 0; i < 4; i++) {
+        const c = el("circle", { class: "cell-outline", r: 62, ...BG_STYLE, opacity: 0 });
+        bgPool.spermCircles.push(c);
+        svgRoot.appendChild(c);
+      }
+      for (let i = 0; i < 4; i++) {
+        const e = el("ellipse", { class: "cell-outline", ...BG_STYLE, opacity: 0 });
+        bgPool.spermEllipses.push(e);
+        svgRoot.appendChild(e);
+      }
+      for (let i = 0; i < 4; i++) {
+        const t = el("path", { class: "sperm-tail", fill: "none", stroke: "#94a3b8", "stroke-width": 2, opacity: 0 });
+        bgPool.spermTails.push(t);
+        svgRoot.appendChild(t);
+      }
+      bgPool.oocyteLarge = el("circle", { class: "cell-outline", r: OO_RADIUS, ...BG_STYLE, opacity: 0 });
+      svgRoot.appendChild(bgPool.oocyteLarge);
+      for (let i = 0; i < 3; i++) {
+        const pb = el("circle", { class: "polar-body cell-outline", r: PB_R, fill: "#fef9c388", stroke: "#94a3b8", "stroke-width": 2, opacity: 0 });
+        bgPool.polarBodies.push(pb);
+        svgRoot.appendChild(pb);
+      }
+      bgPool.oocyteEccentric = el("ellipse", { class: "cell-outline", ...BG_STYLE, opacity: 0 });
+      svgRoot.appendChild(bgPool.oocyteEccentric);
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）
       CHROMATIDS.forEach((spec) => {

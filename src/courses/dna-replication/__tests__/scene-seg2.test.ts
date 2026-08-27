@@ -34,7 +34,7 @@ describe("DNA 复制场景（段 2：合成）", () => {
     // 阶段3：左叉引物酶显现（避开左叉解旋酶 r18：圆心距 230-170=60 > 38）
     scene.render({ stage: "priming" });
     expect(enzyme("primase-L").style.opacity).toBe("1");
-    expect(enzyme("primase-L").getAttribute("transform")).toBe("translate(230, 170)");
+    expect(enzyme("primase-L").style.transform).toBe("translate(230px, 170px)");
     // 阶段4：左叉前导聚合酶 + 片段1聚合酶显现，片段2/3聚合酶未现
     scene.render({ stage: "leading" });
     expect(enzyme("pol-lead-L").style.opacity).toBe("1");
@@ -43,16 +43,16 @@ describe("DNA 复制场景（段 2：合成）", () => {
     expect(enzyme("pol-lag-L3").style.opacity).toBe("0");
     // 阶段5：三片段聚合酶齐备，各自对位片段中心
     scene.render({ stage: "lagging" });
-    expect(enzyme("pol-lag-L1").getAttribute("transform")).toBe("translate(205, 336)");
-    expect(enzyme("pol-lag-L2").getAttribute("transform")).toBe("translate(277, 336)");
-    expect(enzyme("pol-lag-L3").getAttribute("transform")).toBe("translate(349, 336)");
-    expect(enzyme("pol-lead-L").getAttribute("transform")).toBe("translate(220, 48)");
+    expect(enzyme("pol-lag-L1").style.transform).toBe("translate(205px, 336px)");
+    expect(enzyme("pol-lag-L2").style.transform).toBe("translate(277px, 336px)");
+    expect(enzyme("pol-lag-L3").style.transform).toBe("translate(349px, 336px)");
+    expect(enzyme("pol-lead-L").style.transform).toBe("translate(220px, 48px)");
   });
 
   it("阶段3 引物合成：仅引物酶图标显现，无引物红条", () => {
     scene.render({ stage: "priming" });
     expect(enzyme("primase").style.opacity).toBe("1");
-    expect(enzyme("primase").getAttribute("transform")).toBe("translate(575, 170)");
+    expect(enzyme("primase").style.transform).toBe("translate(575px, 170px)");
     // 子链带尚未合成
     expect(daughter("da-rb").getAttribute("width")).toBe("0");
     expect(host.querySelector<SVGGElement>(".helicase-group")!.style.opacity).toBe("1");
@@ -106,13 +106,13 @@ describe("DNA 复制场景（段 2：合成）", () => {
     expect(enzyme("pol-lag2").style.opacity).toBe("1");
     expect(enzyme("pol-lag3").style.opacity).toBe("1");
     // pol-lag3 对位最新片段 r1（叉口侧 556~606 的中点 ≈ 581）
-    expect(enzyme("pol-lag3").getAttribute("transform")).toBe("translate(581, 150)");
+    expect(enzyme("pol-lag3").style.transform).toBe("translate(581px, 150px)");
     // 对位核查：每个后随聚合酶的 x 都落在其对应片段区间内
     const fragOf: Record<string, [number, number]> = {
       "pol-lag3": [556, 606], "pol-lag1": [480, 530], "pol-lag2": [404, 454],
     };
     for (const [enz, [lo, hi]] of Object.entries(fragOf)) {
-      const m = enzyme(enz).getAttribute("transform")!.match(/translate\((-?\d+)/)!;
+      const m = enzyme(enz).style.transform.match(/translate\((-?\d+)px/)!;
       const px = Number(m[1]);
       expect(px).toBeGreaterThanOrEqual(lo);
       expect(px).toBeLessThanOrEqual(hi);
