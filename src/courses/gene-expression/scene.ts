@@ -199,14 +199,14 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
     });
 
     // —— 聚合酶 / 核膜 / 组界线 ——
-    if (g.polX === null) polIcon.style.opacity = "0";
-    else { polIcon.style.opacity = "1"; polIcon.setAttribute("transform", `translate(${g.polX}, 200)`); }
+    polIcon.style.opacity = g.polX === null ? "0" : "1";
+    polIcon.style.transform = `translate(${g.polX ?? 0}px, 200px)`;
     membranes.forEach((p) => { p.style.opacity = g.membrane ? "1" : "0"; });
     seps.forEach((l) => { l.style.opacity = g.groups ? "1" : "0"; });
 
     // —— 核糖体（窗左缘定位；步进恒为一个密码子宽 3×STEP） ——
-    if (g.riboX === null) ribo.style.opacity = "0";
-    else { ribo.style.opacity = "1"; ribo.setAttribute("transform", `translate(${g.riboX}, 0)`); }
+    ribo.style.opacity = g.riboX === null ? "0" : "1";
+    ribo.style.transform = `translate(${g.riboX ?? 0}px, 0px)`;
 
     // —— tRNA ×3：倒 T 杆，底部反密码子对位当前密码子；离场者下坠并半透明（下一帧退场） ——
     const LEAVING_DY = 96;
@@ -214,7 +214,7 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
       const x = g.trnaX[k];
       const leaving = (g.trnaLeaving ?? []).includes(k);
       tgrp.style.opacity = x === null ? "0" : leaving ? "0.45" : "1";
-      if (x !== null) tgrp.setAttribute("transform", `translate(${x}, ${leaving ? LEAVING_DY : 0})`);
+      tgrp.style.transform = `translate(${x ?? 0}px, ${leaving ? LEAVING_DY : 0}px)`;
     });
 
     // —— 肽链珠 + 肽键线（键线只在相邻两珠齐备且未折叠时显示） ——
