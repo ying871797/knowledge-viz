@@ -504,7 +504,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       g.style.transform = `translate(${bx + slot.x}px, ${by + slot.y}px) rotate(${slot.a}deg)`;
       // 标注反向旋转保持文字直立；字号随细胞半径自适应（变形期随组缩放需反向补偿）
       const lbl = g.querySelector("text")!;
-      lbl.setAttribute("transform", `rotate(${-slot.a})`);
+      lbl.style.transform = `rotate(${-slot.a}deg)`;
       lbl.setAttribute("visibility", showGenes ? "visible" : "hidden");
       lbl.setAttribute("font-size", String(s.spermShape ? Math.round(fs / 0.45) : fs));
       lbl.classList.toggle("gene-label-lg", fs >= 18);
