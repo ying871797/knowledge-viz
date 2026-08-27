@@ -54,11 +54,11 @@ describe("DNA 复制场景（固定元素池）", () => {
     const btn = host.querySelector<HTMLButtonElement>(".view-switch")!;
     expect(btn.textContent).toContain("螺旋视图");
     btn.click();
-    // 螺旋层显现：两条链曲线 + 12 横档；平面层隐藏
+    // 螺旋层显现：两条链曲线 + 12 横档；平面层淡出
     expect(host.querySelectorAll(".helix-layer path.helix-strand").length).toBe(2);
     expect(host.querySelectorAll(".helix-layer line.helix-rung").length).toBe(12);
-    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.display).toBe("");
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.display).toBe("none");
+    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.opacity).toBe("1");
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.opacity).toBe("0");
     // 阶段 2 解旋：中段横档淡出（解旋气泡）
     scene.render({ stage: "unwind" });
     const rungs = [...host.querySelectorAll<SVGLineElement>(".helix-layer line.helix-rung")];
@@ -67,16 +67,16 @@ describe("DNA 复制场景（固定元素池）", () => {
     expect(rungs[11].style.opacity).toBe("1");
     // 切回平面视图
     btn.click();
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.display).toBe("");
-    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.display).toBe("none");
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.opacity).toBe("1");
+    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.opacity).toBe("0");
   });
 
-  it("初始视图为平面（螺旋层经 style 隐藏而非属性，避免回退陷阱）", () => {
+  it("初始视图为平面（螺旋层经 opacity 隐藏而非 display，避免回退陷阱）", () => {
     const layer = host.querySelector<SVGGElement>(".helix-layer")!;
-    expect(layer.hasAttribute("display")).toBe(false);
-    expect(layer.style.display).toBe("none");
+    expect(layer.hasAttribute("opacity")).toBe(false);
+    expect(layer.style.opacity).toBe("0");
     // flat 层同理：显隐统一走 style 通道
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.hasAttribute("display")).toBe(false);
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.hasAttribute("opacity")).toBe(false);
   });
 
   it("场景控件栏：DNA 专属控件（碱基字母开关+视图切换），无减数分裂控件串入", () => {
