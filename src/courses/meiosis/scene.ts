@@ -17,8 +17,9 @@ const OO_POLE_SHIFT = -20;             // 卵细胞模式极点同向偏移（�
 
 // ============ 纺锤丝连接表：声明式（每阶段每染色体 → 细胞 + 极点） ============
 // 减Ⅰ：同源染色体整对连同一极（默认 A1/B1→上、A2/B2→下）；减Ⅱ：姐妹分连两极（有丝分裂式）。
-// 极点由所属细胞中心 ± POLE_OFFSET 得出（卵细胞两细胞期大细胞用 OO_CENTER）。
-interface SpindleFiber { key: string; cell: number; pole: "top" | "bottom" }
+// 极点默认由所属细胞中心 ± POLE_OFFSET 得出（卵细胞两细胞期大细胞用 OO_CENTER）；
+// center/offset 可选——为极体等小型子细胞指定独立极点。
+interface SpindleFiber { key: string; cell: number; pole: "top" | "bottom"; center?: [number, number]; offset?: number }
 const MI_FIBERS: SpindleFiber[] = [
   { key: "A1a", cell: 0, pole: "top" }, { key: "B1a", cell: 0, pole: "top" },
   { key: "A2a", cell: 0, pole: "bottom" }, { key: "B2a", cell: 0, pole: "bottom" },
@@ -34,10 +35,20 @@ const MII_SPERM: SpindleFiber[] = [
   { key: "A2a", cell: 1, pole: "top" }, { key: "A2b", cell: 1, pole: "bottom" },
   { key: "B1a", cell: 1, pole: "top" }, { key: "B1b", cell: 1, pole: "bottom" },
 ];
+// 卵细胞减Ⅱ：大细胞 A1/B1（极点 OO_CENTER）+ 第一极体微纺锤丝（极点 = 极体①圆心）
 const MII_OO: SpindleFiber[] = [
   { key: "A1a", cell: 0, pole: "top" }, { key: "A1b", cell: 0, pole: "bottom" },
   { key: "B1a", cell: 0, pole: "top" }, { key: "B1b", cell: 0, pole: "bottom" },
 ];
+/** 第一极体微纺锤丝（A2/B2 分连上/下，极点 = 极体①圆心小偏移）；PB1_CENTER 于几何区定义，运行时求值 */
+function ooPolarBodyFibers(): SpindleFiber[] {
+  return [
+    { key: "A2a", cell: 0, pole: "top", center: PB1_CENTER, offset: PB_SPINDLE_OFFSET },
+    { key: "A2b", cell: 0, pole: "bottom", center: PB1_CENTER, offset: PB_SPINDLE_OFFSET },
+    { key: "B2a", cell: 0, pole: "top", center: PB1_CENTER, offset: PB_SPINDLE_OFFSET },
+    { key: "B2b", cell: 0, pole: "bottom", center: PB1_CENTER, offset: PB_SPINDLE_OFFSET },
+  ];
+}
 function fibersFor(s: MeiosisState, comboAlt: boolean): SpindleFiber[] {
   switch (s.stage) {
     case "prophase-I": case "metaphase-I":
@@ -50,7 +61,7 @@ function fibersFor(s: MeiosisState, comboAlt: boolean): SpindleFiber[] {
       return MII_SPERM;
     case "oo-metaphase-II":
     case "oo-anaphase-II":
-      return MII_OO;
+      return [...MII_OO, ...ooPolarBodyFibers()];
     default:
       return [];
   }
@@ -74,6 +85,9 @@ const OO_RADIUS = 140;
 const PB_R = 46;                                  // 极体小圆半径
 const PB_DIST = OO_RADIUS + PB_R - 4;             // 极体圆心到大细胞中心距离
 const PB_ANGLES: Record<number, number[]> = { 1: [-50], 3: [-50, -5, 40] };
+const PB1_CENTER: [number, number] = pbCenter(-50);  // 第一极体圆心（减Ⅱ中期/后期微纺锤丝极点基准）
+const PB_SPINDLE_OFFSET = 22;                        // 极体微纺锤丝极点偏移（≤ PB_R）
+const PB_SCALE = 0.45;                               // 极体内染色体缩放（A 杆半长 60→27，容纳于 r=46）
 function pbCenter(deg: number): [number, number] {
   return [
     Math.round(OO_CENTER[0] + PB_DIST * Math.cos(deg * Math.PI / 180)),
@@ -105,25 +119,25 @@ const CHROM_INFO: Record<string, { gene: string; long: boolean }> = {
   B1: { gene: "B", long: true }, B2: { gene: "b", long: false },
 };
 
-// ============ 槽位：每阶段 → 每单体 {cell, x, y, a} ============
-/** cell=所属细胞下标（精子模式相对细胞中心；卵细胞 cells=2 阶段 x/y 为绝对坐标）；a=旋转角（度） */
-export interface Slot { cell: number; x: number; y: number; a: number }
+// ============ 槽位：每阶段 → 每单体 {cell, x, y, a, s?} ============
+/** cell=所属细胞下标（精子模式相对细胞中心；卵细胞 cells=2 阶段 x/y 为绝对坐标）；a=旋转角（度）；s=可选缩放（默认 1，极体小细胞用） */
+export interface Slot { cell: number; x: number; y: number; a: number; s?: number }
 export type Slots = Record<string, Slot>;
 
 /** 复制态（X 形）：姐妹两杆同位反向旋转 */
-function xpair(S: Slots, k: string, cell: number, x: number, y: number): void {
-  S[`${k}a`] = { cell, x, y, a: -X_ANGLE };
-  S[`${k}b`] = { cell, x, y, a: X_ANGLE };
+function xpair(S: Slots, k: string, cell: number, x: number, y: number, s = 1): void {
+  S[`${k}a`] = { cell, x, y, a: -X_ANGLE, s };
+  S[`${k}b`] = { cell, x, y, a: X_ANGLE, s };
 }
 /** 未复制（重叠杆）：姐妹两杆同位同角 */
-function rod(S: Slots, k: string, cell: number, x: number, y: number): void {
-  S[`${k}a`] = { cell, x, y, a: 0 };
-  S[`${k}b`] = { cell, x, y, a: 0 };
+function rod(S: Slots, k: string, cell: number, x: number, y: number, s = 1): void {
+  S[`${k}a`] = { cell, x, y, a: 0, s };
+  S[`${k}b`] = { cell, x, y, a: 0, s };
 }
 /** 着丝点已分裂：姐妹两杆分居两点 */
-function split(S: Slots, k: string, cell: number, x1: number, y1: number, x2: number, y2: number): void {
-  S[`${k}a`] = { cell, x: x1, y: y1, a: 0 };
-  S[`${k}b`] = { cell, x: x2, y: y2, a: 0 };
+function split(S: Slots, k: string, cell: number, x1: number, y1: number, x2: number, y2: number, s = 1): void {
+  S[`${k}a`] = { cell, x: x1, y: y1, a: 0, s };
+  S[`${k}b`] = { cell, x: x2, y: y2, a: 0, s };
 }
 
 /** 精子模式逐阶段槽位表（纯声明数据） */
@@ -278,43 +292,46 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-telophase-I": {
-      // 减Ⅰ末期：大次级卵母细胞 {A1,B1} + 第一极体 {A2,B2}（不均等分裂，约 3:1）
+      // 减Ⅰ末期：大次级卵母细胞 {A1,B1} + 第一极体 {A2,B2}（不均等分裂，约 3:1；极体染色体缩放）
       xpair(S, "A1", 0, 227, 200);
       xpair(S, "B1", 0, 253, 200);
-      xpair(S, "A2", 0, 341, 61);
-      xpair(S, "B2", 0, 365, 61);
+      xpair(S, "A2", 0, 341, 61, PB_SCALE);
+      xpair(S, "B2", 0, 365, 61, PB_SCALE);
       break;
     }
     case "oo-metaphase-II": {
       // 减Ⅱ中期：大细胞赤道板排列；极体①跟随（减Ⅱ停滞待受精）
       xpair(S, "A1", 0, 227, 200);
       xpair(S, "B1", 0, 253, 200);
-      xpair(S, "A2", 0, 341, 61);
-      xpair(S, "B2", 0, 365, 61);
+      xpair(S, "A2", 0, 341, 61, PB_SCALE);
+      xpair(S, "B2", 0, 365, 61, PB_SCALE);
       break;
     }
     case "oo-anaphase-II": {
-      // 减Ⅱ后期：大细胞内着丝点分裂——姐妹染色单体分赴本细胞上/下两极（垂直分离）；极体①保持 X
+      // 减Ⅱ后期：次级卵母细胞着丝粒分裂（姐妹分赴本细胞上/下两极）；第一极体同步分裂（A2a/B2a 上、A2b/B2b 下）
       S.A1a = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
       S.A1b = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
       S.B1a = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
       S.B1b = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
-      xpair(S, "A2", 0, 341, 61);
-      xpair(S, "B2", 0, 365, 61);
+      // 极体①：A2/B2 姐妹分赴极体上/下（垂直 ±15，缩放后杆端不越出极体）
+      S.A2a = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] - 15, a: 0, s: PB_SCALE };
+      S.A2b = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] + 15, a: 0, s: PB_SCALE };
+      S.B2a = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] - 15, a: 0, s: PB_SCALE };
+      S.B2b = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] + 15, a: 0, s: PB_SCALE };
       break;
     }
     case "oo-telophase-II":
     case "oo-egg": {
       // 减Ⅱ末期/成熟卵：8 根杆守恒分配——
-      // 卵{A1a,B1a} + 极体①{A2a,B2a} + 极体②{A2b,B2b} + 极体③{A1b,B1b}，每细胞恰 2 条
+      // 卵{A1a,B1a} + 极体①{A2a,B2a} + 极体②{A2b,B2b} + 极体③{A1b,B1b}，每细胞恰 2 条（极体染色体缩放）
       rod(S, "A1", 0, 227, 200);
       rod(S, "B1", 0, 253, 200);
-      rod(S, "A2", 0, 341, 61);
-      rod(S, "B2", 0, 365, 61);
-      S.A1b = { cell: 0, x: 371, y: 317, a: 0 };   // 极体③ 左半
-      S.B1b = { cell: 0, x: 387, y: 317, a: 0 };   // 极体③ 右半
-      S.A2b = { cell: 0, x: 413, y: 184, a: 0 };   // 极体② 左半
-      S.B2b = { cell: 0, x: 429, y: 184, a: 0 };   // 极体② 右半
+      rod(S, "A2", 0, 341, 61, PB_SCALE);
+      rod(S, "B2", 0, 365, 61, PB_SCALE);
+      S.A1b = { cell: 0, x: 371, y: 317, a: 0, s: PB_SCALE };   // 极体③ 左半
+      S.B1b = { cell: 0, x: 387, y: 317, a: 0, s: PB_SCALE };   // 极体③ 右半
+      S.A2b = { cell: 0, x: 413, y: 184, a: 0, s: PB_SCALE };   // 极体② 左半
+      S.B2b = { cell: 0, x: 429, y: 184, a: 0, s: PB_SCALE };   // 极体② 右半
       break;
     }
     default:
@@ -439,12 +456,14 @@ function updateSpindleLines(
     const [bx, by] = oocyteAbs ? [0, 0] : centers[sl.cell] ?? [0, 0];
     const tx = bx + sl.x;
     const ty = by + sl.y;
-    // 极点：卵细胞两细胞期大细胞用 OO_CENTER，其余用所属细胞中心 ± POLE_OFFSET
-    const center = oocyteAbs ? OO_CENTER : centers[f.cell] ?? [0, 0];
-    const yOff = s.unequal ? OO_POLE_SHIFT : 0;
+    // 极点：默认卵细胞两细胞期大细胞用 OO_CENTER、其余用所属细胞中心 ± POLE_OFFSET；
+    // 纤维可显式指定 center/offset（如极体微纺锤丝）
+    const center = f.center ?? (oocyteAbs ? OO_CENTER : centers[f.cell] ?? [0, 0]);
+    const off = f.offset ?? POLE_OFFSET;
+    const yOff = s.unequal && !f.center ? OO_POLE_SHIFT : 0;
     const pole: [number, number] = f.pole === "top"
-      ? [center[0], center[1] - POLE_OFFSET + yOff]
-      : [center[0], center[1] + POLE_OFFSET + yOff];
+      ? [center[0], center[1] - off + yOff]
+      : [center[0], center[1] + off + yOff];
 
     const line = bgPool.spindleLines[idx];
     line.setAttribute("x1", String(pole[0]));
@@ -504,8 +523,9 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       const g = groups.get(spec.key)!;
       const slot = slots[spec.key];
       const [bx, by] = oocyteAbs ? [0, 0] : centers[slot.cell] ?? [0, 0];
-      g.style.transform = `translate(${bx + slot.x}px, ${by + slot.y}px) rotate(${slot.a}deg)`;
-      // 标注反向旋转保持文字直立；字号随细胞半径自适应（变形期随组缩放需反向补偿）
+      const sc = slot.s ?? 1;
+      g.style.transform = `translate(${bx + slot.x}px, ${by + slot.y}px) rotate(${slot.a}deg) scale(${sc})`;
+      // 标注反向旋转保持文字直立；极体小细胞内随组缩放（小细胞小标注），字号随细胞半径自适应
       const lbl = g.querySelector("text")!;
       lbl.style.transform = `rotate(${-slot.a}deg)`;
       lbl.setAttribute("visibility", showGenes ? "visible" : "hidden");
