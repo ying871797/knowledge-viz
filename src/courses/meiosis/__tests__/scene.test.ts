@@ -323,18 +323,45 @@ describe("纺锤丝显隐与池隔离", () => {
     host.remove();
   });
 
-  // 精子模式：6 个可见阶段
-  it("精子模式：减Ⅰ前/中/后 + 减Ⅱ前/中/后 可见，其余隐藏", () => {
-    const visible = ["prophase-I", "metaphase-I", "anaphase-I", "metaphase-II", "anaphase-II"];
+  // 精子模式：6 个可见阶段（数量精确断言）
+  it("精子模式：减Ⅰ前/中/后各4根、减Ⅱ中4根、减Ⅱ后8根；其余隐藏", () => {
+    const visible: [string, number][] = [
+      ["prophase-I", 4], ["metaphase-I", 4], ["anaphase-I", 4],
+      ["metaphase-II", 4], ["anaphase-II", 8],
+    ];
     const hidden = ["spermatogonium", "interphase", "telophase-I", "telophase-II", "sperm"];
-    for (const id of visible) {
+    for (const [id, count] of visible) {
       scene.render(st({ stage: id, cells: id.includes("II") ? 2 : 1, replicated: true, pairing: id.includes("prophase"), crossingOver: id !== "spermatogonium", equatorial: id.includes("metaphase") ? (id.includes("II") ? "single" : "paired") : "none", separating: id.includes("anaphase") ? (id.includes("II") ? "sister" : "homolog") : "none", spermShape: id === "sperm" }));
-      expect(visibleSpindleCount()).toBeGreaterThanOrEqual(1);
+      expect(visibleSpindleCount(), id).toBe(count);
     }
     for (const id of hidden) {
       scene.render(st({ stage: id, cells: id.includes("II") ? (id === "telophase-II" || id === "sperm" ? 4 : 2) : 1, replicated: id !== "spermatogonium", spermShape: id === "sperm" }));
-      expect(visibleSpindleCount()).toBe(0);
+      expect(visibleSpindleCount(), id).toBe(0);
     }
+  });
+
+  // 几何：纺锤丝必须是斜向汇聚（x2 ≠ 0），不是竖直棍
+  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（line x2 非零）", () => {
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(((l.parentElement as unknown as SVGElement).style.opacity || "0")) > 0);
+    expect(visible.length).toBe(4);
+    for (const l of visible) {
+      expect(Math.abs(Number(l.getAttribute("x2"))), "x2").toBeGreaterThan(0);
+    }
+  });
+
+  // 极点归属：减Ⅰ后期默认 A1a→上极、A2a→下极（同源分离，不交叉）
+  it("减Ⅰ后期：A1a 连上极、A2a 连下极（同源分离）", () => {
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const outers = [...host.querySelectorAll<SVGGElement>(".spindle-outer")];
+    const visibleOuters = outers.filter((g) => parseFloat((g.firstElementChild as SVGElement).style.opacity || "0") > 0);
+    expect(visibleOuters.length).toBe(4);
+    // MI_FIBERS 顺序：A1a top, B1a top, A2a bottom, B2a bottom
+    expect(visibleOuters[0].getAttribute("transform")).toBe("translate(400, 90)");
+    expect(visibleOuters[1].getAttribute("transform")).toBe("translate(400, 90)");
+    expect(visibleOuters[2].getAttribute("transform")).toBe("translate(400, 310)");
+    expect(visibleOuters[3].getAttribute("transform")).toBe("translate(400, 310)");
   });
 
   // 池隔离：两次 mount 后丝数不累积

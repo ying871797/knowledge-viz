@@ -14,12 +14,57 @@ const SPLIT_H = 61;                     // 减Ⅱ后期极距（杆位 ±(61∓1
 // 纺锤丝常量
 const POLE_OFFSET = 110;                // 极点到细胞中心的纵向距离
 const OO_POLE_SHIFT = -20;             // 卵细胞模式极点同向偏移（向上）
-const SPINDLE_STAGES = new Set([
-  "prophase-I", "metaphase-I", "anaphase-I",
-  "metaphase-II", "anaphase-II",
-  "oo-prophase-I", "oo-metaphase-I", "oo-anaphase-I",
-  "oo-metaphase-II", "oo-anaphase-II",
-]);
+
+// ============ 纺锤丝连接表：声明式（每阶段每染色体 → 细胞 + 极点） ============
+// 减Ⅰ：同源染色体整对连同一极（默认 A1/B1→上、A2/B2→下）；减Ⅱ：姐妹分连两极（有丝分裂式）。
+// 极点由所属细胞中心 ± POLE_OFFSET 得出（卵细胞两细胞期大细胞用 OO_CENTER）。
+interface SpindleFiber { key: string; cell: number; pole: "top" | "bottom" }
+const MI_FIBERS: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "B1a", cell: 0, pole: "top" },
+  { key: "A2a", cell: 0, pole: "bottom" }, { key: "B2a", cell: 0, pole: "bottom" },
+];
+const MI_COMBO_ALT: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "B2a", cell: 0, pole: "top" },
+  { key: "A2a", cell: 0, pole: "bottom" }, { key: "B1a", cell: 0, pole: "bottom" },
+];
+// 减Ⅱ中期：精子细胞0={A1,B2}、细胞1={A2,B1}；卵细胞大细胞={A1,B1}
+const MII_SPERM: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "B2a", cell: 0, pole: "bottom" },
+  { key: "A2a", cell: 1, pole: "top" }, { key: "B1a", cell: 1, pole: "bottom" },
+];
+const MII_OO: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "B1a", cell: 0, pole: "bottom" },
+];
+// 减Ⅱ后期：姐妹分连两极（每细胞每染色体 2 根）
+const MIIA_SPERM: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "A1b", cell: 0, pole: "bottom" },
+  { key: "B2a", cell: 0, pole: "top" }, { key: "B2b", cell: 0, pole: "bottom" },
+  { key: "A2a", cell: 1, pole: "top" }, { key: "A2b", cell: 1, pole: "bottom" },
+  { key: "B1a", cell: 1, pole: "top" }, { key: "B1b", cell: 1, pole: "bottom" },
+];
+const MIIA_OO: SpindleFiber[] = [
+  { key: "A1a", cell: 0, pole: "top" }, { key: "A1b", cell: 0, pole: "bottom" },
+  { key: "B1a", cell: 0, pole: "top" }, { key: "B1b", cell: 0, pole: "bottom" },
+];
+function fibersFor(s: MeiosisState, comboAlt: boolean): SpindleFiber[] {
+  switch (s.stage) {
+    case "prophase-I": case "metaphase-I":
+    case "oo-prophase-I": case "oo-metaphase-I":
+      return MI_FIBERS;
+    case "anaphase-I": case "oo-anaphase-I":
+      return comboAlt ? MI_COMBO_ALT : MI_FIBERS;
+    case "metaphase-II":
+      return MII_SPERM;
+    case "oo-metaphase-II":
+      return MII_OO;
+    case "anaphase-II":
+      return MIIA_SPERM;
+    case "oo-anaphase-II":
+      return MIIA_OO;
+    default:
+      return [];
+  }
+}
 
 // 细胞中心（按 cells 数量取前 n 个）
 export const CELL_CENTERS: Record<number, [number, number][]> = {
@@ -314,6 +359,8 @@ const bgPool = {
 };
 // 每条纺锤丝的初始染色体坐标（首次 layout 时 lazy 填充）
 const spindleInits: ({ x: number; y: number } | null)[] = Array(16).fill(null);
+// 每条纺锤丝当前极点标识（极点随细胞重排变化时重建基准）
+const spindlePoleKeys: string[] = Array(16).fill("");
 
 /** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
 function updatePool(root: SVGSVGElement, s: MeiosisState): void {
@@ -393,54 +440,55 @@ function updatePool(root: SVGSVGElement, s: MeiosisState): void {
 function updateSpindleLines(
   s: MeiosisState,
   slots: Record<string, { cell: number; x: number; y: number; a: number }>,
+  comboAlt: boolean,
 ): void {
+  const fibers = fibersFor(s, comboAlt);
   const centers = CELL_CENTERS[s.cells] ?? [];
-  const oocyteAbs = s.cells === 2 && s.unequal;
-  const show = SPINDLE_STAGES.has(s.stage);
-  let idx = 0;
+  const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞两细胞期：槽位即画布绝对坐标
 
-  for (let c = 0; c < centers.length; c++) {
-    // 收集该细胞的染色体代表（每对姐妹取 a 单体）
-    const reps = CHROMATIDS
-      .filter((sp) => sp.key.endsWith("a") && slots[sp.key]?.cell === c)
-      .map((sp) => {
-        const sl = slots[sp.key];
-        const [bx, by] = oocyteAbs ? [0, 0] : centers[sl.cell];
-        return { x: bx + sl.x, y: by + sl.y };
-      });
-
-    // 极点坐标（含卵细胞偏移）
-    const [pcx, pcy] = centers[c];
-    const yOff = s.unequal ? OO_POLE_SHIFT : 0;
-    const poleT: [number, number] = [pcx, pcy - POLE_OFFSET + yOff];
-    const poleB: [number, number] = [pcx, pcy + POLE_OFFSET + yOff];
-
-    const mid = Math.ceil(reps.length / 2);
-    for (let j = 0; j < reps.length; j++) {
-      const { x: tx, y: ty } = reps[j];
-      const pole = j < mid ? poleT : poleB;
-
-      // outer g：极点位置（setAttribute，不触发 transition）
-      bgPool.spindleOuters[idx].setAttribute("transform", `translate(${pole[0]}, ${pole[1]})`);
-
-      // 内层 g：染色体偏移（style.transform，CSS transition 驱动平滑跟随）
-      if (spindleInits[idx] === null) {
-        // 首次渲染：记录初始染色体坐标，line 几何设为初始偏移
-        spindleInits[idx] = { x: tx, y: ty };
-        bgPool.spindleLines[idx].setAttribute("y2", String(ty - pole[1]));
-      }
-      const init = spindleInits[idx]!;
-      bgPool.spindleInners[idx].style.transform = `translate(${tx - init.x}px, ${ty - init.y}px)`;
-      bgPool.spindleInners[idx].style.opacity = show ? "1" : "0";
-      idx++;
-    }
+  if (fibers.length === 0) {
+    // 非纺锤丝阶段：全部隐藏并清空基准（极点随细胞重排而变，下次进入需重建）
+    bgPool.spindleInners.forEach((g) => { g.style.opacity = "0"; });
+    spindleInits.fill(null);
+    spindlePoleKeys.fill("");
+    return;
   }
 
+  fibers.forEach((f, idx) => {
+    const sl = slots[f.key];
+    if (!sl) return;
+    // 染色体画布坐标
+    const [bx, by] = oocyteAbs ? [0, 0] : centers[sl.cell] ?? [0, 0];
+    const tx = bx + sl.x;
+    const ty = by + sl.y;
+    // 极点：卵细胞两细胞期大细胞用 OO_CENTER，其余用所属细胞中心 ± POLE_OFFSET
+    const center = oocyteAbs ? OO_CENTER : centers[f.cell] ?? [0, 0];
+    const yOff = s.unequal ? OO_POLE_SHIFT : 0;
+    const pole: [number, number] = f.pole === "top"
+      ? [center[0], center[1] - POLE_OFFSET + yOff]
+      : [center[0], center[1] + POLE_OFFSET + yOff];
+    const poleKey = `${pole[0]},${pole[1]}`;
+
+    // outer g：极点位置（setAttribute，不触发 transition）
+    bgPool.spindleOuters[idx].setAttribute("transform", `translate(${pole[0]}, ${pole[1]})`);
+
+    // 基准（首次或极点变化时）：line 几何 = 染色体相对极点的偏移（斜向汇聚）
+    if (spindleInits[idx] === null || spindlePoleKeys[idx] !== poleKey) {
+      spindleInits[idx] = { x: tx, y: ty };
+      spindlePoleKeys[idx] = poleKey;
+      bgPool.spindleLines[idx].setAttribute("x2", String(tx - pole[0]));
+      bgPool.spindleLines[idx].setAttribute("y2", String(ty - pole[1]));
+    }
+    const init = spindleInits[idx]!;
+    bgPool.spindleInners[idx].style.transform = `translate(${tx - init.x}px, ${ty - init.y}px)`;
+    bgPool.spindleInners[idx].style.opacity = "1";
+  });
+
   // 隐藏未使用的线
-  while (idx < bgPool.spindleInners.length) {
-    bgPool.spindleInners[idx].style.opacity = "0";
-    spindleInits[idx] = null;
-    idx++;
+  for (let i = fibers.length; i < bgPool.spindleInners.length; i++) {
+    bgPool.spindleInners[i].style.opacity = "0";
+    spindleInits[i] = null;
+    spindlePoleKeys[i] = "";
   }
 }
 
@@ -478,7 +526,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
     if (!root) return;
     updatePool(root, s);
     const slots = slotsFor(s, comboAlt);
-    updateSpindleLines(s, slots);
+    updateSpindleLines(s, slots, comboAlt);
     const centers = CELL_CENTERS[s.cells] ?? [];
     const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞 cells=2 阶段：槽位即绝对坐标
     const radius = CELL_RADIUS[s.cells] ?? 62;
@@ -533,6 +581,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bgPool.spindleLines.length = 0;
       bgPool.spindleOuters.length = 0;
       spindleInits.fill(null);
+      spindlePoleKeys.fill("");
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";

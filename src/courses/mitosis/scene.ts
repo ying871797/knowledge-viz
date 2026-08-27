@@ -227,6 +227,8 @@ function updateMitoPool(s: Record<string, unknown>): void {
       // 内层 g：染色体偏移（CSS transition 驱动）
       if (spindleInits[i] === null) {
         spindleInits[i] = { x: tx, y: ty };
+        // line 几何 = 染色体相对极点的偏移（斜向汇聚，x2 不可省略）
+        line.setAttribute("x2", String(tx - pole[0]));
         line.setAttribute("y2", String(ty - pole[1]));
       }
       const init = spindleInits[i]!;

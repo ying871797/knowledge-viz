@@ -60,6 +60,17 @@ describe("有丝分裂场景", () => {
     expect(visibleCount(".spindle-inner")).toBe(8);
   });
 
+  // 几何：纺锤丝从极点斜向汇聚染色体（x2 ≠ 0），不是竖直棍
+  it("前期：纺锤丝 x2 非零（斜向汇聚，非竖直棍）", () => {
+    scene.render(st({ stage: "prophase", replicated: true }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(((l.parentElement as unknown as SVGElement).style.opacity || "0")) > 0);
+    expect(visible.length).toBe(8);
+    for (const l of visible) {
+      expect(Math.abs(Number(l.getAttribute("x2"))), "x2").toBeGreaterThan(0);
+    }
+  });
+
   it("后期：着丝点分裂——姐妹分赴两极", () => {
     scene.render(st({ stage: "anaphase" }));
     expect(chromatid("A1a").style.transform).toContain("translate(280px, 125px)");
