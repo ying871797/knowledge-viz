@@ -26,6 +26,8 @@ export interface Course {
 export interface SceneComponent {
   mount(container: HTMLElement): void;
   render(state: Record<string, unknown>): void;
+  /** 场景图例数据（可选）：有则由 app.ts 渲染为 HTML 覆盖层，不参与 SVG 缩放 */
+  legend?: Array<{ color: string; label: string }>;
 }
 
 // 判断值是否为非负有限数值（用于 fail-fast 校验）

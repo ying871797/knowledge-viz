@@ -362,7 +362,7 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
         bonds.push(l);
         svgRoot.appendChild(l);
       }
-      svgRoot.appendChild(legendGroup());
+      // 图例由 app.ts 渲染为 HTML 覆盖层，不在 SVG 内绘制
 
       // 拓展角标（启动子 / 释放因子）
       extBadge = document.createElement("div");
@@ -380,30 +380,12 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
     destroy() {
       wrap?.remove();
     },
-  };
-}
 
-/** 图例（固定注释层）：单行四项横排于画布底部 */
-function legendGroup(): SVGGElement {
-  const legend = document.createElementNS(NS, "g");
-  legend.setAttribute("class", "legend-group");
-  const ITEMS: [string, string, number][] = [
-    ["#64748b", "灰——DNA 双链", 24],
-    ["#8b5cf6", "紫——mRNA / tRNA", 190],
-    ["#14b8a6", "青——RNA 聚合酶", 402],
-    ["#f59e0b", "橙——氨基酸", 592],
-  ];
-  ITEMS.forEach(([color, label, x]) => {
-    const rect = document.createElementNS(NS, "rect");
-    rect.setAttribute("x", String(x)); rect.setAttribute("y", "378");
-    rect.setAttribute("width", "26"); rect.setAttribute("height", "13");
-    rect.setAttribute("rx", "3"); rect.setAttribute("fill", color);
-    legend.appendChild(rect);
-    const t = document.createElementNS(NS, "text");
-    t.setAttribute("x", String(x + 32)); t.setAttribute("y", "389");
-    t.setAttribute("font-size", "13"); t.setAttribute("fill", "#334155");
-    t.textContent = label;
-    legend.appendChild(t);
-  });
-  return legend;
+    legend: [
+      { color: "#64748b", label: "灰——DNA 双链" },
+      { color: "#8b5cf6", label: "紫——mRNA / tRNA" },
+      { color: "#14b8a6", label: "青——RNA 聚合酶" },
+      { color: "#f59e0b", label: "橙——氨基酸" },
+    ],
+  };
 }
