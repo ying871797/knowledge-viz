@@ -106,28 +106,28 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("A2a").style.transform).toContain("translate(598px, 200px)");
   });
 
-  it("阶段8 减Ⅱ后期：着丝点分裂——每 X 拆两杆分赴两极（极距 61，杆位 ±74/±48）", () => {
+  it("阶段8 减Ⅱ后期：着丝点分裂——姐妹分赴本细胞上/下两极（垂直分离）", () => {
     scene.render(st({ stage: "anaphase-II", replicated: false, cells: 2, separating: "sister" }));
-    // 左细胞 (215,200)：A1a(141,187) A1b(263,187) B2a(167,213) B2b(289,213)，全部竖直
-    expect(chromatid("A1a").style.transform).toBe("translate(141px, 187px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(263px, 187px) rotate(0deg)");
-    expect(chromatid("B2a").style.transform).toBe("translate(167px, 213px) rotate(0deg)");
-    expect(chromatid("B2b").style.transform).toBe("translate(289px, 213px) rotate(0deg)");
-    // 右细胞 (585,200)：B1a(511,187) B1b(633,187) A2a(537,213) A2b(659,213)
-    expect(chromatid("B1a").style.transform).toContain("translate(511px, 187px)");
-    expect(chromatid("A2b").style.transform).toContain("translate(659px, 213px)");
+    // 左细胞 (215,200)：A1a(202,130) A1b(202,270) B2a(228,130) B2b(228,270)，全部竖直
+    expect(chromatid("A1a").style.transform).toBe("translate(202px, 130px) rotate(0deg)");
+    expect(chromatid("A1b").style.transform).toBe("translate(202px, 270px) rotate(0deg)");
+    expect(chromatid("B2a").style.transform).toBe("translate(228px, 130px) rotate(0deg)");
+    expect(chromatid("B2b").style.transform).toBe("translate(228px, 270px) rotate(0deg)");
+    // 右细胞 (585,200)：B1a(572,130) B1b(572,270) A2a(598,130) A2b(598,270)
+    expect(chromatid("B1a").style.transform).toContain("translate(572px, 130px)");
+    expect(chromatid("A2b").style.transform).toContain("translate(598px, 270px)");
   });
 
-  it("阶段9 减Ⅱ末期：四细胞各 2 竖杆（本体居左格、姊妹居同行右格）", () => {
+  it("阶段9 减Ⅱ末期：四细胞各 2 竖杆——各极姐妹居同列上下格", () => {
     scene.render(st({ stage: "telophase-II", replicated: false, cells: 4 }));
-    // 左上格 (175,98)：A1a(162,85) B2a(188,85)；右上格 (480,98)：A1b(467,85) B2b(493,85)
+    // 左上格 (175,98)：A1a(162,85) B2a(188,85)；右上格 (480,98)：B1a(467,85) A2a(493,85)
     expect(chromatid("A1a").style.transform).toContain("translate(162px, 85px)");
     expect(chromatid("B2a").style.transform).toContain("translate(188px, 85px)");
-    expect(chromatid("A1b").style.transform).toContain("translate(467px, 85px)");
-    expect(chromatid("B2b").style.transform).toContain("translate(493px, 85px)");
-    // 左下格 (175,302)：B1a(162,315) A2a(188,315)；右下格：B1b(467,315) A2b(493,315)
-    expect(chromatid("B1a").style.transform).toContain("translate(162px, 315px)");
-    expect(chromatid("A2a").style.transform).toContain("translate(188px, 315px)");
+    expect(chromatid("B1a").style.transform).toContain("translate(467px, 85px)");
+    expect(chromatid("A2a").style.transform).toContain("translate(493px, 85px)");
+    // 左下格 (175,302)：A1b(162,315) B2b(188,315)；右下格：B1b(467,315) A2b(493,315)
+    expect(chromatid("A1b").style.transform).toContain("translate(162px, 315px)");
+    expect(chromatid("B2b").style.transform).toContain("translate(188px, 315px)");
     expect(chromatid("B1b").style.transform).toContain("translate(467px, 315px)");
     expect(chromatid("A2b").style.transform).toContain("translate(493px, 315px)");
   });
@@ -154,11 +154,12 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(visiblePBs.length).toBe(1);
   });
 
-  it("卵细胞阶段8 减Ⅱ后期：大细胞双杆分极、极体①保持 X", () => {
+  it("卵细胞阶段8 减Ⅱ后期：大细胞姐妹分赴上/下两极、极体①保持 X", () => {
     scene.render(st({ stage: "oo-anaphase-II", replicated: false, cells: 2, unequal: true, polarBodies: 1 }));
-    expect(chromatid("A1a").style.transform).toBe("translate(156px, 200px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(324px, 200px) rotate(0deg)");
-    expect(chromatid("B1b").style.transform).toBe("translate(337px, 200px) rotate(0deg)");
+    // 大细胞 OO_CENTER(240,200) ±84 垂直分离：A1(227,116/284) B1(253,116/284)
+    expect(chromatid("A1a").style.transform).toBe("translate(227px, 116px) rotate(0deg)");
+    expect(chromatid("A1b").style.transform).toBe("translate(227px, 284px) rotate(0deg)");
+    expect(chromatid("B1b").style.transform).toBe("translate(253px, 284px) rotate(0deg)");
     // 极体①保持 X 形
     expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
     expect(chromatid("A2a").style.transform).toContain("rotate(-11deg)");
@@ -260,6 +261,7 @@ describe.each([
   ["sperm:telophase-I", meiosisCourse.stages[5].sceneState],
   ["sperm:metaphase-II", meiosisCourse.stages[6].sceneState],
   ["sperm:anaphase-II", meiosisCourse.stages[7].sceneState],
+  ["sperm:telophase-II", meiosisCourse.stages[8].sceneState],
   ["sperm:telophase-II", meiosisCourse.stages[8].sceneState],
   ["sperm:sperm", meiosisCourse.stages[9].sceneState],
   ["oo:oo-spermatogonium", oogenesisCourse.stages[0].sceneState],

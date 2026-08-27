@@ -9,7 +9,7 @@ const PAIR_GAP = 13;           // 并排染色体/单体对的半间距
 const SPREAD = Math.round(76 * 0.75);   // 基态四象限散布距离（Ru·0.75）
 const POLE_X = Math.round(76 * 0.7);    // 减Ⅰ后期两极横向距离
 const POLE_Y = Math.round(76 * 0.5);    // 减Ⅰ后期两极纵向错开
-const SPLIT_H = 61;                     // 减Ⅱ后期极距（杆位 ±(61∓13)=±74/±48，含 y 错列范数 ≤76）
+const SPLIT_V = 70;                     // 减Ⅱ后期极距（姐妹分赴本细胞上/下两极，±70 杆心距，范数 ≤76）
 
 // 纺锤丝常量
 const POLE_OFFSET = 110;                // 极点到细胞中心的纵向距离
@@ -205,34 +205,33 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
       break;
     }
     case "anaphase-II": {
-      // 减Ⅱ后期：着丝点分裂——每 X 的两条单体变为竖杆分赴本细胞两极；
-      // 极距 61 → 杆位 ±(61∓13)=±74/±48，含 y 错列后范数 ≤76 恰守不变式
-      split(S, "A1", 0, -SPLIT_H - PAIR_GAP, -PAIR_GAP, SPLIT_H - PAIR_GAP, -PAIR_GAP);
-      split(S, "B2", 0, -SPLIT_H + PAIR_GAP, PAIR_GAP, SPLIT_H + PAIR_GAP, PAIR_GAP);
-      split(S, "B1", 1, -SPLIT_H - PAIR_GAP, -PAIR_GAP, SPLIT_H - PAIR_GAP, -PAIR_GAP);
-      split(S, "A2", 1, -SPLIT_H + PAIR_GAP, PAIR_GAP, SPLIT_H + PAIR_GAP, PAIR_GAP);
+      // 减Ⅱ后期：着丝点分裂——姐妹染色单体分赴本细胞上/下两极（垂直分离，与纺锤丝连接一致）
+      split(S, "A1", 0, -PAIR_GAP, -SPLIT_V, -PAIR_GAP, SPLIT_V);
+      split(S, "B2", 0, PAIR_GAP, -SPLIT_V, PAIR_GAP, SPLIT_V);
+      split(S, "B1", 1, -PAIR_GAP, -SPLIT_V, -PAIR_GAP, SPLIT_V);
+      split(S, "A2", 1, PAIR_GAP, -SPLIT_V, PAIR_GAP, SPLIT_V);
       break;
     }
     case "telophase-II": {
-      // 减Ⅱ末期：四细胞各 2 竖杆（一长一短）——本体(a)居左格，姊妹(b)居同行右格
+      // 减Ⅱ末期：四细胞 2×2——各极姐妹进入同列上下格（垂直分极的延续）
       rod(S, "A1", 0, -PAIR_GAP, -PAIR_GAP);
       rod(S, "B2", 0, PAIR_GAP, -PAIR_GAP);
-      rod(S, "B1", 2, -PAIR_GAP, PAIR_GAP);
-      rod(S, "A2", 2, PAIR_GAP, PAIR_GAP);
-      S.A1b = { cell: 1, x: -PAIR_GAP, y: -PAIR_GAP, a: 0 };
-      S.B2b = { cell: 1, x: PAIR_GAP, y: -PAIR_GAP, a: 0 };
+      rod(S, "B1", 1, -PAIR_GAP, -PAIR_GAP);
+      rod(S, "A2", 1, PAIR_GAP, -PAIR_GAP);
+      S.A1b = { cell: 2, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
+      S.B2b = { cell: 2, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
       S.B1b = { cell: 3, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
       S.A2b = { cell: 3, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
       break;
     }
     case "sperm": {
-      // 变形期：染色体分配同末期，头部浓缩 + 尾部
+      // 变形期：分配同减Ⅱ末期，头部浓缩 + 尾部
       rod(S, "A1", 0, -PAIR_GAP, -PAIR_GAP);
       rod(S, "B2", 0, PAIR_GAP, -PAIR_GAP);
-      rod(S, "B1", 2, -PAIR_GAP, PAIR_GAP);
-      rod(S, "A2", 2, PAIR_GAP, PAIR_GAP);
-      S.A1b = { cell: 1, x: -PAIR_GAP, y: -PAIR_GAP, a: 0 };
-      S.B2b = { cell: 1, x: PAIR_GAP, y: -PAIR_GAP, a: 0 };
+      rod(S, "B1", 1, -PAIR_GAP, -PAIR_GAP);
+      rod(S, "A2", 1, PAIR_GAP, -PAIR_GAP);
+      S.A1b = { cell: 2, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
+      S.B2b = { cell: 2, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
       S.B1b = { cell: 3, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
       S.A2b = { cell: 3, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
       break;
@@ -305,11 +304,11 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-anaphase-II": {
-      // 减Ⅱ后期：大细胞内着丝点分裂——双杆分极（极距 ±84，含 y 错列范数 ≤ OO_RADIUS）；极体①保持 X
-      S.A1a = { cell: 0, x: 156, y: 200, a: 0 };
-      S.A1b = { cell: 0, x: 324, y: 200, a: 0 };
-      S.B1a = { cell: 0, x: 169, y: 200, a: 0 };
-      S.B1b = { cell: 0, x: 337, y: 200, a: 0 };
+      // 减Ⅱ后期：大细胞内着丝点分裂——姐妹染色单体分赴本细胞上/下两极（垂直分离）；极体①保持 X
+      S.A1a = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
+      S.A1b = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
+      S.B1a = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
+      S.B1b = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
       xpair(S, "A2", 0, 341, 61);
       xpair(S, "B2", 0, 365, 61);
       break;
