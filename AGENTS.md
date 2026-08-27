@@ -60,9 +60,37 @@ npm run build                 # 先 tsc --noEmit 再 vite build，产物 dist/
 ## 环境与工作流
 
 - Windows / PowerShell 5.1 环境。git diff 输出经 PowerShell 管道会 GBK 乱码——生成 diff 文件用 `cmd /c "git diff ... > %TEMP%\x.txt"` 再按 UTF-8 读入。
-- 分支与集成（worktree / feat / 双门禁 / 攒批逃生舱 / hotfix）遵循全局 AGENTS.md 的「分支与集成流程」章节。
 - 本仓库采用子代理开发流程：进度账本在 `.superpowers/sdd/progress.md`（含各任务完成记录与遗留 minor findings），接手时先读它和 `git log`。
 - 领域术语表在 `CONTEXT.md`（阶段/元素/槽位/示意取舍等定义以它为准）；架构决策记录在 `docs/adr/`。
 - 实施方案文档放 `.proposals/*.html`（自包含 HTML，需用户审批后才能动手）；`.my_proposals/` 为历史目录勿混用。
 - 部署：push 到 main 触发 `.github/workflows/deploy.yml`（CI 先跑 `npm test` + build，测试挂则不部署）；首次部署需在仓库 Settings → Pages 把 Source 设为 "GitHub Actions"。`base: './'` 勿改为绝对路径。
 - 根目录的 docx 是内容素材（用户文件），不入库、不要提交。
+
+## **分支与集成流程**（最高优先级，强制遵守）
+
+> 完整规范见全局 AGENTS.md「分支与集成流程」章节，以下为本项目强制补充。
+
+1. **每个功能/修复必须走 feat 分支**：`git worktree add .worktrees/<主题> -b feat/<主题> main`，禁止直接在 main 上开发。
+
+2. **双门禁收工**（缺一不合）：
+   - **机械门禁**：`npm test` + `npx tsc --noEmit` 全绿（agent 执行）。
+   - **人工门禁**：agent 附「待目检清单」→ **等待用户明确确认** → 用户说「同意/可以/没问题」后，方可 merge main + push。
+
+3. **禁止跳过人工门禁**：即使测试全绿、代码看起来没问题，也必须等用户确认后再 merge。不得以「时间紧迫」「改动很小」等理由擅自合并。
+
+4. **发车顺序**：
+   ```
+   git checkout main
+   git merge --no-ff feat/<主题> -m "merge: feat/<主题> — <摘要>"
+   git push origin main          # 需用户手动执行（网络环境差异）
+   git worktree remove .worktrees/<主题>
+   git branch -d feat/<主题>
+   ```
+
+5. **推送由用户执行**：因网络/代理环境差异，`git push origin main` 由用户手动完成，agent 不自动推送。
+
+6. **例外（可直接在 main 操作）**：
+   - 修复明显的语法错误或拼写错误
+   - 运行用户明确要求的测试命令
+   - 用户已提前授权的标准化操作（如 lint、format）
+   - 纯文档微调
