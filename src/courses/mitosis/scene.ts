@@ -178,8 +178,13 @@ const mitoPool = {
   nuc1: null as SVGEllipseElement | null,
   nuc2: null as SVGEllipseElement | null,
   cellPlate: null as SVGLineElement | null,
+  // 纺锤丝：嵌套 g 结构（外层固定极点，内层 style.transform 动画染色体端）
+  spindleOuters: [] as SVGGElement[],
+  spindleInners: [] as SVGGElement[],
   spindleLines: [] as SVGLineElement[],
 };
+// 每条纺锤丝的初始染色体坐标（首次 layout 时 lazy 填充）
+const spindleInits: ({ x: number; y: number } | null)[] = Array(8).fill(null);
 
 /** 更新背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend） */
 function updateMitoPool(s: Record<string, unknown>): void {
@@ -210,18 +215,26 @@ function updateMitoPool(s: Record<string, unknown>): void {
     mitoPool.cellPlate!.style.opacity = "0";
   }
 
-  // 纺锤丝 ×8
+  // 纺锤丝 ×8：嵌套 g（外层固定极点，内层 style.transform 动画染色体端）
   mitoPool.spindleLines.forEach((line, i) => {
     if (bg.spindle) {
       const [tx, ty] = bg.spindle[i];
       const pole = i % 2 === 0 ? POLE_TOP : POLE_BOT;
-      line.setAttribute("x1", String(pole[0]));
-      line.setAttribute("y1", String(pole[1]));
-      line.setAttribute("x2", String(tx));
-      line.setAttribute("y2", String(ty));
-      line.style.opacity = "1";
+
+      // outer g：极点位置（固定）
+      mitoPool.spindleOuters[i].setAttribute("transform", `translate(${pole[0]}, ${pole[1]})`);
+
+      // 内层 g：染色体偏移（CSS transition 驱动）
+      if (spindleInits[i] === null) {
+        spindleInits[i] = { x: tx, y: ty };
+        line.setAttribute("y2", String(ty - pole[1]));
+      }
+      const init = spindleInits[i]!;
+      mitoPool.spindleInners[i].style.transform = `translate(${tx - init.x}px, ${ty - init.y}px)`;
+      mitoPool.spindleInners[i].style.opacity = "1";
     } else {
-      line.style.opacity = "0";
+      mitoPool.spindleInners[i].style.opacity = "0";
+      spindleInits[i] = null;
     }
   });
 }
@@ -285,8 +298,11 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       for (const k of ["cellWallSingle", "cellWallTop", "cellWallBot", "nuc1", "nuc2", "cellPlate"] as const) {
         if (mitoPool[k]) { mitoPool[k]!.remove(); mitoPool[k] = null; }
       }
-      mitoPool.spindleLines.forEach((l) => l.remove());
+      mitoPool.spindleOuters.forEach((g) => g.remove());
+      mitoPool.spindleOuters.length = 0;
+      mitoPool.spindleInners.length = 0;
       mitoPool.spindleLines.length = 0;
+      spindleInits.fill(null);
       wrap = document.createElement("div");
       wrap.className = "mito-scene";
       const svgRoot = el("svg", { viewBox: `0 0 800 400`, width: "100%" });
@@ -324,10 +340,17 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       svgRoot.append(mitoPool.nuc1, mitoPool.nuc2);
       mitoPool.cellPlate = el("line", { class: "cell-plate", x1: CELL.x + 40, x2: CELL.x + CELL.w - 40, stroke: "#059669", "stroke-width": 4, opacity: 0 });
       svgRoot.appendChild(mitoPool.cellPlate);
+      // 纺锤丝池：8 组嵌套 g（外层固定极点，内层 style.transform 动画染色体端）
       for (let i = 0; i < 8; i++) {
-        const line = el("line", { class: "spindle-line", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        const outer = el("g", { class: "spindle-outer" });
+        const inner = el("g", { class: "spindle-inner" });
+        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        inner.appendChild(line);
+        outer.appendChild(inner);
+        mitoPool.spindleOuters.push(outer);
+        mitoPool.spindleInners.push(inner);
         mitoPool.spindleLines.push(line);
-        svgRoot.appendChild(line);
+        svgRoot.appendChild(outer);
       }
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）

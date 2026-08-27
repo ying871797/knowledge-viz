@@ -51,13 +51,13 @@ describe("有丝分裂场景", () => {
     scene.render(st({ stage: "prophase", replicated: true }));
     expect(chromatid("A1a").style.transform).not.toBe(chromatid("A2a").style.transform);
     expect(visibleCount(".nuclear-membrane")).toBe(0);
-    expect(visibleCount(".spindle-line")).toBe(8);
+    expect(visibleCount(".spindle-inner")).toBe(8);
   });
 
   it("中期：赤道板横排", () => {
     scene.render(st({ stage: "metaphase", replicated: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(280px, 200px)");
-    expect(visibleCount(".spindle-line")).toBe(8);
+    expect(visibleCount(".spindle-inner")).toBe(8);
   });
 
   it("后期：着丝点分裂——姐妹分赴两极", () => {

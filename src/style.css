@@ -158,6 +158,16 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .meiosis-scene .spindle-line {
   pointer-events: none;
 }
+/* 有丝分裂纺锤丝：同上模式 */
+.mito-scene .spindle-inner {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out;
+  pointer-events: none;
+}
+.mito-scene .spindle-line {
+  pointer-events: none;
+}
 
 /* DNA 复制场景：定位上下文（拓展角标绝对定位基准）+ 全 SVG 元素幕间补间 */
 .dna-scene { position: relative; }
