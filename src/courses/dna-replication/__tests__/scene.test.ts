@@ -54,11 +54,11 @@ describe("DNA 复制场景（固定元素池）", () => {
     const btn = host.querySelector<HTMLButtonElement>(".view-switch")!;
     expect(btn.textContent).toContain("螺旋视图");
     btn.click();
-    // 螺旋层显现：两条链曲线 + 12 横档；平面层隐藏
+    // 螺旋层显现：两条链曲线 + 12 横档；平面层淡出
     expect(host.querySelectorAll(".helix-layer path.helix-strand").length).toBe(2);
     expect(host.querySelectorAll(".helix-layer line.helix-rung").length).toBe(12);
-    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.display).toBe("");
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.display).toBe("none");
+    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.opacity).toBe("1");
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.opacity).toBe("0");
     // 阶段 2 解旋：中段横档淡出（解旋气泡）
     scene.render({ stage: "unwind" });
     const rungs = [...host.querySelectorAll<SVGLineElement>(".helix-layer line.helix-rung")];
@@ -67,16 +67,16 @@ describe("DNA 复制场景（固定元素池）", () => {
     expect(rungs[11].style.opacity).toBe("1");
     // 切回平面视图
     btn.click();
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.display).toBe("");
-    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.display).toBe("none");
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.style.opacity).toBe("1");
+    expect(host.querySelector<SVGGElement>(".helix-layer")!.style.opacity).toBe("0");
   });
 
-  it("初始视图为平面（螺旋层经 style 隐藏而非属性，避免回退陷阱）", () => {
+  it("初始视图为平面（螺旋层经 opacity 隐藏而非 display，避免回退陷阱）", () => {
     const layer = host.querySelector<SVGGElement>(".helix-layer")!;
-    expect(layer.hasAttribute("display")).toBe(false);
-    expect(layer.style.display).toBe("none");
+    expect(layer.hasAttribute("opacity")).toBe(false);
+    expect(layer.style.opacity).toBe("0");
     // flat 层同理：显隐统一走 style 通道
-    expect(host.querySelector<SVGGElement>(".flat-layer")!.hasAttribute("display")).toBe(false);
+    expect(host.querySelector<SVGGElement>(".flat-layer")!.hasAttribute("opacity")).toBe(false);
   });
 
   it("场景控件栏：DNA 专属控件（碱基字母开关+视图切换），无减数分裂控件串入", () => {
@@ -108,7 +108,7 @@ describe("DNA 复制场景（固定元素池）", () => {
     const lines = host.querySelectorAll<SVGLineElement>("line.hbond");
     lines.forEach((l) => expect(l.style.opacity).toBe("1"));
     expect(host.querySelector<SVGGElement>(".band-top")!.style.transform).toBe("translate(0px, 0px)");
-    expect(host.querySelector<SVGGElement>(".helicase-group, g[opacity]")!.getAttribute("opacity")).toBe("0");
+    expect(host.querySelector<SVGGElement>(".helicase-group, g[opacity]")!.style.opacity).toBe("0");
   });
 
   it("阶段2 解旋：中段氢键断开（下标 3~8），外侧拉伸连接；链带分离；解旋酶显现于两叉", () => {
@@ -118,16 +118,16 @@ describe("DNA 复制场景（固定元素池）", () => {
     for (let i = 0; i < 12; i++) {
       expect(lines[i].style.opacity).toBe(i >= 3 && i <= 8 ? "0" : "1");
     }
-    // 外侧氢键随链带分离拉伸（y1 上移、y2 下移）
-    expect(lines[0].getAttribute("y1")).toBe("122");
-    expect(lines[0].getAttribute("y2")).toBe("278");
+    // 外侧氢键：y1/y2 固定为基础值，纵向偏移走 translateY（CSS transition 通道）
+    expect(lines[0].getAttribute("y1")).toBe("162");
+    expect(lines[0].getAttribute("y2")).toBe("238");
     // 链带分离：上移 40 / 下移 40
     expect(host.querySelector<SVGGElement>(".band-top")!.style.transform).toBe("translate(0px, -40px)");
     expect(host.querySelector<SVGGElement>(".band-bot")!.style.transform).toBe("translate(0px, 40px)");
-    // 解旋酶显现于左右两叉（x = 290 / 530）；显隐走 style 通道
+    // 解旋酶显现于左右两叉（x = 290 / 530）；位置走 style.transform（CSS transition 通道）
     const icons = host.querySelectorAll<SVGGElement>(".helicase-icon");
-    expect(icons[0].getAttribute("transform")).toBe("translate(290, 200)");
-    expect(icons[1].getAttribute("transform")).toBe("translate(530, 200)");
+    expect(icons[0].style.transform).toBe("translate(290px, 200px)");
+    expect(icons[1].style.transform).toBe("translate(530px, 200px)");
     expect(host.querySelector<SVGGElement>(".helicase-group")!.style.opacity).toBe("1");
   });
 

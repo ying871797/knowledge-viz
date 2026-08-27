@@ -106,28 +106,28 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("A2a").style.transform).toContain("translate(598px, 200px)");
   });
 
-  it("阶段8 减Ⅱ后期：着丝点分裂——每 X 拆两杆分赴两极（极距 61，杆位 ±74/±48）", () => {
+  it("阶段8 减Ⅱ后期：着丝点分裂——姐妹分赴本细胞上/下两极（垂直分离）", () => {
     scene.render(st({ stage: "anaphase-II", replicated: false, cells: 2, separating: "sister" }));
-    // 左细胞 (215,200)：A1a(141,187) A1b(263,187) B2a(167,213) B2b(289,213)，全部竖直
-    expect(chromatid("A1a").style.transform).toBe("translate(141px, 187px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(263px, 187px) rotate(0deg)");
-    expect(chromatid("B2a").style.transform).toBe("translate(167px, 213px) rotate(0deg)");
-    expect(chromatid("B2b").style.transform).toBe("translate(289px, 213px) rotate(0deg)");
-    // 右细胞 (585,200)：B1a(511,187) B1b(633,187) A2a(537,213) A2b(659,213)
-    expect(chromatid("B1a").style.transform).toContain("translate(511px, 187px)");
-    expect(chromatid("A2b").style.transform).toContain("translate(659px, 213px)");
+    // 左细胞 (215,200)：A1a(202,130) A1b(202,270) B2a(228,130) B2b(228,270)，全部竖直
+    expect(chromatid("A1a").style.transform).toBe("translate(202px, 130px) rotate(0deg)");
+    expect(chromatid("A1b").style.transform).toBe("translate(202px, 270px) rotate(0deg)");
+    expect(chromatid("B2a").style.transform).toBe("translate(228px, 130px) rotate(0deg)");
+    expect(chromatid("B2b").style.transform).toBe("translate(228px, 270px) rotate(0deg)");
+    // 右细胞 (585,200)：B1a(572,130) B1b(572,270) A2a(598,130) A2b(598,270)
+    expect(chromatid("B1a").style.transform).toContain("translate(572px, 130px)");
+    expect(chromatid("A2b").style.transform).toContain("translate(598px, 270px)");
   });
 
-  it("阶段9 减Ⅱ末期：四细胞各 2 竖杆（本体居左格、姊妹居同行右格）", () => {
+  it("阶段9 减Ⅱ末期：四细胞各 2 竖杆——各极姐妹居同列上下格", () => {
     scene.render(st({ stage: "telophase-II", replicated: false, cells: 4 }));
-    // 左上格 (175,98)：A1a(162,85) B2a(188,85)；右上格 (480,98)：A1b(467,85) B2b(493,85)
+    // 左上格 (175,98)：A1a(162,85) B2a(188,85)；右上格 (480,98)：B1a(467,85) A2a(493,85)
     expect(chromatid("A1a").style.transform).toContain("translate(162px, 85px)");
     expect(chromatid("B2a").style.transform).toContain("translate(188px, 85px)");
-    expect(chromatid("A1b").style.transform).toContain("translate(467px, 85px)");
-    expect(chromatid("B2b").style.transform).toContain("translate(493px, 85px)");
-    // 左下格 (175,302)：B1a(162,315) A2a(188,315)；右下格：B1b(467,315) A2b(493,315)
-    expect(chromatid("B1a").style.transform).toContain("translate(162px, 315px)");
-    expect(chromatid("A2a").style.transform).toContain("translate(188px, 315px)");
+    expect(chromatid("B1a").style.transform).toContain("translate(467px, 85px)");
+    expect(chromatid("A2a").style.transform).toContain("translate(493px, 85px)");
+    // 左下格 (175,302)：A1b(162,315) B2b(188,315)；右下格：B1b(467,315) A2b(493,315)
+    expect(chromatid("A1b").style.transform).toContain("translate(162px, 315px)");
+    expect(chromatid("B2b").style.transform).toContain("translate(188px, 315px)");
     expect(chromatid("B1b").style.transform).toContain("translate(467px, 315px)");
     expect(chromatid("A2b").style.transform).toContain("translate(493px, 315px)");
   });
@@ -136,8 +136,11 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     scene.render(st({ stage: "sperm", replicated: false, cells: 4, spermShape: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(162px, 85px)");
     expect(chromatid("A1a").style.transform).toContain("rotate(0deg)");
-    expect(host.querySelectorAll(".sperm-tail").length).toBe(4);
-    expect(host.querySelectorAll(".cell-outline").length).toBe(4);
+    // 背景元素预声明池：计数可见（opacity=1）的精子尾和细胞轮廓
+    const visibleTails = [...host.querySelectorAll<SVGElement>(".sperm-tail")].filter((e) => e.style.opacity === "1");
+    const visibleOutlines = [...host.querySelectorAll<SVGElement>(".cell-outline")].filter((e) => e.style.opacity === "1");
+    expect(visibleTails.length).toBe(4);
+    expect(visibleOutlines.length).toBe(4);
   });
 
   it("卵细胞阶段6 减Ⅰ末期：大细胞+极体①不均等分配", () => {
@@ -147,14 +150,16 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("B1a").style.transform).toContain("translate(253px, 200px)");
     expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
     expect(chromatid("B2b").style.transform).toContain("translate(365px, 61px)");
-    expect(host.querySelectorAll(".polar-body").length).toBe(1);
+    const visiblePBs = [...host.querySelectorAll<SVGElement>(".polar-body")].filter((e) => e.style.opacity === "1");
+    expect(visiblePBs.length).toBe(1);
   });
 
-  it("卵细胞阶段8 减Ⅱ后期：大细胞双杆分极、极体①保持 X", () => {
+  it("卵细胞阶段8 减Ⅱ后期：大细胞姐妹分赴上/下两极、极体①保持 X", () => {
     scene.render(st({ stage: "oo-anaphase-II", replicated: false, cells: 2, unequal: true, polarBodies: 1 }));
-    expect(chromatid("A1a").style.transform).toBe("translate(156px, 200px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(324px, 200px) rotate(0deg)");
-    expect(chromatid("B1b").style.transform).toBe("translate(337px, 200px) rotate(0deg)");
+    // 大细胞 OO_CENTER(240,200) ±84 垂直分离：A1(227,116/284) B1(253,116/284)
+    expect(chromatid("A1a").style.transform).toBe("translate(227px, 116px) rotate(0deg)");
+    expect(chromatid("A1b").style.transform).toBe("translate(227px, 284px) rotate(0deg)");
+    expect(chromatid("B1b").style.transform).toBe("translate(253px, 284px) rotate(0deg)");
     // 极体①保持 X 形
     expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
     expect(chromatid("A2a").style.transform).toContain("rotate(-11deg)");
@@ -175,7 +180,8 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
       // 极体③ {A1b,B1b}
       expect(chromatid("A1b").style.transform).toContain("translate(371px, 317px)");
       expect(chromatid("B1b").style.transform).toContain("translate(387px, 317px)");
-      expect(host.querySelectorAll(".polar-body").length).toBe(3);
+      const visiblePBs = [...host.querySelectorAll<SVGElement>(".polar-body")].filter((e) => e.style.opacity === "1");
+      expect(visiblePBs.length).toBe(3);
     }
   });
 
@@ -256,6 +262,7 @@ describe.each([
   ["sperm:metaphase-II", meiosisCourse.stages[6].sceneState],
   ["sperm:anaphase-II", meiosisCourse.stages[7].sceneState],
   ["sperm:telophase-II", meiosisCourse.stages[8].sceneState],
+  ["sperm:telophase-II", meiosisCourse.stages[8].sceneState],
   ["sperm:sperm", meiosisCourse.stages[9].sceneState],
   ["oo:oo-spermatogonium", oogenesisCourse.stages[0].sceneState],
   ["oo:oo-interphase", oogenesisCourse.stages[1].sceneState],
@@ -297,3 +304,117 @@ describe.each([
     });
   },
 );
+
+// ============ 纺锤丝断言 ============
+describe("纺锤丝显隐与池隔离", () => {
+  let host: HTMLDivElement;
+  const scene = createMeiosisScene();
+  /** 计算可见 spindle-line 数量 */
+  const visibleSpindleCount = () =>
+    [...host.querySelectorAll<SVGLineElement>(".spindle-line")].filter(
+      (el) => parseFloat(el.style.opacity || "0") > 0,
+    ).length;
+
+  beforeEach(() => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    scene.mount(host);
+  });
+  afterEach(() => {
+    scene.destroy();
+    host.remove();
+  });
+
+  // 精子模式：6 个可见阶段（数量精确断言）
+  it("精子模式：减Ⅰ前/中/后各4根、减Ⅱ中/后各8根（双定向）；其余隐藏", () => {
+    const visible: [string, number][] = [
+      ["prophase-I", 4], ["metaphase-I", 4], ["anaphase-I", 4],
+      ["metaphase-II", 8], ["anaphase-II", 8],
+    ];
+    const hidden = ["spermatogonium", "interphase", "telophase-I", "telophase-II", "sperm"];
+    for (const [id, count] of visible) {
+      scene.render(st({ stage: id, cells: id.includes("II") ? 2 : 1, replicated: true, pairing: id.includes("prophase"), crossingOver: id !== "spermatogonium", equatorial: id.includes("metaphase") ? (id.includes("II") ? "single" : "paired") : "none", separating: id.includes("anaphase") ? (id.includes("II") ? "sister" : "homolog") : "none", spermShape: id === "sperm" }));
+      expect(visibleSpindleCount(), id).toBe(count);
+    }
+    for (const id of hidden) {
+      scene.render(st({ stage: id, cells: id.includes("II") ? (id === "telophase-II" || id === "sperm" ? 4 : 2) : 1, replicated: id !== "spermatogonium", spermShape: id === "sperm" }));
+      expect(visibleSpindleCount(), id).toBe(0);
+    }
+  });
+
+  // 几何：纺锤丝必须是斜向汇聚（x2 ≠ 极点 x1），不是竖直棍
+  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（x2 ≠ 极点 x）", () => {
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(4);
+    for (const l of visible) {
+      expect(Math.abs(Number(l.getAttribute("x2")))).toBeGreaterThan(0);
+      // 极点端与染色体端 x 不同 → 斜向汇聚（非竖直棍）
+      expect(Number(l.getAttribute("x2"))).not.toBe(Number(l.getAttribute("x1")));
+    }
+  });
+
+  // 极点锚定：极点端必须固定在两极（x1/y1 = 极点坐标）
+  it("减Ⅰ后期：纺锤丝极点端固定于两极（A1a→上极、A2a→下极）", () => {
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(4);
+    // MI_FIBERS 顺序：A1a top, B1a top, A2a bottom, B2a bottom
+    // 上极 (400, 90)，下极 (400, 310)
+    expect(visible[0].getAttribute("x1")).toBe("400");
+    expect(visible[0].getAttribute("y1")).toBe("90");
+    expect(visible[1].getAttribute("x1")).toBe("400");
+    expect(visible[1].getAttribute("y1")).toBe("90");
+    expect(visible[2].getAttribute("x1")).toBe("400");
+    expect(visible[2].getAttribute("y1")).toBe("310");
+    expect(visible[3].getAttribute("x1")).toBe("400");
+    expect(visible[3].getAttribute("y1")).toBe("310");
+  });
+
+  // 池隔离：两次 mount 后丝数不累积
+  it("池隔离：重新 mount 后纺锤丝数不累积", () => {
+    scene.render(st({ stage: "metaphase-I" }));
+    const count1 = visibleSpindleCount();
+    scene.destroy();
+    host.remove();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    scene.mount(host);
+    scene.render(st({ stage: "metaphase-I" }));
+    expect(visibleSpindleCount()).toBe(count1);
+  });
+
+  // 减Ⅱ双定向：每条 X 的姐妹分连上/下两极（有丝分裂式），中期即如此
+  it("减Ⅱ中期：每条 X 双定向——A1a 连上极、A1b 连下极", () => {
+    scene.render(st({ stage: "metaphase-II", replicated: true, cells: 2, equatorial: "single" }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(8);
+    // MII_SPERM 顺序：A1a top, A1b bottom, B2a top, B2b bottom, A2a top, A2b bottom, B1a top, B1b bottom
+    // 细胞0 上极 (215,90)、下极 (215,310)；A1a 与 A1b 的 x2 均指向 A1 X 位置 (202,200)
+    expect(visible[0].getAttribute("x1")).toBe("215");
+    expect(visible[0].getAttribute("y1")).toBe("90");
+    expect(visible[1].getAttribute("x1")).toBe("215");
+    expect(visible[1].getAttribute("y1")).toBe("310");
+    expect(visible[0].getAttribute("x2")).toBe("202");
+    expect(visible[1].getAttribute("x2")).toBe("202");
+  });
+
+  // 卵细胞模式：oo-anaphase-I 极点偏移 -20px
+  it("卵细胞模式：oo-anaphase-I 极点偏移 -20px", () => {
+    // 先渲染 anaphase-I（精子模式）获取基准极点
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const baseLine = host.querySelector(".spindle-line") as SVGLineElement;
+    const baseY = Number(baseLine.getAttribute("y1"));
+
+    // 渲染 oo-anaphase-I（卵细胞模式，unequal=true）
+    scene.render(st({ stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
+    const ooLine = host.querySelector(".spindle-line") as SVGLineElement;
+    const ooY = Number(ooLine.getAttribute("y1"));
+
+    // 极点 y 坐标应偏移 -20px
+    expect(ooY - baseY).toBe(-20);
+  });
+});

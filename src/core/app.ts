@@ -236,12 +236,12 @@ export function mountCoursePage(
     node.addEventListener("click", () => { player.pause(); player.goTo(i); });
   });
 
-  // 速度切换：更新播放器间隔，并同步补间动画时长 CSS 变量（间隔的 90%）
+  // 速度切换：更新播放器间隔，并同步补间动画时长 CSS 变量（间隔的 90%，下限 300ms 防跌破平滑阈值）
   speedSelect.addEventListener("change", () => {
     const rate = Number(speedSelect.value);
     const intervalMs = Math.round(1500 / rate);
     player.setIntervalMs(intervalMs);
-    root.style.setProperty("--tween-ms", Math.round(intervalMs * 0.9) + "ms");
+    root.style.setProperty("--tween-ms", Math.round(Math.max(300, intervalMs * 0.9)) + "ms");
   });
 
   // 练习模式开关：隐藏曲线 + 遮蔽讲解面板，显示揭晓按钮（仅图表课程）

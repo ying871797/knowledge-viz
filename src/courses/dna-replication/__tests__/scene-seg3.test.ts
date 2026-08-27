@@ -100,7 +100,7 @@ describe("DNA 复制场景（段 3：加工与完成）", () => {
     scene.render({ stage: "ligation" });
     expect(enzyme("ligase").style.opacity).toBe("1");
     expect(enzyme("ligase-L").style.opacity).toBe("1");
-    expect(enzyme("ligase-L").getAttribute("transform")).toBe("translate(332, 336)");
+    expect(enzyme("ligase-L").style.transform).toBe("translate(332px, 336px)");
     // 阶段9：全部退场
     scene.render({ stage: "done" });
     expect(enzyme("ligase-L").style.opacity).toBe("0");

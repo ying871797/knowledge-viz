@@ -56,6 +56,10 @@ npm run build                 # 先 tsc --noEmit 再 vite build，产物 dist/
 **动效**
 - 时长反映语义权重（重大重组慢、稳定态过渡快），复用播放器五档调速，不做逐段变速
 - 默认同步动画；交错（stagger）须给出教学理由
+- **过渡机制**：CSS transition（`transform` + `opacity`）为唯一过渡机制，禁止用 JS requestAnimationFrame 做补间（除 Safari 上 CSS `d` 属性的 JS 回退外）。所有场景元素的位置/角度/透明度变化均通过 `style.transform` / `style.opacity` 通道，不走 SVG attribute（`setAttribute("transform")` 不触发 CSS transition）
+- **easing 曲线**：`transform` 用 `ease-out`（快启动缓到位，元素归位感）；`opacity` 用 `ease-in-out`（淡入淡出两端缓冲，柔和自然）。全局统一，不做逐场景微调
+- **SVG path d 过渡**：路径点数归一化后（同命令数、同命令类型），CSS `d` 属性过渡在 Chrome/Edge/Firefox 自动生效；Safari 不支持（WebKit 性能问题搁置），采用渐进增强——路径变化在 Safari 上瞬切，设计时确保每帧路径变化幅度小、瞬切不突兀
+- **背景元素持久化**：所有课程场景的背景元素（细胞轮廓、纺锤丝、核膜等）必须在 `mount()` 中预声明为 DOM 池，`layout()` 通过 opacity/transform 控制显隐和位置。禁止每帧 remove+reappend（DOM 重建会导致闪烁和过渡中断）
 
 ## 环境与工作流
 

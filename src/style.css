@@ -120,7 +120,7 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 /* 曲线显隐复选框组 */
 .series-toggles { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; }
 
-/* 减数分裂场景：染色体位移用 CSS transition 补间（Task 7 审查衔接点） */
+/* 减数分裂场景：染色体与背景元素位移用 CSS transition 补间（运动即语义） */
 .meiosis-scene { position: relative; }
 /* 自由组合方式说明文字：常驻显示于场景上方（仅减Ⅰ后期） */
 .combo-hint {
@@ -137,19 +137,65 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .chromo-bubble { position: absolute; max-width: min(280px, calc(100% - 16px)); background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 8px 12px; font-size: 13px; z-index: 5; overflow-wrap: break-word; }
 .scene-controls { display: flex; gap: 14px; margin-top: 8px; }
 /* 染色单体位移用 CSS transition 补间，时长由 --tween-ms 变量控制（随播放速度联动） */
-.chromatid { transition: transform var(--tween-ms, 1350ms) ease; }
+.chromatid { transition: transform var(--tween-ms, 1350ms) ease-out; }
 /* 单体内部件（杆/着丝点）与标注副本的 transform 同步补间 */
-.chromatid path, .chromatid circle, .chromatid text { transition: transform var(--tween-ms, 1350ms) ease; }
-.cell-outline { transition: r .8s ease; }
+.chromatid path, .chromatid circle, .chromatid text { transition: transform var(--tween-ms, 1350ms) ease-out; }
+/* 细胞轮廓/极体/精子尾：opacity 与形变（r/rx/ry/cx/cy）同步补间 */
+.cell-outline, .polar-body, .sperm-tail {
+  transition:
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    r .8s ease-out, rx .8s ease-out, ry .8s ease-out,
+    cx var(--tween-ms, 1350ms) ease-out, cy var(--tween-ms, 1350ms) ease-out;
+}
+/* 有丝分裂背景元素：细胞壁/核膜/细胞板/纺锤丝 opacity 补间 */
+.cell-wall, .nuclear-membrane, .cell-plate, .spindle-line {
+  transition: opacity var(--tween-ms, 1350ms) ease-in-out;
+}
+/* 纺锤丝：几何（x1/y1/x2/y2）走 CSS transition，极点端固定、染色体端平滑跟随 */
+.meiosis-scene .spindle-line, .mito-scene .spindle-line {
+  transition:
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    x1 var(--tween-ms, 1350ms) ease-out,
+    y1 var(--tween-ms, 1350ms) ease-out,
+    x2 var(--tween-ms, 1350ms) ease-out,
+    y2 var(--tween-ms, 1350ms) ease-out;
+  pointer-events: none;
+}
 
-/* DNA 复制场景：定位上下文（拓展角标绝对定位基准） */
+/* DNA 复制场景：定位上下文（拓展角标绝对定位基准）+ 全 SVG 元素幕间补间 */
 .dna-scene { position: relative; }
+.dna-scene svg g, .dna-scene svg rect, .dna-scene svg line,
+.dna-scene svg path, .dna-scene svg text {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    x var(--tween-ms, 1350ms) ease-out,
+    y var(--tween-ms, 1350ms) ease-out,
+    x1 var(--tween-ms, 1350ms) ease-out,
+    y1 var(--tween-ms, 1350ms) ease-out,
+    x2 var(--tween-ms, 1350ms) ease-out,
+    y2 var(--tween-ms, 1350ms) ease-out,
+    width var(--tween-ms, 1350ms) ease-out,
+    d var(--tween-ms, 1350ms) ease-out;
+}
 /* 基因表达场景：同上；并为其全部 SVG 部件挂幕间补间（时长随播放速度联动），
    使"核糖体步距/tRNA 下坠离场/肽链生长"具有方向感——运动即语义 */
 .gene-scene { position: relative; }
 .gene-scene svg path, .gene-scene svg rect, .gene-scene svg circle,
 .gene-scene svg line, .gene-scene svg text, .gene-scene svg g {
-  transition: transform var(--tween-ms, 1350ms) ease, opacity var(--tween-ms, 1350ms) ease;
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    x var(--tween-ms, 1350ms) ease-out,
+    y var(--tween-ms, 1350ms) ease-out,
+    cx var(--tween-ms, 1350ms) ease-out,
+    cy var(--tween-ms, 1350ms) ease-out,
+    x1 var(--tween-ms, 1350ms) ease-out,
+    y1 var(--tween-ms, 1350ms) ease-out,
+    x2 var(--tween-ms, 1350ms) ease-out,
+    y2 var(--tween-ms, 1350ms) ease-out,
+    width var(--tween-ms, 1350ms) ease-out,
+    d var(--tween-ms, 1350ms) ease-out;
 }
 /* 拓展知识点角标（超纲内容提示） */
 .ext-badge {

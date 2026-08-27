@@ -60,7 +60,7 @@ describe("基因的表达场景（固定元素池）", () => {
     expect(mrnaBand().getAttribute("width")).toBe(String(5 * 40 + 32));
     expect(mrnaBand().getAttribute("y")).toBe(String(262 - 8));
     // 聚合酶骑在泡右缘
-    expect(host.querySelector<SVGGElement>(".enzyme-pol")!.getAttribute("transform")).toBe("translate(470, 200)");
+    expect(host.querySelector<SVGGElement>(".enzyme-pol")!.style.transform).toBe("translate(470px, 200px)");
     // 泡内配对刻度可见且粗细符合配对规则（模板 A↔mRNA U 细 / C-G 粗）
     const ticks = [...host.querySelectorAll<SVGLineElement>("line.mrna-tick")];
     ticks.forEach((t) => expect(t.style.opacity).toBe("1"));
@@ -91,8 +91,8 @@ describe("基因的表达场景（固定元素池）", () => {
 
   it("翻译装配：核糖体罩 codon1~2，起始 tRNA 入 P 位且反密码子对位", () => {
     scene.render({ stage: "l2-assemble" });
-    expect(ribo().getAttribute("transform")).toBe("translate(156, 0)");
-    expect(trnaEl(0).getAttribute("transform")).toBe("translate(220, 0)");
+    expect(ribo().style.transform).toBe("translate(156px, 0px)");
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 0px)");
     expect(trnaEl(0).style.opacity).toBe("1");
     expect(trnaEl(0).querySelector("text.anticodon")!.textContent).toBe("UAC"); // 对 AUG
     expect(bead(0).getAttribute("cx")).toBe("220");
@@ -101,36 +101,36 @@ describe("基因的表达场景（固定元素池）", () => {
 
   it("进位成肽①→移位：核糖体步距恰为一个密码子（120px），空载 tRNA 退场", () => {
     scene.render({ stage: "l3-peptide1" });
-    expect(trnaEl(1).getAttribute("transform")).toBe("translate(340, 0)");
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 0px)");
     expect(bead(1).style.opacity).toBe("1");
     expect(bond(0).style.opacity).toBe("1");
     scene.render({ stage: "l4-shift" });
     // 步距 = 276 − 156 = 120 = 3 × STEP
-    expect(Number(/translate\((\d+)/.exec(ribo().getAttribute("transform")!)![1]) - 156).toBe(120);
+    expect(Number(/translate\((\d+)/.exec(ribo().style.transform!)![1]) - 156).toBe(120);
     // 持链 tRNA 横向不动（钉在密码子上），由右移的核糖体框套入新 P 位锚点 276+64=340——
     // 若出现回移即参考系混淆回归（用户目检抓出过的 bug）
-    expect(trnaEl(1).getAttribute("transform")).toBe("translate(340, 0)");
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 0px)");
     expect(trnaEl(1).style.opacity).toBe("1");
     // 空载 tRNA① 不就地消失：下坠离场（半透明），下一帧才彻底退场
     expect(trnaEl(0).style.opacity).toBe("0.45");
-    expect(trnaEl(0).getAttribute("transform")).toBe("translate(220, 96)");
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 96px)");
   });
 
   it("第二轮成肽后终止：A 位对准终止密码子且无 tRNA 对位", () => {
     scene.render({ stage: "l5-peptide2" });
     // 第三只 tRNA 进位到新 A 位锚点（276+184=460，对 UGU）——不在旧位置 340
-    expect(trnaEl(2).getAttribute("transform")).toBe("translate(460, 0)");
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 0px)");
     expect(bead(2).style.opacity).toBe("1");
     expect(bond(1).style.opacity).toBe("1");
     scene.render({ stage: "l6-stop" });
     // 再移位一格：396 − 276 = 120
-    expect(Number(/translate\((\d+)/.exec(ribo().getAttribute("transform")!)![1]) - 276).toBe(120);
+    expect(Number(/translate\((\d+)/.exec(ribo().style.transform!)![1]) - 276).toBe(120);
     // P 位 tRNA③ 对 codon3（中心 460），A 位（580 = 终止密码子 UAG）空
-    expect(trnaEl(2).getAttribute("transform")).toBe("translate(460, 0)");
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 0px)");
     // 空载 tRNA② 同样以下坠离场呈现，tRNA① 已彻底退场
     expect(trnaEl(0).style.opacity).toBe("0");
     expect(trnaEl(1).style.opacity).toBe("0.45");
-    expect(trnaEl(1).getAttribute("transform")).toBe("translate(340, 96)");
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 96px)");
     // 反密码子 ACA 与密码子 UGU 配对（数据自洽的场景侧印证）
     expect(trnaEl(2).querySelector("text.anticodon")!.textContent).toBe("ACA");
     expect(`${SEQ_TEMPLATE[9]}${SEQ_TEMPLATE[10]}${SEQ_TEMPLATE[11]}`).toBe("ATC");

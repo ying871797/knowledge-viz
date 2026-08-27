@@ -14,6 +14,10 @@ const st = (id: string, title: string, narration: string[], n: MitoNumbers): Cou
 });
 
 const mitosisStages: Stage[] = [
+    st("interphase-before", "间期前（未复制）", [
+      "体细胞中染色体数为 2n（两对同源染色体）",
+      "间期开始前：每条染色体含 1 个 DNA 分子，无姐妹染色单体",
+    ], { chromosome: 4, dna: 4, chromatid: 0, dnaPerChromosome: 1 }),
     st("interphase", "间期（复制）", [
       "分裂间期：完成 DNA 分子的复制和有关蛋白质的合成，细胞适度生长",
       "复制结果：每条染色体含 2 条姐妹染色单体，DNA 数目加倍（4→8）",
