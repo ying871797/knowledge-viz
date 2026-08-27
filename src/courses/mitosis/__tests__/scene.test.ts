@@ -51,23 +51,28 @@ describe("有丝分裂场景", () => {
     scene.render(st({ stage: "prophase", replicated: true }));
     expect(chromatid("A1a").style.transform).not.toBe(chromatid("A2a").style.transform);
     expect(visibleCount(".nuclear-membrane")).toBe(0);
-    expect(visibleCount(".spindle-inner")).toBe(8);
+    expect(visibleCount(".spindle-line")).toBe(8);
   });
 
   it("中期：赤道板横排", () => {
     scene.render(st({ stage: "metaphase", replicated: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(280px, 200px)");
-    expect(visibleCount(".spindle-inner")).toBe(8);
+    expect(visibleCount(".spindle-line")).toBe(8);
   });
 
-  // 几何：纺锤丝从极点斜向汇聚染色体（x2 ≠ 0），不是竖直棍
-  it("前期：纺锤丝 x2 非零（斜向汇聚，非竖直棍）", () => {
+  // 几何：纺锤丝极点端固定在两极、斜向汇聚染色体（非竖直棍）
+  it("前期：纺锤丝极点端固定于两极且斜向汇聚", () => {
     scene.render(st({ stage: "prophase", replicated: true }));
     const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(((l.parentElement as unknown as SVGElement).style.opacity || "0")) > 0);
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
     expect(visible.length).toBe(8);
     for (const l of visible) {
-      expect(Math.abs(Number(l.getAttribute("x2"))), "x2").toBeGreaterThan(0);
+      // 极点端固定于上极或下极
+      const y1 = Number(l.getAttribute("y1"));
+      expect([60, 340]).toContain(y1);
+      // 染色体端 x 与极点端 x 不同 → 斜向汇聚
+      expect(Math.abs(Number(l.getAttribute("x2")))).toBeGreaterThan(0);
+      expect(Number(l.getAttribute("x2"))).not.toBe(Number(l.getAttribute("x1")));
     }
   });
 

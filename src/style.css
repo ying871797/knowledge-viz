@@ -148,24 +148,14 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .cell-wall, .nuclear-membrane, .cell-plate, .spindle-line {
   transition: opacity var(--tween-ms, 1350ms) ease-in-out;
 }
-/* 减数分裂纺锤丝：内层 g 的 transform + opacity 走 CSS transition，外层 g 固定极点不动画 */
-.meiosis-scene .spindle-inner {
+/* 纺锤丝：几何（x1/y1/x2/y2）走 CSS transition，极点端固定、染色体端平滑跟随 */
+.meiosis-scene .spindle-line, .mito-scene .spindle-line {
   transition:
-    transform var(--tween-ms, 1350ms) ease-out,
-    opacity var(--tween-ms, 1350ms) ease-in-out;
-  pointer-events: none;
-}
-.meiosis-scene .spindle-line {
-  pointer-events: none;
-}
-/* 有丝分裂纺锤丝：同上模式 */
-.mito-scene .spindle-inner {
-  transition:
-    transform var(--tween-ms, 1350ms) ease-out,
-    opacity var(--tween-ms, 1350ms) ease-in-out;
-  pointer-events: none;
-}
-.mito-scene .spindle-line {
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    x1 var(--tween-ms, 1350ms) ease-out,
+    y1 var(--tween-ms, 1350ms) ease-out,
+    x2 var(--tween-ms, 1350ms) ease-out,
+    y2 var(--tween-ms, 1350ms) ease-out;
   pointer-events: none;
 }
 

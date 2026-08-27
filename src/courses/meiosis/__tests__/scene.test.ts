@@ -307,10 +307,10 @@ describe.each([
 describe("纺锤丝显隐与池隔离", () => {
   let host: HTMLDivElement;
   const scene = createMeiosisScene();
-  /** 计算可见 spindle-inner 数量 */
+  /** 计算可见 spindle-line 数量 */
   const visibleSpindleCount = () =>
-    [...host.querySelectorAll(".spindle-inner")].filter(
-      (el) => parseFloat((el as SVGElement).style.opacity || "0") > 0,
+    [...host.querySelectorAll<SVGLineElement>(".spindle-line")].filter(
+      (el) => parseFloat(el.style.opacity || "0") > 0,
     ).length;
 
   beforeEach(() => {
@@ -340,28 +340,35 @@ describe("纺锤丝显隐与池隔离", () => {
     }
   });
 
-  // 几何：纺锤丝必须是斜向汇聚（x2 ≠ 0），不是竖直棍
-  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（line x2 非零）", () => {
+  // 几何：纺锤丝必须是斜向汇聚（x2 ≠ 极点 x1），不是竖直棍
+  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（x2 ≠ 极点 x）", () => {
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
     const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(((l.parentElement as unknown as SVGElement).style.opacity || "0")) > 0);
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
     expect(visible.length).toBe(4);
     for (const l of visible) {
-      expect(Math.abs(Number(l.getAttribute("x2"))), "x2").toBeGreaterThan(0);
+      expect(Math.abs(Number(l.getAttribute("x2")))).toBeGreaterThan(0);
+      // 极点端与染色体端 x 不同 → 斜向汇聚（非竖直棍）
+      expect(Number(l.getAttribute("x2"))).not.toBe(Number(l.getAttribute("x1")));
     }
   });
 
-  // 极点归属：减Ⅰ后期默认 A1a→上极、A2a→下极（同源分离，不交叉）
-  it("减Ⅰ后期：A1a 连上极、A2a 连下极（同源分离）", () => {
+  // 极点锚定：极点端必须固定在两极（x1/y1 = 极点坐标）
+  it("减Ⅰ后期：纺锤丝极点端固定于两极（A1a→上极、A2a→下极）", () => {
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
-    const outers = [...host.querySelectorAll<SVGGElement>(".spindle-outer")];
-    const visibleOuters = outers.filter((g) => parseFloat((g.firstElementChild as SVGElement).style.opacity || "0") > 0);
-    expect(visibleOuters.length).toBe(4);
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(4);
     // MI_FIBERS 顺序：A1a top, B1a top, A2a bottom, B2a bottom
-    expect(visibleOuters[0].getAttribute("transform")).toBe("translate(400, 90)");
-    expect(visibleOuters[1].getAttribute("transform")).toBe("translate(400, 90)");
-    expect(visibleOuters[2].getAttribute("transform")).toBe("translate(400, 310)");
-    expect(visibleOuters[3].getAttribute("transform")).toBe("translate(400, 310)");
+    // 上极 (400, 90)，下极 (400, 310)
+    expect(visible[0].getAttribute("x1")).toBe("400");
+    expect(visible[0].getAttribute("y1")).toBe("90");
+    expect(visible[1].getAttribute("x1")).toBe("400");
+    expect(visible[1].getAttribute("y1")).toBe("90");
+    expect(visible[2].getAttribute("x1")).toBe("400");
+    expect(visible[2].getAttribute("y1")).toBe("310");
+    expect(visible[3].getAttribute("x1")).toBe("400");
+    expect(visible[3].getAttribute("y1")).toBe("310");
   });
 
   // 池隔离：两次 mount 后丝数不累积
@@ -377,20 +384,19 @@ describe("纺锤丝显隐与池隔离", () => {
     expect(visibleSpindleCount()).toBe(count1);
   });
 
-  // 卵细胞模式：oo-anaphase-I 的 outer g 有偏移
+  // 卵细胞模式：oo-anaphase-I 极点偏移 -20px
   it("卵细胞模式：oo-anaphase-I 极点偏移 -20px", () => {
     // 先渲染 anaphase-I（精子模式）获取基准极点
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
-    const outer = host.querySelector(".spindle-outer") as SVGGElement;
-    const baseTransform = outer.getAttribute("transform")!;
+    const baseLine = host.querySelector(".spindle-line") as SVGLineElement;
+    const baseY = Number(baseLine.getAttribute("y1"));
 
     // 渲染 oo-anaphase-I（卵细胞模式，unequal=true）
     scene.render(st({ stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
-    const oocyteTransform = outer.getAttribute("transform")!;
+    const ooLine = host.querySelector(".spindle-line") as SVGLineElement;
+    const ooY = Number(ooLine.getAttribute("y1"));
 
     // 极点 y 坐标应偏移 -20px
-    const baseY = Number(baseTransform.match(/translate\(\d+, (\d+)\)/)![1]);
-    const oocyteY = Number(oocyteTransform.match(/translate\(\d+, (\d+)\)/)![1]);
-    expect(oocyteY - baseY).toBe(-20);
+    expect(ooY - baseY).toBe(-20);
   });
 });

@@ -352,15 +352,9 @@ const bgPool = {
   oocyteLarge: null as SVGCircleElement | null,
   polarBodies: [] as SVGCircleElement[],
   oocyteEccentric: null as SVGEllipseElement | null,
-  // 纺锤丝：嵌套 g 结构（外层固定极点，内层 style.transform 动画染色体端）
-  spindleOuters: [] as SVGGElement[],
-  spindleInners: [] as SVGGElement[],
+  // 纺锤丝：池化 line，几何由 updateSpindleLines 每次重设（极点端固定两极）
   spindleLines: [] as SVGLineElement[],
 };
-// 每条纺锤丝的初始染色体坐标（首次 layout 时 lazy 填充）
-const spindleInits: ({ x: number; y: number } | null)[] = Array(16).fill(null);
-// 每条纺锤丝当前极点标识（极点随细胞重排变化时重建基准）
-const spindlePoleKeys: string[] = Array(16).fill("");
 
 /** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
 function updatePool(root: SVGSVGElement, s: MeiosisState): void {
@@ -435,8 +429,8 @@ function updatePool(root: SVGSVGElement, s: MeiosisState): void {
   }
 }
 
-// ============ 纺锤丝：嵌套 g + style.transform 动画 ============
-/** 更新纺锤丝端点：外层 g 固定极点，内层 g style.transform 追踪染色体（CSS transition 驱动） */
+// ============ 纺锤丝：池化 line + setAttribute 几何 + CSS transition ============
+/** 更新纺锤丝：每根 line 直接由极点指向染色体（极点端固定在两极，染色体端跟随） */
 function updateSpindleLines(
   s: MeiosisState,
   slots: Record<string, { cell: number; x: number; y: number; a: number }>,
@@ -445,14 +439,6 @@ function updateSpindleLines(
   const fibers = fibersFor(s, comboAlt);
   const centers = CELL_CENTERS[s.cells] ?? [];
   const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞两细胞期：槽位即画布绝对坐标
-
-  if (fibers.length === 0) {
-    // 非纺锤丝阶段：全部隐藏并清空基准（极点随细胞重排而变，下次进入需重建）
-    bgPool.spindleInners.forEach((g) => { g.style.opacity = "0"; });
-    spindleInits.fill(null);
-    spindlePoleKeys.fill("");
-    return;
-  }
 
   fibers.forEach((f, idx) => {
     const sl = slots[f.key];
@@ -467,28 +453,18 @@ function updateSpindleLines(
     const pole: [number, number] = f.pole === "top"
       ? [center[0], center[1] - POLE_OFFSET + yOff]
       : [center[0], center[1] + POLE_OFFSET + yOff];
-    const poleKey = `${pole[0]},${pole[1]}`;
 
-    // outer g：极点位置（setAttribute，不触发 transition）
-    bgPool.spindleOuters[idx].setAttribute("transform", `translate(${pole[0]}, ${pole[1]})`);
-
-    // 基准（首次或极点变化时）：line 几何 = 染色体相对极点的偏移（斜向汇聚）
-    if (spindleInits[idx] === null || spindlePoleKeys[idx] !== poleKey) {
-      spindleInits[idx] = { x: tx, y: ty };
-      spindlePoleKeys[idx] = poleKey;
-      bgPool.spindleLines[idx].setAttribute("x2", String(tx - pole[0]));
-      bgPool.spindleLines[idx].setAttribute("y2", String(ty - pole[1]));
-    }
-    const init = spindleInits[idx]!;
-    bgPool.spindleInners[idx].style.transform = `translate(${tx - init.x}px, ${ty - init.y}px)`;
-    bgPool.spindleInners[idx].style.opacity = "1";
+    const line = bgPool.spindleLines[idx];
+    line.setAttribute("x1", String(pole[0]));
+    line.setAttribute("y1", String(pole[1]));
+    line.setAttribute("x2", String(tx));
+    line.setAttribute("y2", String(ty));
+    line.style.opacity = "1";
   });
 
   // 隐藏未使用的线
-  for (let i = fibers.length; i < bgPool.spindleInners.length; i++) {
-    bgPool.spindleInners[i].style.opacity = "0";
-    spindleInits[i] = null;
-    spindlePoleKeys[i] = "";
+  for (let i = fibers.length; i < bgPool.spindleLines.length; i++) {
+    bgPool.spindleLines[i].style.opacity = "0";
   }
 }
 
@@ -576,12 +552,8 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bgPool.oocyteLarge = null;
       bgPool.oocyteEccentric = null;
       // 纺锤丝池清空（测试隔离）
-      bgPool.spindleOuters.forEach((g) => g.remove());
-      bgPool.spindleInners.length = 0;
+      bgPool.spindleLines.forEach((l) => l.remove());
       bgPool.spindleLines.length = 0;
-      bgPool.spindleOuters.length = 0;
-      spindleInits.fill(null);
-      spindlePoleKeys.fill("");
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
@@ -644,17 +616,11 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bgPool.oocyteEccentric = el("ellipse", { class: "cell-outline", ...BG_STYLE, opacity: 0 });
       svgRoot.appendChild(bgPool.oocyteEccentric);
 
-      // 纺锤丝池：16 组嵌套 g（外层固定极点，内层 style.transform 动画染色体端）
+      // 纺锤丝池：16 根 line，几何由 updateSpindleLines 每次重设（极点端固定）
       for (let i = 0; i < 16; i++) {
-        const outer = el("g", { class: "spindle-outer" });
-        const inner = el("g", { class: "spindle-inner" });
-        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 1 });
-        inner.appendChild(line);
-        outer.appendChild(inner);
-        bgPool.spindleOuters.push(outer);
-        bgPool.spindleInners.push(inner);
+        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
         bgPool.spindleLines.push(line);
-        svgRoot.appendChild(outer);
+        svgRoot.appendChild(line);
       }
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）
