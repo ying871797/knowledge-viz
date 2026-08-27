@@ -202,10 +202,13 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
   let showGenes = false;
   let lastState: Record<string, unknown> | null = null;
 
-  /** 视图切换：平面层/螺旋层互斥显示 */
+  /** 视图切换：平面层/螺旋层 opacity 互斥淡入淡出（display 不可过渡，故走 opacity 通道） */
   function setView(): void {
-    flatLayer.style.display = view === "flat" ? "" : "none";
-    helixLayer.style.display = view === "helix" ? "" : "none";
+    const flat = view === "flat";
+    flatLayer.style.opacity = flat ? "1" : "0";
+    helixLayer.style.opacity = flat ? "0" : "1";
+    flatLayer.style.pointerEvents = flat ? "auto" : "none";
+    helixLayer.style.pointerEvents = flat ? "none" : "auto";
   }
 
   /** 方案 B：参数化双螺旋（解旋进度由氢键状态驱动，中段先解旋） */

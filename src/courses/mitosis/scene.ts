@@ -279,7 +279,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       const slot = slots[spec.key];
       g.style.transform = `translate(${400 + slot.x}px, ${200 + slot.y}px) rotate(${slot.a}deg)`;
       const lbl = g.querySelector("text")!;
-      lbl.setAttribute("transform", `rotate(${-slot.a})`);
+      lbl.style.transform = `rotate(${-slot.a}deg)`;
       lbl.setAttribute("visibility", showGenes ? "visible" : "hidden");
     });
   }
