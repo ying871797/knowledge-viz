@@ -1,3 +1,12 @@
+import type { Series } from "./numberChart";
+
+/** 单张图表的配置：课程声明"我要画什么图" */
+export interface ChartConfig {
+  title: string;                        // 图表标题
+  series: Series[];                     // 曲线数据（复用 numberChart.Series）
+  tickFormat?: (v: number) => string;   // 纵轴刻度格式化（如 n 表示法）
+}
+
 /** 阶段数目数据：三条曲线的数据点来源 */
 export interface StageNumbers {
   chromosome: number;        // 细胞内染色体数
@@ -20,6 +29,8 @@ export interface Course {
   meta: { id: string; title: string; chapter: string; difficulty: number; /** 隐藏数目曲线图表（如 DNA 复制等无数目语义的课程） */
     hideCharts?: boolean; };
   stages: Stage[];
+  /** 课程自定义图表配置；有此字段时 app.ts 据此渲染曲线图表 */
+  chartConfigs?: ChartConfig[];
 }
 
 /** 场景组件接口：每个知识点课程各自实现 */

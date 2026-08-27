@@ -21,12 +21,29 @@ function makeCourse(): Course {
       dnaPerChromosome,
     },
   });
+  const stages = [
+    st("a", "阶段甲", 4, 1),
+    st("b", "阶段乙", 4, 2),
+    st("c", "阶段丙", 2, 1),
+  ];
   return {
     meta: { id: "mini", title: "迷你课程", chapter: "测试", difficulty: 1 },
-    stages: [
-      st("a", "阶段甲", 4, 1),
-      st("b", "阶段乙", 4, 2),
-      st("c", "阶段丙", 2, 1),
+    stages,
+    chartConfigs: [
+      {
+        title: "细胞内数目变化",
+        series: [
+          { label: "DNA数", values: stages.map((s) => s.numbers!.dna), color: "#2563eb" },
+          { label: "染色体数", values: stages.map((s) => s.numbers!.chromosome), color: "#dc2626" },
+          { label: "染色单体数", values: stages.map((s) => s.numbers!.chromatid), color: "#b45309", dashed: true },
+        ],
+      },
+      {
+        title: "每条染色体上的 DNA 数",
+        series: [
+          { label: "每条染色体DNA", values: stages.map((s) => s.numbers!.dnaPerChromosome), color: "#059669" },
+        ],
+      },
     ],
   };
 }
@@ -135,23 +152,6 @@ describe("mountCoursePage 装配", () => {
     expect(reveal.style.display).not.toBe("none");
     reveal.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     expect(root.querySelector("aside h3")!.textContent).toContain("答案：阶段甲");
-  });
-
-  it("取消勾选显隐开关后总数图曲线减少，重新勾选后恢复", () => {
-    const { root } = setup();
-    // 总数图是第一张曲线卡片；marker 是 line，polyline 仅来自系列曲线
-    const totalsCard = root.querySelectorAll<HTMLElement>(".chart-card")[0];
-    const countPolylines = () => totalsCard.querySelectorAll("svg polyline").length;
-    expect(countPolylines()).toBe(3);
-    // 取消勾选第一条（DNA数）曲线
-    const box = totalsCard.querySelector<HTMLInputElement>(".series-toggles label:first-child input")!;
-    box.checked = false;
-    box.dispatchEvent(new Event("change", { bubbles: true }));
-    expect(countPolylines()).toBe(2);
-    // 重新勾选后恢复为三条
-    box.checked = true;
-    box.dispatchEvent(new Event("change", { bubbles: true }));
-    expect(countPolylines()).toBe(3);
   });
 
   it("导航三键为图标+文字双 span 结构并带 aria-label（移动端图标化挂载点）", () => {

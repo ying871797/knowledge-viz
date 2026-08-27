@@ -1,4 +1,5 @@
 import type { Course, Stage } from "../../core/types";
+import { buildChartConfigs } from "../../core/chartUtils";
 
 /** 场景状态字段约定（用 type 别名以兼容 Stage 的 Record<string, unknown>） */
 export type MeiosisState = {
@@ -27,9 +28,7 @@ const st = (
   callout?: string,
 ): Stage => ({ id, title, narration, sceneState: { ...sceneState, stage: id }, numbers, callout });
 
-export const meiosisCourse: Course = {
-  meta: { id: "meiosis", title: "减数分裂", chapter: "必修二 第一章第2节", difficulty: 4 },
-  stages: [
+const spermStages: Stage[] = [
     st("spermatogonium", "精原细胞（间期前）",
       ["染色体数 2n（两对同源染色体）", "长染色体一对（红）、短染色体一对（蓝）"],
       { cells: 1, replicated: false, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
@@ -73,7 +72,12 @@ export const meiosisCourse: Course = {
       ["精细胞变形：头部浓缩、长出尾部", "最终染色体数为 n，DNA 数也为 n"],
       { cells: 4, replicated: false, pairing: false, crossingOver: true, equatorial: "none", separating: "none", spermShape: true },
       { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }),
-  ],
+];
+
+export const meiosisCourse: Course = {
+  meta: { id: "meiosis", title: "减数分裂", chapter: "必修二 第一章第2节", difficulty: 4 },
+  stages: spermStages,
+  chartConfigs: buildChartConfigs(spermStages),
 };
 
 /**
@@ -81,9 +85,7 @@ export const meiosisCourse: Course = {
  * 差异仅在细胞质的不均等分裂（两次）与极体演化（第一极体均分 → 共 3 个极体后退化）。
  * 知识点依据：人教版必修二；减Ⅱ中期停滞、受精后完成。
  */
-export const oogenesisCourse: Course = {
-  meta: { id: "meiosis", title: "减数分裂（卵细胞形成）", chapter: "必修二 第一章第2节", difficulty: 4 },
-  stages: [
+const ooStages: Stage[] = [
     st("oo-oogonium", "卵原细胞（间期前）",
       ["染色体数 2n（两对同源染色体）", "发生在卵巢：卵原细胞经有丝分裂增殖"],
       { cells: 1, replicated: false, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
@@ -127,5 +129,10 @@ export const oogenesisCourse: Course = {
       ["最终得到 1 个卵细胞（n），3 个极体退化消失", "对比精子形成：不变形，只产生 1 个有效配子"],
       { cells: 2, replicated: false, pairing: false, crossingOver: true, equatorial: "none", separating: "none", spermShape: false, unequal: true, polarBodies: 3 },
       { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }),
-  ],
+];
+
+export const oogenesisCourse: Course = {
+  meta: { id: "meiosis", title: "减数分裂（卵细胞形成）", chapter: "必修二 第一章第2节", difficulty: 4 },
+  stages: ooStages,
+  chartConfigs: buildChartConfigs(ooStages),
 };
