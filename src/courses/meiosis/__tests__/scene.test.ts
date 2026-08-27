@@ -302,3 +302,68 @@ describe.each([
     });
   },
 );
+
+// ============ 纺锤丝断言 ============
+describe("纺锤丝显隐与池隔离", () => {
+  let host: HTMLDivElement;
+  const scene = createMeiosisScene();
+  /** 计算可见 spindle-inner 数量 */
+  const visibleSpindleCount = () =>
+    [...host.querySelectorAll(".spindle-inner")].filter(
+      (el) => parseFloat((el as SVGElement).style.opacity || "0") > 0,
+    ).length;
+
+  beforeEach(() => {
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    scene.mount(host);
+  });
+  afterEach(() => {
+    scene.destroy();
+    host.remove();
+  });
+
+  // 精子模式：6 个可见阶段
+  it("精子模式：减Ⅰ前/中/后 + 减Ⅱ前/中/后 可见，其余隐藏", () => {
+    const visible = ["prophase-I", "metaphase-I", "anaphase-I", "metaphase-II", "anaphase-II"];
+    const hidden = ["spermatogonium", "interphase", "telophase-I", "telophase-II", "sperm"];
+    for (const id of visible) {
+      scene.render(st({ stage: id, cells: id.includes("II") ? 2 : 1, replicated: true, pairing: id.includes("prophase"), crossingOver: id !== "spermatogonium", equatorial: id.includes("metaphase") ? (id.includes("II") ? "single" : "paired") : "none", separating: id.includes("anaphase") ? (id.includes("II") ? "sister" : "homolog") : "none", spermShape: id === "sperm" }));
+      expect(visibleSpindleCount()).toBeGreaterThanOrEqual(1);
+    }
+    for (const id of hidden) {
+      scene.render(st({ stage: id, cells: id.includes("II") ? (id === "telophase-II" || id === "sperm" ? 4 : 2) : 1, replicated: id !== "spermatogonium", spermShape: id === "sperm" }));
+      expect(visibleSpindleCount()).toBe(0);
+    }
+  });
+
+  // 池隔离：两次 mount 后丝数不累积
+  it("池隔离：重新 mount 后纺锤丝数不累积", () => {
+    scene.render(st({ stage: "metaphase-I" }));
+    const count1 = visibleSpindleCount();
+    scene.destroy();
+    host.remove();
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    scene.mount(host);
+    scene.render(st({ stage: "metaphase-I" }));
+    expect(visibleSpindleCount()).toBe(count1);
+  });
+
+  // 卵细胞模式：oo-anaphase-I 的 outer g 有偏移
+  it("卵细胞模式：oo-anaphase-I 极点偏移 -20px", () => {
+    // 先渲染 anaphase-I（精子模式）获取基准极点
+    scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
+    const outer = host.querySelector(".spindle-outer") as SVGGElement;
+    const baseTransform = outer.getAttribute("transform")!;
+
+    // 渲染 oo-anaphase-I（卵细胞模式，unequal=true）
+    scene.render(st({ stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
+    const oocyteTransform = outer.getAttribute("transform")!;
+
+    // 极点 y 坐标应偏移 -20px
+    const baseY = Number(baseTransform.match(/translate\(\d+, (\d+)\)/)![1]);
+    const oocyteY = Number(oocyteTransform.match(/translate\(\d+, (\d+)\)/)![1]);
+    expect(oocyteY - baseY).toBe(-20);
+  });
+});

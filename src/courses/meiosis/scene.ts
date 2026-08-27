@@ -11,6 +11,16 @@ const POLE_X = Math.round(76 * 0.7);    // 减Ⅰ后期两极横向距离
 const POLE_Y = Math.round(76 * 0.5);    // 减Ⅰ后期两极纵向错开
 const SPLIT_H = 61;                     // 减Ⅱ后期极距（杆位 ±(61∓13)=±74/±48，含 y 错列范数 ≤76）
 
+// 纺锤丝常量
+const POLE_OFFSET = 110;                // 极点到细胞中心的纵向距离
+const OO_POLE_SHIFT = -20;             // 卵细胞模式极点同向偏移（向上）
+const SPINDLE_STAGES = new Set([
+  "prophase-I", "metaphase-I", "anaphase-I",
+  "metaphase-II", "anaphase-II",
+  "oo-prophase-I", "oo-metaphase-I", "oo-anaphase-I",
+  "oo-metaphase-II", "oo-anaphase-II",
+]);
+
 // 细胞中心（按 cells 数量取前 n 个）
 export const CELL_CENTERS: Record<number, [number, number][]> = {
   1: [[400, 200]],
@@ -297,7 +307,13 @@ const bgPool = {
   oocyteLarge: null as SVGCircleElement | null,
   polarBodies: [] as SVGCircleElement[],
   oocyteEccentric: null as SVGEllipseElement | null,
+  // 纺锤丝：嵌套 g 结构（外层固定极点，内层 style.transform 动画染色体端）
+  spindleOuters: [] as SVGGElement[],
+  spindleInners: [] as SVGGElement[],
+  spindleLines: [] as SVGLineElement[],
 };
+// 每条纺锤丝的初始染色体坐标（首次 layout 时 lazy 填充）
+const spindleInits: ({ x: number; y: number } | null)[] = Array(16).fill(null);
 
 /** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
 function updatePool(root: SVGSVGElement, s: MeiosisState): void {
@@ -372,6 +388,62 @@ function updatePool(root: SVGSVGElement, s: MeiosisState): void {
   }
 }
 
+// ============ 纺锤丝：嵌套 g + style.transform 动画 ============
+/** 更新纺锤丝端点：外层 g 固定极点，内层 g style.transform 追踪染色体（CSS transition 驱动） */
+function updateSpindleLines(
+  s: MeiosisState,
+  slots: Record<string, { cell: number; x: number; y: number; a: number }>,
+): void {
+  const centers = CELL_CENTERS[s.cells] ?? [];
+  const oocyteAbs = s.cells === 2 && s.unequal;
+  const show = SPINDLE_STAGES.has(s.stage);
+  let idx = 0;
+
+  for (let c = 0; c < centers.length; c++) {
+    // 收集该细胞的染色体代表（每对姐妹取 a 单体）
+    const reps = CHROMATIDS
+      .filter((sp) => sp.key.endsWith("a") && slots[sp.key]?.cell === c)
+      .map((sp) => {
+        const sl = slots[sp.key];
+        const [bx, by] = oocyteAbs ? [0, 0] : centers[sl.cell];
+        return { x: bx + sl.x, y: by + sl.y };
+      });
+
+    // 极点坐标（含卵细胞偏移）
+    const [pcx, pcy] = centers[c];
+    const yOff = s.unequal ? OO_POLE_SHIFT : 0;
+    const poleT: [number, number] = [pcx, pcy - POLE_OFFSET + yOff];
+    const poleB: [number, number] = [pcx, pcy + POLE_OFFSET + yOff];
+
+    const mid = Math.ceil(reps.length / 2);
+    for (let j = 0; j < reps.length; j++) {
+      const { x: tx, y: ty } = reps[j];
+      const pole = j < mid ? poleT : poleB;
+
+      // outer g：极点位置（setAttribute，不触发 transition）
+      bgPool.spindleOuters[idx].setAttribute("transform", `translate(${pole[0]}, ${pole[1]})`);
+
+      // 内层 g：染色体偏移（style.transform，CSS transition 驱动平滑跟随）
+      if (spindleInits[idx] === null) {
+        // 首次渲染：记录初始染色体坐标，line 几何设为初始偏移
+        spindleInits[idx] = { x: tx, y: ty };
+        bgPool.spindleLines[idx].setAttribute("y2", String(ty - pole[1]));
+      }
+      const init = spindleInits[idx]!;
+      bgPool.spindleInners[idx].style.transform = `translate(${tx - init.x}px, ${ty - init.y}px)`;
+      bgPool.spindleInners[idx].style.opacity = show ? "1" : "0";
+      idx++;
+    }
+  }
+
+  // 隐藏未使用的线
+  while (idx < bgPool.spindleInners.length) {
+    bgPool.spindleInners[idx].style.opacity = "0";
+    spindleInits[idx] = null;
+    idx++;
+  }
+}
+
 // ============ 工具 ============
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] {
   const node = document.createElementNS(NS, tag);
@@ -406,6 +478,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
     if (!root) return;
     updatePool(root, s);
     const slots = slotsFor(s, comboAlt);
+    updateSpindleLines(s, slots);
     const centers = CELL_CENTERS[s.cells] ?? [];
     const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞 cells=2 阶段：槽位即绝对坐标
     const radius = CELL_RADIUS[s.cells] ?? 62;
@@ -454,6 +527,12 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bgPool.polarBodies.length = 0;
       bgPool.oocyteLarge = null;
       bgPool.oocyteEccentric = null;
+      // 纺锤丝池清空（测试隔离）
+      bgPool.spindleOuters.forEach((g) => g.remove());
+      bgPool.spindleInners.length = 0;
+      bgPool.spindleLines.length = 0;
+      bgPool.spindleOuters.length = 0;
+      spindleInits.fill(null);
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
@@ -515,6 +594,19 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       }
       bgPool.oocyteEccentric = el("ellipse", { class: "cell-outline", ...BG_STYLE, opacity: 0 });
       svgRoot.appendChild(bgPool.oocyteEccentric);
+
+      // 纺锤丝池：16 组嵌套 g（外层固定极点，内层 style.transform 动画染色体端）
+      for (let i = 0; i < 16; i++) {
+        const outer = el("g", { class: "spindle-outer" });
+        const inner = el("g", { class: "spindle-inner" });
+        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        inner.appendChild(line);
+        outer.appendChild(inner);
+        bgPool.spindleOuters.push(outer);
+        bgPool.spindleInners.push(inner);
+        bgPool.spindleLines.push(line);
+        svgRoot.appendChild(outer);
+      }
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）
       CHROMATIDS.forEach((spec) => {

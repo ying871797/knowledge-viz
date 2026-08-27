@@ -148,6 +148,16 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .cell-wall, .nuclear-membrane, .cell-plate, .spindle-line {
   transition: opacity var(--tween-ms, 1350ms) ease-in-out;
 }
+/* 减数分裂纺锤丝：内层 g 的 transform + opacity 走 CSS transition，外层 g 固定极点不动画 */
+.meiosis-scene .spindle-inner {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out;
+  pointer-events: none;
+}
+.meiosis-scene .spindle-line {
+  pointer-events: none;
+}
 
 /* DNA 复制场景：定位上下文（拓展角标绝对定位基准）+ 全 SVG 元素幕间补间 */
 .dna-scene { position: relative; }
