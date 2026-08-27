@@ -1,6 +1,6 @@
 import type { Course, SceneComponent } from "./types";
 import { Player } from "./player";
-import { NumberChart, type Series } from "./numberChart";
+import { NumberChart } from "./numberChart";
 import { NotesPanel } from "./notes";
 import { ZoomController } from "./zoomController";
 
@@ -50,18 +50,6 @@ export function mountCoursePage(
   const notesBox = document.createElement("aside");
   const stageBox = document.createElement("section");
   grid.append(notesBox, stageBox);
-
-  // —— 两张曲线卡片 ——
-  const totalsCard = document.createElement("div");
-  totalsCard.className = "chart-card";
-  const perCard = document.createElement("div");
-  perCard.className = "chart-card";
-  const totalsTitle = document.createElement("h4");
-  totalsTitle.textContent = "细胞内数目变化";
-  const perTitle = document.createElement("h4");
-  perTitle.textContent = "每条染色体上的 DNA 数";
-  totalsCard.append(totalsTitle);
-  perCard.append(perTitle);
 
   // —— 控制条（位于标题正下方）：上一步 / 播放 / 下一步 / 调速 / 阶段节点条 / 练习开关 / 揭晓按钮 ——
   // 导航键为「图标+文字」双 span 结构：窄屏媒体查询隐藏文字只留图标，aria-label 兜底语义
@@ -125,7 +113,6 @@ export function mountCoursePage(
   if (chartsEnabled) controls.append(examToggle, revealBtn);
 
   root.append(back, h2, controls, grid);
-  if (chartsEnabled) root.append(totalsCard, perCard);
 
   // —— 核心组件实例 ——
   const notes = new NotesPanel(notesBox);
@@ -176,49 +163,22 @@ export function mountCoursePage(
     stageBox.appendChild(legendDiv);
   }
 
-  // 曲线图表：仅对有数目语义的课程装配（hideCharts 课程跳过，避免空图表占位）
-  let totals: NumberChart | null = null;
-  let perChr: NumberChart | null = null;
-  if (chartsEnabled) {
+  // —— 曲线图表：按 chartConfigs 动态创建 ——
+  const chartInstances: NumberChart[] = [];
+  if (chartsEnabled && course.chartConfigs) {
     const labels = course.stages.map((s) => s.title);
-    // 纵轴 n 表示法：n 取课程最后阶段的染色体数（即配子 n，本课程为 2）；
-    // 刻度在 v 为 n 的整数倍（且非 0）时显示为「1n / 2n / …」，其余保持原数值
-    const gameteN = course.stages[course.stages.length - 1].numbers!.chromosome;
-    totals = new NumberChart(totalsCard, labels, (v) =>
-      v > 0 && v % gameteN === 0 ? `${v / gameteN}n` : String(v),
-    );
-    perChr = new NumberChart(perCard, labels);
+    for (const cfg of course.chartConfigs) {
+      const card = document.createElement("div");
+      card.className = "chart-card";
+      const title = document.createElement("h4");
+      title.textContent = cfg.title;
+      card.append(title);
+      root.append(card);
 
-    // 总数图三条曲线 + 显隐开关（可隐藏单条曲线让学生预测变化）
-    const TOTAL_SERIES: Series[] = [
-      { label: "DNA数", values: course.stages.map((s) => s.numbers!.dna), color: "#2563eb" },
-      { label: "染色体数", values: course.stages.map((s) => s.numbers!.chromosome), color: "#dc2626" },
-      { label: "染色单体数", values: course.stages.map((s) => s.numbers!.chromatid), color: "#b45309", dashed: true },
-    ];
-    totals.setSeries(TOTAL_SERIES);
-    perChr.setSeries([
-      { label: "每条染色体DNA", values: course.stages.map((s) => s.numbers!.dnaPerChromosome), color: "#059669" },
-    ]);
-
-    // 曲线显隐复选框组：取消勾选即从总数图中移除该系列
-    const seriesToggles = document.createElement("div");
-    seriesToggles.className = "series-toggles";
-    // 创建每个开关时闭包捕获其 checkbox 引用，避免依赖 children 索引的隐式耦合
-    const toggleBoxes: HTMLInputElement[] = [];
-    TOTAL_SERIES.forEach((s) => {
-      const lab = document.createElement("label");
-      const box = Object.assign(document.createElement("input"), { type: "checkbox" }) as HTMLInputElement;
-      box.checked = true;
-      toggleBoxes.push(box);
-      box.addEventListener("change", () => {
-        // 仅按各复选框勾选状态过滤系列后重绘，并恢复高亮竖线位置
-        totals!.setSeries(TOTAL_SERIES.filter((_, i) => toggleBoxes[i].checked));
-      totals!.setActive(player.current);
-    });
-    lab.append(box, document.createTextNode(` ${s.label}`));
-    seriesToggles.appendChild(lab);
-  });
-  totalsCard.appendChild(seriesToggles);
+      const chart = new NumberChart(card, labels, cfg.tickFormat);
+      chart.setSeries(cfg.series);
+      chartInstances.push(chart);
+    }
   }
 
   // 拐点气泡：进入含 callout 的阶段时显示关键数目变化说明
@@ -248,8 +208,7 @@ export function mountCoursePage(
     // 步数徽标：第 x/N 步
     stepBadge.textContent = `第${i + 1}/${course.stages.length}步`;
     if (chartsEnabled) {
-      totals!.setActive(i);
-      perChr!.setActive(i);
+      chartInstances.forEach((c) => c.setActive(i));
     }
     if (stage.callout && !examMode) {
       callout.textContent = `💡 ${stage.callout}`;
@@ -266,8 +225,7 @@ export function mountCoursePage(
 
   // 双向联动：曲线数据点点击 → 跳转该阶段（先暂停自动播放）
   if (chartsEnabled) {
-    totals!.onPointClick((i) => { player.pause(); player.goTo(i); });
-    perChr!.onPointClick((i) => { player.pause(); player.goTo(i); });
+    chartInstances.forEach((c) => c.onPointClick((i) => { player.pause(); player.goTo(i); }));
   }
 
   btnPrev.addEventListener("click", () => { player.pause(); player.prev(); });
@@ -290,8 +248,7 @@ export function mountCoursePage(
   if (chartsEnabled) {
     examToggle.querySelector("input")!.addEventListener("change", (e) => {
       examMode = (e.target as HTMLInputElement).checked;
-      totals!.setExamMode(examMode);
-      perChr!.setExamMode(examMode);
+      chartInstances.forEach((c) => c.setExamMode(examMode));
       revealBtn.style.display = examMode ? "" : "none";
       applyStage(player.current);
     });

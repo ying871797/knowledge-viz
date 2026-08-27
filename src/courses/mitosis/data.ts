@@ -1,4 +1,5 @@
-import type { Course } from "../../core/types";
+import type { Course, Stage } from "../../core/types";
+import { buildChartConfigs } from "../../core/chartUtils";
 
 /** 有丝分裂数目数据（2n=4） */
 interface MitoNumbers { chromosome: number; dna: number; chromatid: number; dnaPerChromosome: number }
@@ -12,14 +13,7 @@ const st = (id: string, title: string, narration: string[], n: MitoNumbers): Cou
   numbers: n,
 });
 
-export const mitosisCourse: Course = {
-  meta: {
-    id: "mitosis",
-    title: "有丝分裂",
-    chapter: "必修一 第6章第1节",
-    difficulty: 3,
-  },
-  stages: [
+const mitosisStages: Stage[] = [
     st("interphase-before", "间期前（未复制）", [
       "体细胞中染色体数为 2n（两对同源染色体）",
       "间期开始前：每条染色体含 1 个 DNA 分子，无姐妹染色单体",
@@ -53,5 +47,15 @@ export const mitosisCourse: Course = {
       "有丝分裂意义：亲代染色体经复制后精确平均分配到两个子细胞，保持遗传性状的稳定性",
       "对比减数分裂：有丝分裂子细胞染色体数目不变（减数分裂减半为 n）",
     ], { chromosome: 4, dna: 4, chromatid: 0, dnaPerChromosome: 1 }),
-  ],
+];
+
+export const mitosisCourse: Course = {
+  meta: {
+    id: "mitosis",
+    title: "有丝分裂",
+    chapter: "必修一 第6章第1节",
+    difficulty: 3,
+  },
+  stages: mitosisStages,
+  chartConfigs: buildChartConfigs(mitosisStages),
 };
