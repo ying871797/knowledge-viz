@@ -344,7 +344,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       for (let i = 0; i < 8; i++) {
         const outer = el("g", { class: "spindle-outer" });
         const inner = el("g", { class: "spindle-inner" });
-        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 1 });
         inner.appendChild(line);
         outer.appendChild(inner);
         mitoPool.spindleOuters.push(outer);

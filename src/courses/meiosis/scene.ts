@@ -206,7 +206,7 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
 function oocyteSlots(id: string): Slots {
   const S: Slots = {};
   switch (id) {
-    case "oo-spermatogonium":
+    case "oo-oogonium":
       rod(S, "A1", 0, -40, 40);
       rod(S, "A2", 0, 40, 40);
       rod(S, "B1", 0, -40, -40);
@@ -599,7 +599,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       for (let i = 0; i < 16; i++) {
         const outer = el("g", { class: "spindle-outer" });
         const inner = el("g", { class: "spindle-inner" });
-        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 1 });
         inner.appendChild(line);
         outer.appendChild(inner);
         bgPool.spindleOuters.push(outer);
