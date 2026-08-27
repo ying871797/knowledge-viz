@@ -450,7 +450,7 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
       daughters.forEach((r, key) => {
         r.setAttribute("y", TOP_ROW.has(key) ? String(STRIP_TOP_BASE) : String(STRIP_BOT_BASE));
       });
-      flatLayer.appendChild(legendGroup());
+      // 图例由 app.ts 渲染为 HTML 覆盖层，不在 SVG 内绘制
 
       // —— 终态配对刻度 ×24：done 阶段在母链与新链 6px 净距内浮现的短横线，粗细沿用氢键语义 ——
       // 分组布局（两趟循环保证索引稳定）：索引 i=上双链体（新链条底 70 → 带顶 76）、索引 12+i=下双链体（带底 310 → 新链条顶 316）
@@ -530,31 +530,11 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     destroy() {
       wrap?.remove();
     },
-  };
-}
 
-/** 图例（固定注释层）：单行三项横排于画布底部——终态双链体下缘 330、酶最低缘约 365，y=378 避让两者 */
-function legendGroup(): SVGGElement {
-  const NS = "http://www.w3.org/2000/svg";
-  const legend = document.createElementNS(NS, "g");
-  legend.setAttribute("class", "legend-group");
-  // x 锚点依次错开：三项文本宽度约 120/185/135px，互不重叠且右端不越画布（800）
-  const ITEMS: [string, string, number][] = [
-    ["#10b981", "前导链——连续合成", 24],
-    ["#f59e0b", "冈崎片段——分段合成（拓展）", 260],
-    ["#64748b", "灰色长带——亲代母链", 540],
-  ];
-  ITEMS.forEach(([color, label, x]) => {
-    const rect = document.createElementNS(NS, "rect");
-    rect.setAttribute("x", String(x)); rect.setAttribute("y", "378");
-    rect.setAttribute("width", "26"); rect.setAttribute("height", "13");
-    rect.setAttribute("rx", "3"); rect.setAttribute("fill", color);
-    legend.appendChild(rect);
-    const t = document.createElementNS(NS, "text");
-    t.setAttribute("x", String(x + 32)); t.setAttribute("y", "389");
-    t.setAttribute("font-size", "13"); t.setAttribute("fill", "#334155");
-    t.textContent = label;
-    legend.appendChild(t);
-  });
-  return legend;
+    legend: [
+      { color: "#10b981", label: "前导链——连续合成" },
+      { color: "#f59e0b", label: "冈崎片段——分段合成（拓展）" },
+      { color: "#64748b", label: "灰色长带——亲代母链" },
+    ],
+  };
 }

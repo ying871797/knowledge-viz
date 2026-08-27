@@ -162,6 +162,20 @@ export function mountCoursePage(
   }
   stageBox.appendChild(sceneHUD);
 
+  // —— HTML 图例覆盖层（固定在底部，不参与 SVG 缩放）——
+  if (scene.legend?.length) {
+    const legendDiv = document.createElement("div");
+    legendDiv.className = "scene-legend";
+    for (const item of scene.legend) {
+      const span = document.createElement("span");
+      const swatch = document.createElement("i");
+      swatch.style.background = item.color;
+      span.append(swatch, document.createTextNode(item.label));
+      legendDiv.appendChild(span);
+    }
+    stageBox.appendChild(legendDiv);
+  }
+
   // 曲线图表：仅对有数目语义的课程装配（hideCharts 课程跳过，避免空图表占位）
   let totals: NumberChart | null = null;
   let perChr: NumberChart | null = null;

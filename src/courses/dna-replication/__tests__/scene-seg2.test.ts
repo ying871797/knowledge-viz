@@ -24,9 +24,10 @@ describe("DNA 复制场景（段 2：合成）", () => {
   });
 
   it("图例：绿=前导链连续合成、橙=冈崎片段分段合成（拓展）、灰=亲代母链", () => {
-    expect(host.querySelectorAll(".legend-group rect").length).toBe(3);
-    const texts = [...host.querySelectorAll<SVGTextElement>(".legend-group text")].map((t) => t.textContent);
-    expect(texts).toEqual(["前导链——连续合成", "冈崎片段——分段合成（拓展）", "灰色长带——亲代母链"]);
+    // 图例已迁移到 HTML 覆盖层，通过 scene.legend 属性验证数据
+    expect(scene.legend).toBeDefined();
+    expect(scene.legend!.length).toBe(3);
+    expect(scene.legend!.map((l) => l.label)).toEqual(["前导链——连续合成", "冈崎片段——分段合成（拓展）", "灰色长带——亲代母链"]);
   });
 
   it("左叉酶组：与右叉对称补全（引物酶/前导聚合酶/片段聚合酶×3）", () => {

@@ -84,24 +84,6 @@ export class ZoomController {
   private apply(): void {
     const { x, y, w, h } = this.vb;
     this.svg.setAttribute("viewBox", `${x} ${y} ${w} ${h}`);
-    this.fixLegends();
-  }
-
-  /** 反向 transform 让 .legend-group 保持屏幕位置不变 */
-  private fixLegends(): void {
-    const legends = this.svg.querySelectorAll<SVGGElement>(".legend-group");
-    if (!legends.length) return;
-    const { x: x0, y: y0, w: w0, h: h0 } = this.initial;
-    const { x, y, w, h } = this.vb;
-    const sx = w0 / w;
-    const sy = h0 / h;
-    // 图例在初始 viewBox 底部（y = y0+h0−22）；pin 到当前底部 + 反向缩放
-    const anchorY = y0 + h0 - 22;
-    const anchorYNew = y + h - 22;
-    for (const g of legends) {
-      g.setAttribute("transform",
-        `translate(0,${anchorYNew}) scale(${sx},${sy}) translate(0,${-anchorY})`);
-    }
   }
 
   /** 屏幕坐标 → SVG 坐标 */
