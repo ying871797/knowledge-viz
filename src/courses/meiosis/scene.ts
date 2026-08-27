@@ -348,13 +348,14 @@ const bgPool = {
 /** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
 function updatePool(root: SVGSVGElement, s: MeiosisState): void {
   const radius = CELL_RADIUS[s.cells] ?? 62;
+  const isOo = s.stage.startsWith("oo-");
   const isOocyte = s.cells === 2 && s.unequal;
   const centers = CELL_CENTERS[s.cells] ?? [];
   const pbCount = s.polarBodies ?? 0;
   const pbAngles = PB_ANGLES[pbCount] ?? [];
 
-  // 精子模式
-  const showSperm = !isOocyte;
+  // 精子模式（卵细胞单细胞期由 oocyteEccentric 兼作细胞膜，不走圆形 spermCircles）
+  const showSperm = !isOocyte && !(isOo && s.cells === 1);
   for (let i = 0; i < 4; i++) {
     const c = bgPool.spermCircles[i];
     const e = bgPool.spermEllipses[i];
@@ -401,15 +402,17 @@ function updatePool(root: SVGSVGElement, s: MeiosisState): void {
         pb.style.opacity = "0";
       }
     }
-  } else if (s.cells === 1 && s.unequal) {
-    // 卵细胞减Ⅰ后期：偏心椭圆
+  } else if (isOo && s.cells === 1) {
+    // 卵细胞单细胞期：ellipse 兼作细胞膜——圆形（间期前~减Ⅰ中期）↔ 偏心椭圆（减Ⅰ后期）
+    // rx/ry/cx/cy 走 CSS transition，减Ⅰ后期即圆形细胞膜被直接拉伸（无双膜重叠）
     const [cx, cy] = centers[0] ?? [400, 200];
+    const ecc = bgPool.oocyteEccentric!;
+    ecc.setAttribute("cx", String(cx));
+    ecc.setAttribute("cy", String(cy + (s.unequal ? Math.round(radius * 0.08) : 0)));
+    ecc.setAttribute("rx", String(Math.round(radius * (s.unequal ? 0.92 : 1))));
+    ecc.setAttribute("ry", String(Math.round(radius * (s.unequal ? 1.06 : 1))));
+    ecc.style.opacity = "1";
     bgPool.oocyteLarge!.style.opacity = "0";
-    bgPool.oocyteEccentric!.setAttribute("cx", String(cx));
-    bgPool.oocyteEccentric!.setAttribute("cy", String(cy + Math.round(radius * 0.08)));
-    bgPool.oocyteEccentric!.setAttribute("rx", String(Math.round(radius * 0.92)));
-    bgPool.oocyteEccentric!.setAttribute("ry", String(Math.round(radius * 1.06)));
-    bgPool.oocyteEccentric!.style.opacity = "1";
     bgPool.polarBodies.forEach((pb) => { pb.style.opacity = "0"; });
   } else {
     bgPool.oocyteLarge!.style.opacity = "0";

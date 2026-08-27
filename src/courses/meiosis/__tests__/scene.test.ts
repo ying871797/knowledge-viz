@@ -165,6 +165,31 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("A2a").style.transform).toContain("rotate(-11deg)");
   });
 
+  it("卵细胞单细胞期：细胞膜单一（ellipse 兼作，减Ⅰ后期直接拉伸、无圆形残留）", () => {
+    const visibleOutlines = () =>
+      [...host.querySelectorAll<SVGElement>(".cell-outline")].filter((e) => e.style.opacity === "1");
+
+    // 减Ⅰ中期：膜为圆形 ellipse（rx=ry=150），无 circle 残留
+    scene.render(st({ stage: "oo-metaphase-I", replicated: true, pairing: true, crossingOver: true, equatorial: "paired" }));
+    const mid = visibleOutlines();
+    expect(mid.length).toBe(1);
+    expect(mid[0].tagName).toBe("ellipse");
+    const eccMid = mid[0] as SVGEllipseElement;
+    expect(eccMid.getAttribute("rx")).toBe("150");
+    expect(eccMid.getAttribute("ry")).toBe("150");
+    expect(eccMid.getAttribute("cy")).toBe("200");
+
+    // 减Ⅰ后期：同一 ellipse 直接拉伸（rx≠ry），仍无圆形残留（无双膜重叠）
+    scene.render(st({ stage: "oo-anaphase-I", replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
+    const ana = visibleOutlines();
+    expect(ana.length).toBe(1);
+    expect(ana[0].tagName).toBe("ellipse");
+    const eccAna = ana[0] as SVGEllipseElement;
+    expect(eccAna.getAttribute("rx")).toBe("138");
+    expect(eccAna.getAttribute("ry")).toBe("159");
+    expect(eccAna.getAttribute("cy")).toBe("212");
+  });
+
   it("卵细胞阶段9/10：8 根杆守恒分配——每细胞恰 2 条", () => {
     for (const stage of ["oo-telophase-II", "oo-egg"]) {
       scene.render(st({ stage, replicated: false, cells: 2, unequal: true, polarBodies: 3 }));
