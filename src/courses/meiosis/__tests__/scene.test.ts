@@ -326,10 +326,10 @@ describe("纺锤丝显隐与池隔离", () => {
   });
 
   // 精子模式：6 个可见阶段（数量精确断言）
-  it("精子模式：减Ⅰ前/中/后各4根、减Ⅱ中4根、减Ⅱ后8根；其余隐藏", () => {
+  it("精子模式：减Ⅰ前/中/后各4根、减Ⅱ中/后各8根（双定向）；其余隐藏", () => {
     const visible: [string, number][] = [
       ["prophase-I", 4], ["metaphase-I", 4], ["anaphase-I", 4],
-      ["metaphase-II", 4], ["anaphase-II", 8],
+      ["metaphase-II", 8], ["anaphase-II", 8],
     ];
     const hidden = ["spermatogonium", "interphase", "telophase-I", "telophase-II", "sperm"];
     for (const [id, count] of visible) {
@@ -384,6 +384,22 @@ describe("纺锤丝显隐与池隔离", () => {
     scene.mount(host);
     scene.render(st({ stage: "metaphase-I" }));
     expect(visibleSpindleCount()).toBe(count1);
+  });
+
+  // 减Ⅱ双定向：每条 X 的姐妹分连上/下两极（有丝分裂式），中期即如此
+  it("减Ⅱ中期：每条 X 双定向——A1a 连上极、A1b 连下极", () => {
+    scene.render(st({ stage: "metaphase-II", replicated: true, cells: 2, equatorial: "single" }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(8);
+    // MII_SPERM 顺序：A1a top, A1b bottom, B2a top, B2b bottom, A2a top, A2b bottom, B1a top, B1b bottom
+    // 细胞0 上极 (215,90)、下极 (215,310)；A1a 与 A1b 的 x2 均指向 A1 X 位置 (202,200)
+    expect(visible[0].getAttribute("x1")).toBe("215");
+    expect(visible[0].getAttribute("y1")).toBe("90");
+    expect(visible[1].getAttribute("x1")).toBe("215");
+    expect(visible[1].getAttribute("y1")).toBe("310");
+    expect(visible[0].getAttribute("x2")).toBe("202");
+    expect(visible[1].getAttribute("x2")).toBe("202");
   });
 
   // 卵细胞模式：oo-anaphase-I 极点偏移 -20px

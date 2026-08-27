@@ -27,22 +27,14 @@ const MI_COMBO_ALT: SpindleFiber[] = [
   { key: "A1a", cell: 0, pole: "top" }, { key: "B2a", cell: 0, pole: "top" },
   { key: "A2a", cell: 0, pole: "bottom" }, { key: "B1a", cell: 0, pole: "bottom" },
 ];
-// 减Ⅱ中期：精子细胞0={A1,B2}、细胞1={A2,B1}；卵细胞大细胞={A1,B1}
+// 减Ⅱ中期/后期：每条 X 双定向——姐妹分连上/下两极（有丝分裂式），同一映射贯穿中期与后期
 const MII_SPERM: SpindleFiber[] = [
-  { key: "A1a", cell: 0, pole: "top" }, { key: "B2a", cell: 0, pole: "bottom" },
-  { key: "A2a", cell: 1, pole: "top" }, { key: "B1a", cell: 1, pole: "bottom" },
-];
-const MII_OO: SpindleFiber[] = [
-  { key: "A1a", cell: 0, pole: "top" }, { key: "B1a", cell: 0, pole: "bottom" },
-];
-// 减Ⅱ后期：姐妹分连两极（每细胞每染色体 2 根）
-const MIIA_SPERM: SpindleFiber[] = [
   { key: "A1a", cell: 0, pole: "top" }, { key: "A1b", cell: 0, pole: "bottom" },
   { key: "B2a", cell: 0, pole: "top" }, { key: "B2b", cell: 0, pole: "bottom" },
   { key: "A2a", cell: 1, pole: "top" }, { key: "A2b", cell: 1, pole: "bottom" },
   { key: "B1a", cell: 1, pole: "top" }, { key: "B1b", cell: 1, pole: "bottom" },
 ];
-const MIIA_OO: SpindleFiber[] = [
+const MII_OO: SpindleFiber[] = [
   { key: "A1a", cell: 0, pole: "top" }, { key: "A1b", cell: 0, pole: "bottom" },
   { key: "B1a", cell: 0, pole: "top" }, { key: "B1b", cell: 0, pole: "bottom" },
 ];
@@ -54,13 +46,11 @@ function fibersFor(s: MeiosisState, comboAlt: boolean): SpindleFiber[] {
     case "anaphase-I": case "oo-anaphase-I":
       return comboAlt ? MI_COMBO_ALT : MI_FIBERS;
     case "metaphase-II":
+    case "anaphase-II":
       return MII_SPERM;
     case "oo-metaphase-II":
-      return MII_OO;
-    case "anaphase-II":
-      return MIIA_SPERM;
     case "oo-anaphase-II":
-      return MIIA_OO;
+      return MII_OO;
     default:
       return [];
   }
