@@ -62,4 +62,33 @@ describe("hash 路由", () => {
     go("#/course/nonexistent");
     expect(app.querySelector(".home-list")).toBeTruthy();
   });
+
+  it("课程页按路由更新 SEO title/description（分享卡片可见）", async () => {
+    await import("../src/main");
+    // 目录页：默认 SEO 文案
+    go("#/");
+    expect(document.title).toContain("高中生物过程动画");
+    // 课程页：title/description 带课程名与章节
+    go("#/course/meiosis");
+    expect(document.title).toContain("减数分裂");
+    expect(document.title).toContain("分步动画");
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    expect(meta?.content).toContain("减数分裂");
+    expect(meta?.content).toContain("必修二");
+  });
+
+  it("反馈按钮存在；buildFeedbackUrl 生成带页面上下文的 mailto 链接", async () => {
+    await import("../src/main");
+    const btn = document.body.querySelector<HTMLAnchorElement>(".feedback-btn");
+    expect(btn).toBeTruthy();
+    expect(btn?.textContent).toContain("反馈");
+
+    // 直接验证真实函数：jsdom 不支持 mailto 导航，这里只测链接构造
+    const { buildFeedbackUrl } = await import("../src/main");
+    const url = buildFeedbackUrl();
+    expect(url.startsWith("mailto:")).toBe(true);
+    expect(url).toContain("subject=");
+    expect(url).toContain("body=");
+    expect(decodeURIComponent(url)).toContain("反馈内容");
+  });
 });
