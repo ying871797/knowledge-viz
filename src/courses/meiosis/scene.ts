@@ -1,4 +1,4 @@
-import type { SceneComponent } from "../../core/types";
+﻿import type { SceneComponent } from "../../core/types";
 import type { MeiosisState } from "./data";
 
 // ============ 画布与几何常量 ============
@@ -88,6 +88,7 @@ const PB_ANGLES: Record<number, number[]> = { 1: [-50], 3: [-50, -5, 40] };
 const PB1_CENTER: [number, number] = pbCenter(-50);  // 第一极体圆心（减Ⅱ中期/后期微纺锤丝极点基准）
 const PB_SPINDLE_OFFSET = 22;                        // 极体微纺锤丝极点偏移（≤ PB_R）
 const PB_SCALE = 0.45;                               // 极体内染色体缩放（A 杆半长 60→27，容纳于 r=46）
+const SPERM_SCALE = 0.45;                            // 精子变形期染色体缩放（头部浓缩成椭圆后按比例缩小）
 function pbCenter(deg: number): [number, number] {
   return [
     Math.round(OO_CENTER[0] + PB_DIST * Math.cos(deg * Math.PI / 180)),
@@ -229,15 +230,15 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
       break;
     }
     case "sperm": {
-      // 变形期：分配同减Ⅱ末期，头部浓缩 + 尾部
-      rod(S, "A1", 0, -PAIR_GAP, -PAIR_GAP);
-      rod(S, "B2", 0, PAIR_GAP, -PAIR_GAP);
-      rod(S, "B1", 1, -PAIR_GAP, -PAIR_GAP);
-      rod(S, "A2", 1, PAIR_GAP, -PAIR_GAP);
-      S.A1b = { cell: 2, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
-      S.B2b = { cell: 2, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
-      S.B1b = { cell: 3, x: -PAIR_GAP, y: PAIR_GAP, a: 0 };
-      S.A2b = { cell: 3, x: PAIR_GAP, y: PAIR_GAP, a: 0 };
+      // 变形期：分配同减Ⅱ末期，头部浓缩 + 尾部；染色体随头部缩小（像素缩放 0.45，容纳于椭圆头部）
+      rod(S, "A1", 0, -PAIR_GAP, -PAIR_GAP, SPERM_SCALE);
+      rod(S, "B2", 0, PAIR_GAP, -PAIR_GAP, SPERM_SCALE);
+      rod(S, "B1", 1, -PAIR_GAP, -PAIR_GAP, SPERM_SCALE);
+      rod(S, "A2", 1, PAIR_GAP, -PAIR_GAP, SPERM_SCALE);
+      S.A1b = { cell: 2, x: -PAIR_GAP, y: PAIR_GAP, a: 0, s: SPERM_SCALE };
+      S.B2b = { cell: 2, x: PAIR_GAP, y: PAIR_GAP, a: 0, s: SPERM_SCALE };
+      S.B1b = { cell: 3, x: -PAIR_GAP, y: PAIR_GAP, a: 0, s: SPERM_SCALE };
+      S.A2b = { cell: 3, x: PAIR_GAP, y: PAIR_GAP, a: 0, s: SPERM_SCALE };
       break;
     }
     default:
@@ -308,16 +309,17 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-anaphase-II": {
-      // 减Ⅱ后期：次级卵母细胞着丝粒分裂（姐妹分赴本细胞上/下两极）；第一极体同步分裂（A2a/B2a 上、A2b/B2b 下）
-      S.A1a = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
-      S.A1b = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
-      S.B1a = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] - 84, a: 0 };
-      S.B1b = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] + 84, a: 0 };
-      // 极体①：A2/B2 姐妹分赴极体上/下（垂直 ±15，缩放后杆端不越出极体）
-      S.A2a = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] - 15, a: 0, s: PB_SCALE };
-      S.A2b = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] + 15, a: 0, s: PB_SCALE };
-      S.B2a = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] - 15, a: 0, s: PB_SCALE };
-      S.B2b = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] + 15, a: 0, s: PB_SCALE };
+      // 减Ⅱ后期：次级卵母细胞着丝粒分裂（姐妹分赴本细胞上/下两极，垂直 ±70 杆心距=减Ⅱ后期常规极距，
+      // 杆端不越出大细胞 Ru）；第一极体同步分裂（A2a/B2a 上、A2b/B2b 下，垂直 ±10，杆端不越出极体）
+      S.A1a = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] - 70, a: 0 };
+      S.A1b = { cell: 0, x: OO_CENTER[0] - PAIR_GAP, y: OO_CENTER[1] + 70, a: 0 };
+      S.B1a = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] - 70, a: 0 };
+      S.B1b = { cell: 0, x: OO_CENTER[0] + PAIR_GAP, y: OO_CENTER[1] + 70, a: 0 };
+      // 极体①：A2/B2 姐妹分赴极体上/下（垂直 ±10，缩放 0.45，杆端不越出极体）
+      S.A2a = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] - 10, a: 0, s: PB_SCALE };
+      S.A2b = { cell: 0, x: PB1_CENTER[0] - PAIR_GAP, y: PB1_CENTER[1] + 10, a: 0, s: PB_SCALE };
+      S.B2a = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] - 10, a: 0, s: PB_SCALE };
+      S.B2b = { cell: 0, x: PB1_CENTER[0] + PAIR_GAP, y: PB1_CENTER[1] + 10, a: 0, s: PB_SCALE };
       break;
     }
     case "oo-telophase-II":
