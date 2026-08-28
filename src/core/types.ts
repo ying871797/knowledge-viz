@@ -5,6 +5,7 @@ export interface ChartConfig {
   title: string;                        // 图表标题
   series: Series[];                     // 曲线数据（复用 numberChart.Series）
   tickFormat?: (v: number) => string;   // 纵轴刻度格式化（如 n 表示法）
+  tickStep?: number;                    // 纵轴刻度步进（>1 时刻度只取 step 的整数倍，配合 n 表示法去真实条数）
 }
 
 /** 阶段数目数据：三条曲线的数据点来源 */

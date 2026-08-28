@@ -40,6 +40,7 @@ export class NumberChart {
   private axisGroup: SVGGElement;
   private seriesLayer: SVGGElement;
   private markerLine: SVGLineElement;
+  private legendEl: HTMLDivElement;
   private series: Series[] = [];
   private activeIndex = -1;
   private examMode = false;
@@ -50,12 +51,18 @@ export class NumberChart {
     private labels: string[],
     /** 纵轴刻度格式化器（默认直接输出数值），如以 n 表示法显示 */
     private tickFormat: (v: number) => string = String,
+    /** 纵轴刻度步进（如 n 值）：>1 时刻度只取 step 的整数倍（0, step, 2step…），用于 n 表示法去真实条数 */
+    private tickStep = 1,
   ) {
     this.svg = el("svg", { viewBox: `0 0 ${W} ${H}`, width: "100%", role: "img" });
     this.axisGroup = el("g", {});
     this.seriesLayer = el("g", {});
     this.markerLine = el("line", { class: "marker", stroke: "#f59e0b", "stroke-width": 2, visibility: "hidden" });
     this.svg.append(this.axisGroup, this.seriesLayer, this.markerLine);
+    // 图例：HTML 层（不占 SVG 绘图区，避免遮挡曲线），位于 svg 之前
+    this.legendEl = document.createElement("div");
+    this.legendEl.className = "chart-legend";
+    container.appendChild(this.legendEl);
     container.appendChild(this.svg);
   }
 
@@ -65,8 +72,12 @@ export class NumberChart {
     const yMax = this.yMax();
     g.appendChild(el("line", { x1: M.left, y1: M.top, x2: M.left, y2: H - M.bottom, stroke: "#94a3b8" }));
     g.appendChild(el("line", { x1: M.left, y1: H - M.bottom, x2: W - M.right, y2: H - M.bottom, stroke: "#94a3b8" }));
-    // 纵向网格线（数值为小整数时逐值画线）
-    for (let v = 0; v <= yMax; v++) {
+    // 纵向网格线：数值为小整数时逐值画线；tickStep>1（n 表示法）时只画 n 的整数倍刻度。
+    // 前置约定：使用 tickStep 的课程其全部数据值须为 step 的整数倍（buildChartConfigs 由
+    // dna=dpc×chromosome、chromosome∈{n,2n,4n} 保证），使每个数据点恰好落在网格线上；
+    // 若未来引入非倍数数据，顶部刻度需另行收口到 yMax。
+    const step = Math.max(1, Math.round(this.tickStep));
+    for (let v = 0; v <= yMax; v += step) {
       const y = yFor(v, yMax);
       if (v > 0) g.appendChild(el("line", { x1: M.left, y1: y, x2: W - M.right, y2: y, stroke: "#e2e8f0" }));
       const t = el("text", { class: "axis-text", x: M.left - 8, y: y + 4, "text-anchor": "end", "font-size": 12, fill: "#64748b" });
@@ -94,14 +105,36 @@ export class NumberChart {
     return max;
   }
 
-  /** 重绘全部曲线、数据点与图例 */
+  /** 重绘全部曲线、数据点与 HTML 图例 */
   setSeries(series: Series[]): void {
     this.series = series;
     this.activeIndex = -1;
     this.seriesLayer.replaceChildren();
     this.rebuildAxes();
-    // 练习模式下只保留坐标轴，不绘制曲线
-    if (this.examMode) return;
+    // HTML 图例：色点 + 标签；虚线系列加虚线样式
+    this.legendEl.replaceChildren();
+    series.forEach((s, si) => {
+      const color = s.color ?? COLORS[si % COLORS.length];
+      const item = document.createElement("span");
+      item.className = "legend-item";
+      const swatch = document.createElement("i");
+      swatch.className = "legend-swatch";
+      if (s.dashed) {
+        swatch.classList.add("legend-swatch-dashed");
+        // 虚线样式：CSS 用 repeating-gradient 基于 currentColor，故在此注入系列色
+        swatch.style.color = color;
+      } else {
+        swatch.style.background = color;
+      }
+      item.append(swatch, document.createTextNode(s.label));
+      this.legendEl.appendChild(item);
+    });
+    // 练习模式下只保留坐标轴，不绘制曲线（图例同样隐藏）
+    if (this.examMode) {
+      this.legendEl.style.display = "none";
+      return;
+    }
+    this.legendEl.style.display = "";
 
     const count = this.labels.length;
     const yMax = this.yMax();
@@ -123,19 +156,6 @@ export class NumberChart {
         dot.addEventListener("click", () => this.clickCb?.(i));
         this.seriesLayer.appendChild(dot);
       });
-    });
-    // 图例（虚线系列加 "-- " 前缀）；右端对齐锚定 + 加大间距，
-    // 避免长标签超出画布右缘被裁剪，并为移动端字号补偿留出空间
-    series.forEach((s, si) => {
-      const color = s.color ?? COLORS[si % COLORS.length];
-      const t = el("text", {
-        class: "legend-text",
-        x: W - M.right - (series.length - 1 - si) * 110,
-        y: M.top + 4,
-        "text-anchor": "end", "font-size": 12, fill: color,
-      });
-      t.textContent = `${s.dashed ? "-- " : ""}${s.label}`;
-      this.seriesLayer.appendChild(t);
     });
   }
 
@@ -165,6 +185,7 @@ export class NumberChart {
     if (on) {
       const idx = this.activeIndex;
       this.seriesLayer.replaceChildren(); // 清空曲线
+      this.legendEl.style.display = "none"; // 隐藏 HTML 图例
       this.svg.querySelectorAll("text.stage-label").forEach((t) => t.setAttribute("visibility", "hidden"));
       this.markerLine.setAttribute("visibility", "hidden");
       this.activeIndex = idx; // 保留记忆，退出练习模式后恢复

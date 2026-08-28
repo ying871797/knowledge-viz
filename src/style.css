@@ -1,16 +1,77 @@
 /* 全局基础样式 */
-body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #f8fafc; color: #1f2937; }
+/* 课程页：暖纸白底呼应首页纸张感（无网格纹，避免干扰动画）；首页由 body.page-home 全宽接管 */
+body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; background: #f4f1e7; color: #1f2937; }
 #app { max-width: 1080px; margin: 0 auto; padding: 20px; }
 
 /* 课程页两栏布局：左讲解面板 / 右主场景 */
 .course-grid { display: flex; gap: 16px; }
-.course-grid aside { flex: 0 0 260px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; }
-.course-grid section { flex: 1; background: #fff; border: 2px solid #93c5fd; border-radius: 10px; padding: 8px; position: relative; overflow: hidden; touch-action: none; cursor: grab; }
+.course-grid aside { flex: 0 0 260px; background: #faf7ee; border: 1px solid #e5e0d0; border-radius: 10px; padding: 16px; }
+.course-grid section { flex: 1; background: #fdfdf9; border: 2px solid #93c5fd; border-radius: 10px; padding: 8px; position: relative; overflow: hidden; touch-action: none; cursor: grab; }
+/* 场景区取景框：极淡内框线 + 四角刻度（呼应首页载玻片卡；纯装饰，绝不拦截交互） */
+.course-grid section::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(44, 43, 38, .08);
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 1;
+}
+/* 四角刻度线（用两段线性渐变绘制每角的 L 形短线） */
+.course-grid section::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    linear-gradient(#c2402c, #c2402c) top left / 14px 2px,
+    linear-gradient(#c2402c, #c2402c) top left / 2px 14px,
+    linear-gradient(#c2402c, #c2402c) top right / 14px 2px,
+    linear-gradient(#c2402c, #c2402c) top right / 2px 14px,
+    linear-gradient(#c2402c, #c2402c) bottom left / 14px 2px,
+    linear-gradient(#c2402c, #c2402c) bottom left / 2px 14px,
+    linear-gradient(#c2402c, #c2402c) bottom right / 14px 2px,
+    linear-gradient(#c2402c, #c2402c) bottom right / 2px 14px;
+  background-repeat: no-repeat;
+  opacity: .5;
+}
+
+/* 课程页返回链接与标题：印刷红点缀呼应首页眉题 */
+.back-link {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: #9c2f1f;
+  text-decoration: none;
+  transition: color .15s ease;
+}
+.back-link:hover { color: #c2402c; text-decoration: underline; }
+.course-title {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  font-size: 26px;
+  color: #2c2b26;
+  margin: 4px 0 2px;
+}
+/* 讲解面板：纸白底 + 衬线标题 + 印刷红批注竖线 + 暖色列表点，与首页纸张感呼应 */
+.notes-panel h3 {
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  font-size: 17px;
+  color: #2c2b26;
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 3px solid #c2402c;
+  line-height: 1.5;
+}
+.notes-panel ul { margin: 0; padding-left: 18px; color: #3f3a30; line-height: 1.75; font-size: 14px; }
+.notes-panel li { margin-bottom: 6px; }
+/* 列表项暖色圆点（教科书批注感），替代默认黑点 */
+.notes-panel li::marker { color: #c2402c; }
 
 /* 缩放控制按钮组 */
 .zoom-controls { display: flex; gap: 4px; }
-.zoom-controls button { width: 28px; height: 28px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; font-size: 14px; cursor: pointer; line-height: 1; display: grid; place-items: center; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-.zoom-controls button:hover { background: #eff6ff; border-color: #93c5fd; }
+.zoom-controls button { width: 28px; height: 28px; border: 1px solid #d9d1c0; border-radius: 6px; background: #fdfdf9; font-size: 14px; cursor: pointer; line-height: 1; display: grid; place-items: center; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.zoom-controls button:hover { background: #fbeae6; border-color: #c2402c; }
 
 /* 场景区右上角浮层：步数徽标 + 缩放按钮 */
 .scene-hud { position: absolute; top: 12px; right: 16px; z-index: 6; display: flex; align-items: center; gap: 8px; }
@@ -24,7 +85,45 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .player-bar { display: flex; align-items: center; gap: 10px; }
 
 /* 曲线卡片与控制条（控制条位于课程标题正下方，卡片化半透明底 + 圆角） */
-.chart-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+.chart-card { background: #faf7ee; border: 1px solid #e5e0d0; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+/* 曲线卡标题：衬线 + 印刷红 § 记号，呼应首页目录头 */
+.chart-card h4 {
+  margin: 0 0 10px;
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c2b26;
+  letter-spacing: .05em;
+}
+.chart-card h4::before {
+  content: "§ ";
+  color: #c2402c;
+}
+/* HTML 图例：位于卡片标题下方、SVG 之外，绝不遮挡曲线 */
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: -2px 0 8px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #4a443a;
+}
+.legend-swatch {
+  display: inline-block;
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  background: #64748b; /* 兜底色；实际由 JS 按系列色设置 */
+}
+.legend-swatch-dashed {
+  background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 9px);
+}
 .controls {
   display: flex;
   gap: 10px;
@@ -33,40 +132,41 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   margin-bottom: 16px;
   flex-wrap: wrap;               /* 移动端正常换行 */
   padding: 10px 14px;
-  background: rgba(255, 255, 255, .8);
+  background: rgba(250, 247, 238, .85);
   backdrop-filter: blur(6px);
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e5e0d0;
   border-radius: 14px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+  box-shadow: 0 1px 3px rgba(44, 43, 38, .06);
 }
 
-/* 播放控件：胶囊圆角、主次分明（主色实心 / 描边幽灵），hover/active 有明显反馈 */
+/* 播放控件：胶囊圆角、主次分明（主色实心 / 描边幽灵），hover/active 有明显反馈。
+   控件用印刷红（呼应首页眉题/批注），场景染色保留蓝——「操作=红、内容=蓝」分层 */
 .controls button {
   font-size: 14px;
   border-radius: 999px;
   cursor: pointer;
   transition: filter .15s ease, transform .06s ease, box-shadow .15s ease, background-color .15s ease;
 }
-.controls .btn-primary { background: #2563eb; color: #fff; border: 1px solid #2563eb; padding: 7px 18px; }
-.controls .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(37, 99, 235, .35); }
+.controls .btn-primary { background: #c2402c; color: #fff; border: 1px solid #c2402c; padding: 7px 18px; }
+.controls .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 2px 8px rgba(194, 64, 44, .35); }
 .controls .btn-primary:active { filter: brightness(.92); transform: translateY(1px); box-shadow: none; }
-.controls .btn-ghost { background: #fff; color: #2563eb; border: 1.5px solid #bfdbfe; padding: 6px 16px; }
-.controls .btn-ghost:hover { background: #eff6ff; border-color: #2563eb; }
-.controls .btn-ghost:active { transform: translateY(1px); background: #dbeafe; }
+.controls .btn-ghost { background: #fdfdf9; color: #c2402c; border: 1.5px solid #e0a89a; padding: 6px 16px; }
+.controls .btn-ghost:hover { background: #fbeae6; border-color: #c2402c; }
+.controls .btn-ghost:active { transform: translateY(1px); background: #f6d8d0; }
 
 /* 速度选择器：与按钮风格一致的胶囊外形 */
 .controls .speed-select {
   font-size: 14px;
   padding: 6px 14px;
   border-radius: 999px;
-  border: 1.5px solid #bfdbfe;
-  background: #fff;
-  color: #1f2937;
+  border: 1.5px solid #e0a89a;
+  background: #fdfdf9;
+  color: #3f3a30;
   cursor: pointer;
   transition: border-color .15s ease, box-shadow .15s ease;
 }
-.controls .speed-select:hover { border-color: #2563eb; }
-.controls .speed-select:focus-visible { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37, 99, 235, .2); }
+.controls .speed-select:hover { border-color: #c2402c; }
+.controls .speed-select:focus-visible { outline: none; border-color: #c2402c; box-shadow: 0 0 0 3px rgba(194, 64, 44, .2); }
 
 /* 阶段节点进度条：实心圆节点（三态填充色区分），节点间距统一；
    连线画在容器层、位于所有按钮之下，不参与命中测试 */
@@ -78,7 +178,7 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   top: 50%;
   height: 2px;
   transform: translateY(-50%);
-  background: #e2e8f0;
+  background: #e0d9c8;
   pointer-events: none;          /* 连线绝不拦截点击 */
   z-index: 0;
 }
@@ -95,7 +195,7 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   touch-action: manipulation;    /* 消除移动端双击缩放延迟 */
   transition: transform .15s ease;
 }
-/* 实心圆点用 ::after 绘制并居中；三态以填充色区分 */
+/* 实心圆点用 ::after 绘制并居中；三态以填充色区分（红系，呼应控件主色） */
 .stage-node::after {
   content: "";
   position: absolute;
@@ -103,22 +203,57 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   width: 12px; height: 12px;
   margin: -6px 0 0 -6px;
   border-radius: 50%;
-  background: #cbd5e1;           /* default 态 */
+  background: #c9c2b2;           /* default 态：暖纸灰 */
   transition: background-color .15s ease, box-shadow .15s ease;
 }
-.stage-node:hover::after { background: #94a3b8; }
-.stage-node.passed::after { background: #60a5fa; }   /* passed 态 */
-.stage-node.passed:hover::after { background: #3b82f6; }
+.stage-node:hover::after { background: #a89f8c; }
+.stage-node.passed::after { background: #e8a796; }   /* passed 态：浅红 */
+.stage-node.passed:hover::after { background: #d98c78; }
 .stage-node.active { transform: scale(1.15); }
 .stage-node.active::after {                          /* active 态 + 光晕 */
-  background: #2563eb;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, .25);
+  background: #c2402c;
+  box-shadow: 0 0 0 4px rgba(194, 64, 44, .25);
 }
-.stage-node.active:hover::after { background: #1d4ed8; }
-.stage-node:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.stage-node.active:hover::after { background: #a93422; }
+.stage-node:focus-visible { outline: 2px solid #c2402c; outline-offset: 2px; }
 
 /* 曲线显隐复选框组 */
 .series-toggles { display: flex; gap: 12px; margin-top: 6px; font-size: 13px; }
+.series-toggles input { accent-color: #c2402c; cursor: pointer; }
+
+/* 练习模式开关：试卷小徽章——虚线框 + 「测」字章（触控热区不变，仅视觉包装） */
+.exam-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  font-size: 13.5px;
+  color: #3f3a30;
+  background: rgba(250, 247, 238, .6);
+  border: 1.5px dashed #c2402c;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+  user-select: none;
+}
+.exam-toggle:hover { background: rgba(194, 64, 44, .08); border-color: #c2402c; }
+.exam-toggle input {
+  width: 15px; height: 15px;
+  accent-color: #c2402c;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+/* 「测」字章：印刷红小方块前缀 */
+.exam-toggle::before {
+  content: "测";
+  font-size: 11px;
+  line-height: 1;
+  color: #fff;
+  background: #c2402c;
+  border-radius: 4px;
+  padding: 3px 5px;
+  letter-spacing: 0;
+}
 
 /* 减数分裂场景：染色体与背景元素位移用 CSS transition 补间（运动即语义） */
 .meiosis-scene { position: relative; }
@@ -128,9 +263,9 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   margin: 2px 4px 6px;
   padding: 4px 12px;
   font-size: 13px;
-  color: #1d4ed8;
-  background: #eff6ff;
-  border: 1px dashed #93c5fd;
+  color: #a93422;
+  background: #fbeae6;
+  border: 1px dashed #e0a89a;
   border-radius: 999px;
 }
 /* 染色体讲解气泡：宽度上限取固定值与容器净宽的较小者，防止窄屏溢出视口右缘 */
@@ -210,10 +345,29 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 }
 
 /* 拐点气泡与错误占位提示 */
-.callout { margin-top: 10px; background: #dbeafe; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; }
+/* 拐点气泡：黄色便签贴纸——右缘折角 + 印刷红竖线，像老师划重点的便签 */
+.callout {
+  position: relative;
+  margin-top: 10px;
+  background: #fdf6d8;
+  border-left: 4px solid #c2402c;
+  padding: 10px 16px 10px 14px;
+  border-radius: 6px 0 0 6px;
+  box-shadow: 2px 2px 0 rgba(194, 64, 44, .14);
+}
+.callout::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 0; height: 0;
+  border-top: 14px solid #fff;
+  border-left: 14px solid transparent;
+  opacity: .9;
+}
 .load-error { color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; }
 
-/* 全局反馈按钮：固定右下角，触控热区 ≥ 32×32，桌面 hover 提亮、移动端可点 */
+/* 全局反馈按钮：固定右下角，触控热区 ≥ 32×32。
+   印刷红实心（与主按钮同色系）提升可发现性，hover 提亮、移动端可点 */
 .feedback-btn {
   position: fixed;
   right: 16px;
@@ -221,32 +375,302 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   z-index: 20;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
   min-width: 44px;
   height: 36px;
   padding: 0 16px;
   font-size: 14px;
-  color: #2563eb;
-  background: rgba(255, 255, 255, .92);
-  backdrop-filter: blur(4px);
-  border: 1px solid #bfdbfe;
+  color: #fff;
+  background: #c2402c;
+  border: 1px solid #c2402c;
   border-radius: 999px;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, .12);
+  box-shadow: 0 2px 8px rgba(44, 43, 38, .22);
   cursor: pointer;
-  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease;
 }
-.feedback-btn:hover { background: #eff6ff; border-color: #2563eb; box-shadow: 0 3px 12px rgba(37, 99, 235, .28); }
-.feedback-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.feedback-btn:hover { background: #a93422; box-shadow: 0 4px 14px rgba(194, 64, 44, .4); transform: translateY(-1px); }
+.feedback-btn:focus-visible { outline: 2px solid #9c2f1f; outline-offset: 2px; }
 
-/* 场景步数徽标：叠加于场景区右上角的进度胶囊 */
+/* 场景步数徽标：叠加于场景区右上角的进度胶囊（红系呼应控件主色） */
 .step-badge {
   padding: 4px 12px;
   font-size: 13px;
-  color: #1d4ed8;
-  background: rgba(239, 246, 255, .92);
-  border: 1px solid #93c5fd;
+  color: #a93422;
+  background: rgba(251, 234, 230, .92);
+  border: 1px solid #e0a89a;
   border-radius: 999px;
+}
+
+/* ============ 首页：教科书 × 实验室 ============
+   米白纸张质感 + 印刷红眉题 + 墨绿「显微载玻片」课程卡。
+   字体栈优先宋体系（教科书气质），无外部字体请求。 */
+.home {
+  --paper: #f5f1e6;
+  --ink: #2c2b26;
+  --ink-soft: #6b665a;
+  --rule-red: #c2402c;
+  --rule-red-deep: #9c2f1f;
+  --card-ink: #22302c;          /* 载玻片暗底 */
+  --card-ink-deep: #1a2622;
+  --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --a1: #7fd8be;                 /* 荧光青绿 */
+  --a2: #f2c14e;                 /* 荧光琥珀 */
+  font-family: var(--sans);
+  padding: 0 0 72px;
+}
+/* 纸张底色与极淡网格纹理（坐标纸/纸纤维）：挂到 body 实现全宽覆盖，内容仍居中。
+   只定义 --paper 供背景引用；其余 CSS 变量统一由 .home 定义（单源，防漂移） */
+body.page-home {
+  --paper: #f5f1e6;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgba(194, 64, 44, .06), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(44, 43, 38, .018) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, rgba(44, 43, 38, .018) 0 1px, transparent 1px 24px),
+    var(--paper);
+}
+
+/* ---- Hero：教科书眉题 + 大标题 ---- */
+.hero {
+  position: relative;
+  padding: 84px 0 46px;
+  border-bottom: 1px solid rgba(44, 43, 38, .18);
+}
+/* 页边装订线（左侧红墨线，呼应教科书批注） */
+.hero::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 76px; bottom: 38px;
+  width: 3px;
+  background: linear-gradient(var(--rule-red), var(--rule-red-deep));
+  border-radius: 2px;
+}
+/* 右上角「载玻片」水印装饰 */
+.hero::after {
+  content: "";
+  position: absolute;
+  right: 24px; top: 70px;
+  width: 88px; height: 88px;
+  border: 1.5px solid rgba(194, 64, 44, .22);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(127, 216, 190, .28) 0 5px, transparent 6px),
+    repeating-linear-gradient(0deg, transparent 0 13px, rgba(44, 43, 38, .06) 13px 14px),
+    rgba(255, 255, 255, .35);
+  transform: rotate(3deg);
+}
+.hero-kicker {
+  margin: 0 0 10px;
+  font-size: 13px;
+  letter-spacing: .42em;
+  text-transform: uppercase;
+  color: var(--rule-red);
+  font-weight: 600;
+}
+.hero h1 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(34px, 5.4vw, 58px);
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--ink);
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.hero-sub {
+  margin: 18px 0 0;
+  max-width: 560px;
+  font-size: 15px;
+  line-height: 1.9;
+  color: var(--ink-soft);
+}
+.hero-meta {
+  margin: 22px 0 0;
+  display: inline-flex;
+  gap: 6px;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: var(--rule-red-deep);
+  background: rgba(194, 64, 44, .07);
+  border: 1px solid rgba(194, 64, 44, .28);
+  border-radius: 999px;
+}
+
+/* ---- 标本目录 ---- */
+.catalog { padding: 44px 0 0; }
+.catalog-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+.catalog-head h2 {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 22px;
+  color: var(--ink);
+  letter-spacing: .06em;
+}
+.catalog-head h2::before {
+  content: "§ ";
+  color: var(--rule-red);
+}
+.catalog-head p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+.home-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 22px;
+}
+
+/* ---- 载玻片课程卡 ---- */
+.card { margin: 0; }
+.card-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+  background: var(--card-ink);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(26, 38, 34, .25), 0 18px 40px -28px rgba(26, 38, 34, .55);
+  transition: transform .28s cubic-bezier(.22, .9, .3, 1.15), box-shadow .28s ease;
+  /* 入场动画：逐个上浮（stagger）。backwards 只在延迟期保持 from 态，
+     动画结束不保留 to 态，避免 forwards 永久压住 hover 的 translateY 上浮 */
+  animation: card-rise .6s cubic-bezier(.22, .9, .3, 1.15) backwards;
+  animation-delay: calc(var(--i, 0) * .09s);
+}
+@keyframes card-rise {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.card-link:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 2px 4px rgba(26, 38, 34, .22), 0 32px 60px -30px rgba(26, 38, 34, .65);
+}
+.card-link:focus-visible { outline: 2px solid var(--rule-red); outline-offset: 3px; }
+
+/* 标本图区：暗底 + 荧光图案，hover 时轻微扫描线光带 */
+.card-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 12 / 5;
+  background:
+    radial-gradient(120% 140% at 20% 10%, color-mix(in srgb, var(--a1) 22%, transparent), transparent 55%),
+    radial-gradient(120% 140% at 85% 90%, color-mix(in srgb, var(--a2) 18%, transparent), transparent 55%),
+    linear-gradient(160deg, var(--card-ink), var(--card-ink-deep));
+  overflow: hidden;
+}
+.card-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, .09) 50%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform .7s ease;
+}
+.card-link:hover .card-art::after { transform: translateX(120%); }
+/* 标本图区四角刻度（载玻片取景框） */
+.card-art::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  border-radius: 8px;
+  pointer-events: none;
+}
+.card-art .art {
+  width: 118px;
+  height: 118px;
+  transform: translateY(6px);
+  transition: transform .4s cubic-bezier(.22, .9, .3, 1.15);
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, .35));
+}
+.card-link:hover .card-art .art { transform: translateY(2px) scale(1.06); }
+
+/* 课程信息区 */
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px 20px;
+  color: #e8e4d8;
+}
+.card-chapter {
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: #9aa79f;
+}
+.card-title {
+  font-family: var(--serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: #f2efe4;
+  letter-spacing: .04em;
+}
+.card-desc {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: #aeb9b1;
+}
+.card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, .16);
+}
+.card-diff { font-size: 12.5px; color: var(--a1); letter-spacing: .06em; }
+.card-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border: 1px solid color-mix(in srgb, var(--a2) 55%, transparent);
+  color: var(--a2);
+  border-radius: 999px;
+}
+.card-arrow {
+  position: relative;
+  align-self: flex-end;
+  margin: -8px 20px 20px 0;
+  font-size: 18px;
+  color: #7c8a81;
+  transition: transform .28s ease, color .28s ease;
+}
+.card-link:hover .card-arrow { transform: translateX(6px); color: var(--a1); }
+
+/* ---- 移动端：Hero 装饰收敛、卡片单列 ---- */
+@media (max-width: 720px) {
+  .hero { padding: 56px 0 36px; }
+  .hero::after { display: none; }
+  .hero-kicker { letter-spacing: .28em; }
+  .catalog { padding-top: 32px; }
+  .catalog-head { flex-direction: column; gap: 6px; }
+  .home-list { grid-template-columns: 1fr; gap: 14px; }
+  /* 移动端横向卡片：左图右文，整体高度大幅降低 */
+  .card-link { flex-direction: row; align-items: stretch; }
+  .card-art {
+    width: 104px;                     /* 固定侧边条宽度 */
+    aspect-ratio: auto;
+    flex: 0 0 104px;
+  }
+  .card-art::before { inset: 6px; }
+  .card-art .art { width: 84px; height: 84px; }
+  .card-info { padding: 14px 16px; gap: 6px; }
+  .card-title { font-size: 19px; }
+  .card-desc { font-size: 12.5px; line-height: 1.6; }
+  .card-foot { margin-top: 2px; padding-top: 9px; }
+  .card-diff { font-size: 11.5px; }
+  .card-tag { font-size: 11px; padding: 2px 8px; }
+  .card-arrow { display: none; }      /* 窄屏省略箭头，减少拥挤 */
 }
 
 /* ===== 窄屏（≤720px）移动端适配 =====
@@ -280,4 +704,13 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   .chart-card svg text.legend-text { font-size: 18px; }
   /* 阶段名最长 9 字，放大受相邻标签间距约束，仅小幅补偿（与桌面同等的轻微重叠特征） */
   .chart-card svg text.stage-label { font-size: 13px; }
+}
+
+/* 减少动效偏好：关闭纯装饰动画（首页卡片入场、hover 位移、扫描光带） */
+@media (prefers-reduced-motion: reduce) {
+  .card-link { animation: none; }
+  .card-link:hover { transform: none; }
+  .card-link:hover .card-art .art { transform: none; }
+  .card-link:hover .card-art::after { transform: translateX(-120%); }
+  .card-link:hover .card-arrow { transform: none; }
 }

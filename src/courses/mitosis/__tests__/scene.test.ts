@@ -130,3 +130,13 @@ describe.each(
     }
   });
 });
+
+describe("有丝分裂图表 n 表示法", () => {
+  it("n=4：tickStep=4、刻度 0~2n 不出现真实条数", () => {
+    const cfg = mitosisCourse.chartConfigs![0];
+    expect(cfg.tickStep).toBe(4);
+    // 有丝分裂 2n=4，DNA/染色体最大 8 → 刻度 0,4,8 → 0n,1n,2n
+    const ticks = [0, 4, 8].map((v) => cfg.tickFormat!(v));
+    expect(ticks).toEqual(["0n", "1n", "2n"]);
+  });
+});

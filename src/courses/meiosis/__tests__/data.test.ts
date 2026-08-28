@@ -19,6 +19,13 @@ describe("减数分裂课程数据", () => {
     expect(n(7)).toMatchObject({ chromosome: 4, chromatid: 0 }); // 减Ⅱ后期
     expect(n(9)).toMatchObject({ chromosome: 2, dna: 2 });       // 精子
   });
+  it("图表纵轴刻度用 n 表示（n=2）：tickStep=2、刻度 0~4n 不出现真实条数", () => {
+    const cfg = meiosisCourse.chartConfigs![0];
+    expect(cfg.tickStep).toBe(2);
+    // 刻度 0,2,4,6,8 → 0n,1n,2n,3n,4n（不再显示 1,3,5,7 等真实条数）
+    const ticks = [0, 2, 4, 6, 8].map((v) => cfg.tickFormat!(v));
+    expect(ticks).toEqual(["0n", "1n", "2n", "3n", "4n"]);
+  });
 });
 
 describe("卵细胞模式课程数据（oogenesisCourse）", () => {

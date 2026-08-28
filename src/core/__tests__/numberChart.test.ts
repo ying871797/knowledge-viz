@@ -64,13 +64,25 @@ describe("NumberChart 渲染", () => {
     expect(texts).not.toContain("4"); // 4 已被格式化为 2n
   });
 
+  it("tickStep 刻度只取 step 的整数倍（配合 n 表示法去真实条数）", () => {
+    const container = document.createElement("div");
+    // n=2：刻度应为 0, 2, 4, 6, 8，而非逐整数 0~8
+    const chart = new NumberChart(container, ["甲"], (v) => `${v / 2}n`, 2);
+    chart.setSeries([{ label: "DNA", values: [8] }]);
+    const texts = [...container.querySelectorAll("text.axis-text")].map((t) => t.textContent);
+    expect(texts).toEqual(["0n", "1n", "2n", "3n", "4n"]);
+  });
+
   it("练习模式隐藏曲线与图例", () => {
     const { container, chart } = mount();
     chart.setSeries(series);
+    expect(container.querySelector(".chart-legend")).toBeTruthy();
     chart.setExamMode(true);
     expect(container.querySelectorAll("polyline").length).toBe(0);
+    expect((container.querySelector(".chart-legend") as HTMLElement).style.display).toBe("none");
     chart.setExamMode(false);
     expect(container.querySelectorAll("polyline").length).toBe(2);
+    expect((container.querySelector(".chart-legend") as HTMLElement).style.display).not.toBe("none");
   });
 
   it("练习模式下重建坐标轴仍保持阶段标签隐藏（回归 C1）", () => {

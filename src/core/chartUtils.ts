@@ -15,7 +15,9 @@ export function buildChartConfigs(stages: Stage[]): ChartConfig[] {
         { label: "染色体数", values: stages.map((s) => s.numbers!.chromosome), color: "#dc2626" },
         { label: "染色单体数", values: stages.map((s) => s.numbers!.chromatid), color: "#b45309", dashed: true },
       ],
-      tickFormat: (v) => (v > 0 && v % gameteN === 0 ? `${v / gameteN}n` : String(v)),
+      // 刻度步进 = n，刻度只取 n 的整数倍（0, n, 2n, 3n, 4n），全部以 n 表示，不出现真实条数
+      tickStep: gameteN,
+      tickFormat: (v) => `${v / gameteN}n`,
     },
     {
       title: "每条染色体上的 DNA 数",

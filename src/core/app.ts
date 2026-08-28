@@ -175,7 +175,7 @@ export function mountCoursePage(
       card.append(title);
       root.append(card);
 
-      const chart = new NumberChart(card, labels, cfg.tickFormat);
+      const chart = new NumberChart(card, labels, cfg.tickFormat, cfg.tickStep);
       chart.setSeries(cfg.series);
       chartInstances.push(chart);
     }
