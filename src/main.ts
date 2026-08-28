@@ -78,11 +78,34 @@ const root = document.getElementById("app")!;
 // 当前课程页的清理句柄：离开/重进课程页前必须销毁，避免播放器 interval 泄漏
 let cleanup: CoursePageHandle | null = null;
 
+// 反馈问卷链接：填入你创建的问卷星/腾讯问卷地址后，「反馈」按钮会在新标签页打开它；
+// 留空则按钮不生效（不发邮件、不跳转）
+export const FEEDBACK_URL = "https://wj.qq.com/s2/27708003/9m68/";
+// 课程页描述通用后缀：与课程 title/chapter 拼接，供分享卡片与搜索引擎使用
+const COURSE_DESC_SUFFIX =
+  "分步动画演示，可逐步播放、调速、任意阶段暂停；对齐教材与考纲，免费在线使用。";
+const HOME_TITLE = "生物概念可视化讲解 — 高中生物过程动画演示";
+const HOME_DESC =
+  "高中生物多过程知识点分步动画演示：减数分裂、有丝分裂、DNA复制、基因表达、PCR。可分步播放、调速、任意阶段暂停，对齐教材与考纲，免费在线使用。";
+
+/** 依据路由更新页面 title / description（分享卡片、搜索结果可见） */
+function applySeo(title: string, description: string): void {
+  document.title = title;
+  let meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "description";
+    document.head.appendChild(meta);
+  }
+  meta.content = description;
+}
+
 /** 渲染目录页（首页） */
 function renderHome(): void {
   cleanup?.destroy();
   cleanup = null;
   root.innerHTML = "";
+  applySeo(HOME_TITLE, HOME_DESC);
   const h1 = document.createElement("h1");
   h1.textContent = "生物概念可视化讲解";
   const ul = document.createElement("ul");
@@ -102,11 +125,17 @@ function renderHome(): void {
 function renderCourse(id: string, mode?: string): void {
   const entry = registry.find((e) => e.meta.id === id);
   if (!entry) { renderHome(); return; }
+  const course = entry.load(mode);
+  // SEO：课程页 title/description 带关键词，便于搜索命中与分享卡片展示（mode 切换同步更新）
+  applySeo(
+    `${course.meta.title} 分步动画 — 生物概念可视化讲解`,
+    `${course.meta.title}（${course.meta.chapter}）${COURSE_DESC_SUFFIX}`,
+  );
   // 先清理上一次课程页资源，再整体重建 DOM（切换模式即重挂载 → 自然重置到第 0 步）
   cleanup?.destroy();
   cleanup = null;
   root.innerHTML = "";
-  cleanup = mountCoursePage(root, entry.load(mode), entry.createScene);
+  cleanup = mountCoursePage(root, course, entry.createScene);
 }
 
 /** 路由分发：解析 hash 决定渲染目录页或课程页（支持 ?mode= 查询参数） */
@@ -116,6 +145,22 @@ function route(): void {
   if (match) renderCourse(match[1], match[2]);
   else renderHome();
 }
+
+// 全局反馈入口：固定于右下角，点击在新标签页打开反馈问卷（外部链接，学生无需注册）
+const feedbackBtn = document.createElement("a");
+feedbackBtn.className = "feedback-btn";
+feedbackBtn.textContent = "反馈";
+feedbackBtn.title = "提建议 / 报告问题";
+if (FEEDBACK_URL) {
+  feedbackBtn.href = FEEDBACK_URL;
+  feedbackBtn.target = "_blank";
+  feedbackBtn.rel = "noopener";
+} else {
+  // 未配置问卷链接前不跳转，避免死按钮（RAT 上线前必须配置）
+  feedbackBtn.href = "#";
+  feedbackBtn.addEventListener("click", (ev) => ev.preventDefault());
+}
+document.body.appendChild(feedbackBtn);
 
 window.addEventListener("hashchange", route);
 route();

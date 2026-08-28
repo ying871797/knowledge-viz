@@ -213,6 +213,32 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .callout { margin-top: 10px; background: #dbeafe; border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 6px; }
 .load-error { color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; }
 
+/* 全局反馈按钮：固定右下角，触控热区 ≥ 32×32，桌面 hover 提亮、移动端可点 */
+.feedback-btn {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #2563eb;
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(4px);
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, .12);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.feedback-btn:hover { background: #eff6ff; border-color: #2563eb; box-shadow: 0 3px 12px rgba(37, 99, 235, .28); }
+.feedback-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+
 /* 场景步数徽标：叠加于场景区右上角的进度胶囊 */
 .step-badge {
   padding: 4px 12px;

@@ -62,4 +62,33 @@ describe("hash 路由", () => {
     go("#/course/nonexistent");
     expect(app.querySelector(".home-list")).toBeTruthy();
   });
+
+  it("课程页按路由更新 SEO title/description（分享卡片可见）", async () => {
+    await import("../src/main");
+    // 目录页：默认 SEO 文案
+    go("#/");
+    expect(document.title).toContain("高中生物过程动画");
+    // 课程页：title/description 带课程名与章节
+    go("#/course/meiosis");
+    expect(document.title).toContain("减数分裂");
+    expect(document.title).toContain("分步动画");
+    const meta = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    expect(meta?.content).toContain("减数分裂");
+    expect(meta?.content).toContain("必修二");
+  });
+
+  it("反馈按钮存在；配置问卷链接后以新标签页打开", async () => {
+    const { FEEDBACK_URL } = await import("../src/main");
+    const btn = document.body.querySelector<HTMLAnchorElement>(".feedback-btn");
+    expect(btn).toBeTruthy();
+    expect(btn?.textContent).toContain("反馈");
+    // 未配置问卷时按钮不跳转（href 为 #）；配置后为外链且新标签页打开
+    if (FEEDBACK_URL) {
+      expect(btn?.href).toBe(FEEDBACK_URL);
+      expect(btn?.target).toBe("_blank");
+      expect(btn?.rel).toContain("noopener");
+    } else {
+      expect(btn?.getAttribute("href")).toBe("#");
+    }
+  });
 });
