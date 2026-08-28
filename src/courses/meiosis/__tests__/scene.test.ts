@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMeiosisScene, slotsFor, usableRadius, CELL_CENTERS, CELL_RADIUS } from "../scene";
+import type { Slot } from "../scene";
 import { meiosisCourse, oogenesisCourse } from "../data";
 import type { MeiosisState } from "../data";
 
@@ -109,10 +110,10 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
   it("阶段8 减Ⅱ后期：着丝点分裂——姐妹分赴本细胞上/下两极（垂直分离）", () => {
     scene.render(st({ stage: "anaphase-II", replicated: false, cells: 2, separating: "sister" }));
     // 左细胞 (215,200)：A1a(202,130) A1b(202,270) B2a(228,130) B2b(228,270)，全部竖直
-    expect(chromatid("A1a").style.transform).toBe("translate(202px, 130px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(202px, 270px) rotate(0deg)");
-    expect(chromatid("B2a").style.transform).toBe("translate(228px, 130px) rotate(0deg)");
-    expect(chromatid("B2b").style.transform).toBe("translate(228px, 270px) rotate(0deg)");
+    expect(chromatid("A1a").style.transform).toBe("translate(202px, 130px) rotate(0deg) scale(1)");
+    expect(chromatid("A1b").style.transform).toBe("translate(202px, 270px) rotate(0deg) scale(1)");
+    expect(chromatid("B2a").style.transform).toBe("translate(228px, 130px) rotate(0deg) scale(1)");
+    expect(chromatid("B2b").style.transform).toBe("translate(228px, 270px) rotate(0deg) scale(1)");
     // 右细胞 (585,200)：B1a(572,130) B1b(572,270) A2a(598,130) A2b(598,270)
     expect(chromatid("B1a").style.transform).toContain("translate(572px, 130px)");
     expect(chromatid("A2b").style.transform).toContain("translate(598px, 270px)");
@@ -132,10 +133,11 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("A2b").style.transform).toContain("translate(493px, 315px)");
   });
 
-  it("阶段10 变形期：分配同末期，头部浓缩 + 尾部", () => {
+  it("阶段10 变形期：分配同末期，头部浓缩 + 尾部（染色体随头部缩放 0.45）", () => {
     scene.render(st({ stage: "sperm", replicated: false, cells: 4, spermShape: true }));
     expect(chromatid("A1a").style.transform).toContain("translate(162px, 85px)");
     expect(chromatid("A1a").style.transform).toContain("rotate(0deg)");
+    expect(chromatid("A1a").style.transform).toContain("scale(0.45)");
     // 背景元素预声明池：计数可见（opacity=1）的精子尾和细胞轮廓
     const visibleTails = [...host.querySelectorAll<SVGElement>(".sperm-tail")].filter((e) => e.style.opacity === "1");
     const visibleOutlines = [...host.querySelectorAll<SVGElement>(".cell-outline")].filter((e) => e.style.opacity === "1");
@@ -154,32 +156,63 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(visiblePBs.length).toBe(1);
   });
 
-  it("卵细胞阶段8 减Ⅱ后期：大细胞姐妹分赴上/下两极、极体①保持 X", () => {
+  it("卵细胞阶段8 减Ⅱ后期：次级卵母细胞姐妹分赴两极 + 第一极体同步分裂", () => {
     scene.render(st({ stage: "oo-anaphase-II", replicated: false, cells: 2, unequal: true, polarBodies: 1 }));
-    // 大细胞 OO_CENTER(240,200) ±84 垂直分离：A1(227,116/284) B1(253,116/284)
-    expect(chromatid("A1a").style.transform).toBe("translate(227px, 116px) rotate(0deg)");
-    expect(chromatid("A1b").style.transform).toBe("translate(227px, 284px) rotate(0deg)");
-    expect(chromatid("B1b").style.transform).toBe("translate(253px, 284px) rotate(0deg)");
-    // 极体①保持 X 形
-    expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
-    expect(chromatid("A2a").style.transform).toContain("rotate(-11deg)");
+    // 大细胞 OO_CENTER(240,200) ±70 垂直分离：A1(227,130/270) B1(253,130/270)
+    expect(chromatid("A1a").style.transform).toBe("translate(227px, 130px) rotate(0deg) scale(1)");
+    expect(chromatid("A1b").style.transform).toBe("translate(227px, 270px) rotate(0deg) scale(1)");
+    expect(chromatid("B1b").style.transform).toBe("translate(253px, 270px) rotate(0deg) scale(1)");
+    // 第一极体① 同步着丝粒分裂：A2a 上、A2b 下（垂直 ±10，缩放 0.45）
+    expect(chromatid("A2a").style.transform).toContain("translate(344px, 51px)");
+    expect(chromatid("A2b").style.transform).toContain("translate(344px, 71px)");
+    expect(chromatid("A2a").style.transform).toContain("rotate(0deg)");
+    expect(chromatid("A2a").style.transform).toContain("scale(0.45)");
+  });
+
+  it("卵细胞单细胞期：细胞膜单一（ellipse 兼作，减Ⅰ后期直接拉伸、无圆形残留）", () => {
+    const visibleOutlines = () =>
+      [...host.querySelectorAll<SVGElement>(".cell-outline")].filter((e) => e.style.opacity === "1");
+
+    // 减Ⅰ中期：膜为圆形 ellipse（rx=ry=150），无 circle 残留
+    scene.render(st({ stage: "oo-metaphase-I", replicated: true, pairing: true, crossingOver: true, equatorial: "paired" }));
+    const mid = visibleOutlines();
+    expect(mid.length).toBe(1);
+    expect(mid[0].tagName).toBe("ellipse");
+    const eccMid = mid[0] as SVGEllipseElement;
+    expect(eccMid.getAttribute("rx")).toBe("150");
+    expect(eccMid.getAttribute("ry")).toBe("150");
+    expect(eccMid.getAttribute("cy")).toBe("200");
+
+    // 减Ⅰ后期：同一 ellipse 直接拉伸（rx≠ry），仍无圆形残留（无双膜重叠）
+    scene.render(st({ stage: "oo-anaphase-I", replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
+    const ana = visibleOutlines();
+    expect(ana.length).toBe(1);
+    expect(ana[0].tagName).toBe("ellipse");
+    const eccAna = ana[0] as SVGEllipseElement;
+    expect(eccAna.getAttribute("rx")).toBe("138");
+    expect(eccAna.getAttribute("ry")).toBe("159");
+    expect(eccAna.getAttribute("cy")).toBe("212");
   });
 
   it("卵细胞阶段9/10：8 根杆守恒分配——每细胞恰 2 条", () => {
     for (const stage of ["oo-telophase-II", "oo-egg"]) {
       scene.render(st({ stage, replicated: false, cells: 2, unequal: true, polarBodies: 3 }));
-      // 卵 {A1a,B1a}
+      // 卵 {A1a,B1a}（不缩放）
       expect(chromatid("A1a").style.transform).toContain("translate(227px, 200px)");
       expect(chromatid("B1a").style.transform).toContain("translate(253px, 200px)");
-      // 极体① {A2a,B2a}
+      expect(chromatid("A1a").style.transform).toContain("scale(1)");
+      // 极体① {A2a,B2a}（缩放 0.45，杆不越出极体）
       expect(chromatid("A2a").style.transform).toContain("translate(341px, 61px)");
       expect(chromatid("B2a").style.transform).toContain("translate(365px, 61px)");
+      expect(chromatid("A2a").style.transform).toContain("scale(0.45)");
       // 极体② {A2b,B2b}
       expect(chromatid("A2b").style.transform).toContain("translate(413px, 184px)");
       expect(chromatid("B2b").style.transform).toContain("translate(429px, 184px)");
+      expect(chromatid("A2b").style.transform).toContain("scale(0.45)");
       // 极体③ {A1b,B1b}
       expect(chromatid("A1b").style.transform).toContain("translate(371px, 317px)");
       expect(chromatid("B1b").style.transform).toContain("translate(387px, 317px)");
+      expect(chromatid("A1b").style.transform).toContain("scale(0.45)");
       const visiblePBs = [...host.querySelectorAll<SVGElement>(".polar-body")].filter((e) => e.style.opacity === "1");
       expect(visiblePBs.length).toBe(3);
     }
@@ -402,6 +435,24 @@ describe("纺锤丝显隐与池隔离", () => {
     expect(visible[1].getAttribute("x2")).toBe("202");
   });
 
+  // 卵细胞减Ⅱ：第一极体同步分裂带微纺锤丝（8 根，含极体纤维）
+  it("卵细胞减Ⅱ后期：8 根纤维（大细胞 4 + 极体① 4），极体纤维极点=极体圆心", () => {
+    scene.render(st({ stage: "oo-anaphase-II", replicated: false, cells: 2, unequal: true, polarBodies: 1 }));
+    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
+    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    expect(visible.length).toBe(8);
+    // 顺序：A1a A1b B1a B1b（大细胞，极点 OO_CENTER±110-20）+ A2a A2b B2a B2b（极体①，极点 [357,61]±22）
+    expect(visible[0].getAttribute("x1")).toBe("240");
+    expect(visible[0].getAttribute("y1")).toBe("70");
+    expect(visible[4].getAttribute("x1")).toBe("357");
+    expect(visible[4].getAttribute("y1")).toBe("39");
+    expect(visible[5].getAttribute("x1")).toBe("357");
+    expect(visible[5].getAttribute("y1")).toBe("83");
+    // A2a 纤维染色体端指向 A2a 分裂位 [344,51]
+    expect(visible[4].getAttribute("x2")).toBe("344");
+    expect(visible[4].getAttribute("y2")).toBe("51");
+  });
+
   // 卵细胞模式：oo-anaphase-I 极点偏移 -20px
   it("卵细胞模式：oo-anaphase-I 极点偏移 -20px", () => {
     // 先渲染 anaphase-I（精子模式）获取基准极点
@@ -416,5 +467,129 @@ describe("纺锤丝显隐与池隔离", () => {
 
     // 极点 y 坐标应偏移 -20px
     expect(ooY - baseY).toBe(-20);
+  });
+});
+
+// ============ 越界回归：全部阶段两条杆端必须落在所属细胞膜内 ============
+// 背景元素 stroke-width=2（半宽 1），safe = 边界 − 5（额外 4px 抗锯齿余量）。
+// 覆盖：精子四种膜【圆 / 精子椭圆头】、卵细胞单细胞偏心椭圆、卵细胞两细胞大圆 + 极体圆。
+describe("越界回归：所有阶段所有杆端均落在所属细胞膜内", () => {
+  // 杆长信息（与 CHROMATIDS 对齐：A 半长 60、B 半长 35）
+  const HALF: Record<string, number> = { A: 60, B: 35 };
+  const CIRCLES: Record<number, [number, number][]> = {
+    1: [[400, 200]], 2: [[215, 200], [585, 200]],
+    4: [[175, 98], [480, 98], [175, 302], [480, 302]],
+  };
+  // 与 scene.ts 中的常量同步（避免重复导出时漂移）
+  const OO_CENTER: [number, number] = [240, 200];
+  const PB_R = 46;
+  const PB_DIST = OO_CENTER[0] === 240 ? 140 + PB_R - 4 : 0;
+
+  const pbCenter = (deg: number): [number, number] => [
+    Math.round(OO_CENTER[0] + PB_DIST * Math.cos((deg * Math.PI) / 180)),
+    Math.round(OO_CENTER[1] + PB_DIST * Math.sin((deg * Math.PI) / 180)),
+  ];
+
+  /** 两点欧氏距离 */
+  const d = (a: [number, number], b: [number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+  /** 卵细胞两细胞期：槽位即绝对坐标；否则槽位是相对所属细胞中心偏移 */
+  const absSlot = (s: MeiosisState, slot: Slot): [number, number] => {
+    const abs = s.cells === 2 && s.unequal;
+    if (abs) return [slot.x, slot.y];
+    const base = CIRCLES[s.cells][slot.cell] ?? [0, 0];
+    return [base[0] + slot.x, base[1] + slot.y];
+  };
+
+  /** 该槽位所属的细胞膜：圆或椭圆（rx=ry 即圆）。返回 {center, r|rx, ry, isEllipse} */
+  const bodyFor = (s: MeiosisState, slot: Slot): { center: [number, number]; rx: number; ry: number; name: string } => {
+    const isOo = s.stage.startsWith("oo-");
+    // 卵细胞两细胞期：大圆 or 极体圆（槽位 = 绝对坐标）
+    if (isOo && s.cells === 2 && s.unequal) {
+      // 距染色体中心最近的细胞体（大圆或某极体）
+      const bodies: { center: [number, number]; r: number }[] = [{ center: OO_CENTER, r: 140 }];
+      const angles: Record<number, number[]> = { 1: [-50], 3: [-50, -5, 40] };
+      for (const a of angles[s.polarBodies ?? 0] ?? []) bodies.push({ center: pbCenter(a), r: PB_R });
+      let best = bodies[0];
+      let bestDist = Infinity;
+      for (const b of bodies) {
+        const dist = d(b.center, [slot.x, slot.y]);
+        if (dist < bestDist) { bestDist = dist; best = b; }
+      }
+      return { center: best.center, rx: best.r, ry: best.r, name: best.r === 140 ? "大圆" : "极体" };
+    }
+    // 卵细胞单细胞期：偏心椭圆（cy 偏移由 unequal 决定）
+    if (isOo && s.cells === 1) {
+      const cy = 200 + (s.unequal ? Math.round(150 * 0.08) : 0);
+      const rx = Math.round(150 * (s.unequal ? 0.92 : 1));
+      const ry = Math.round(150 * (s.unequal ? 1.06 : 1));
+      return { center: [400, cy], rx, ry, name: "卵单细胞椭圆" };
+    }
+    // 精子模式：圆 or 精子椭圆头
+    const c = CIRCLES[s.cells][slot.cell];
+    if (s.spermShape) {
+      const rx = Math.round((s.cells - 1 === 0 ? 150 : 95) * 0.6);
+      const ry = Math.round((s.cells - 1 === 0 ? 150 : 95) * 0.52);
+      return { center: c, rx, ry, name: "精子椭圆头" };
+    }
+    return { center: c, rx: s.cells === 4 ? 95 : 150, ry: s.cells === 4 ? 95 : 150, name: "精子圆" };
+  };
+
+  /** 旋转角度 a 后，杆端相对组中心偏移 = {±sin(a)·half·s, ∓cos(a)·half·s} */
+  const offset = (a: number, halfPix: number, s: number): [number, number] => {
+    const rad = (a * Math.PI) / 180;
+    const len = halfPix * s;
+    return [Math.sin(rad) * len, -Math.cos(rad) * len];
+  };
+
+  it("精子模式全部 10 阶段", () => {
+    for (const stg of meiosisCourse.stages) {
+      const sc = stg.sceneState as unknown as MeiosisState;
+      if (!sc.stage) continue;
+      const slots = slotsFor(sc, false);
+      for (const [key, slot] of Object.entries(slots)) {
+        const half = HALF[key.slice(0, 1)];
+        const [cx, cy] = absSlot(sc, slot);
+        const [ox, oy] = offset(slot.a, half, slot.s ?? 1);
+        // 世界坐标两个杆端
+        for (const sign of [1, -1]) {
+          const tip: [number, number] = [cx + sign * ox, cy + sign * oy];
+          const body = bodyFor(sc, slot);
+          const t = Math.min(1, (body.rx - 5) / body.rx, (body.ry - 5) / body.ry);
+          if (body.rx === body.ry) {
+            expect(d(tip, body.center), `${sc.stage} ${key} 杆端离 ${body.name} 中心 ${d(tip, body.center).toFixed(1)}px（safe ${body.rx - 5}）`).toBeLessThanOrEqual(body.rx - 5);
+          } else {
+            const nx = (tip[0] - body.center[0]) / (body.rx * t);
+            const ny = (tip[1] - body.center[1]) / (body.ry * t);
+            expect(Math.hypot(nx, ny), `${sc.stage} ${key} 杆端椭圆归一化距离 ${Math.hypot(nx, ny).toFixed(3)}（safe 1）`).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    }
+  });
+
+  it("卵细胞模式全部 10 阶段", () => {
+    for (const stg of oogenesisCourse.stages) {
+      const sc = stg.sceneState as unknown as MeiosisState;
+      if (!sc.stage) continue;
+      const slots = slotsFor(sc, false);
+      for (const [key, slot] of Object.entries(slots)) {
+        const half = HALF[key.slice(0, 1)];
+        const [cx, cy] = absSlot(sc, slot);
+        const [ox, oy] = offset(slot.a, half, slot.s ?? 1);
+        for (const sign of [1, -1]) {
+          const tip: [number, number] = [cx + sign * ox, cy + sign * oy];
+          const body = bodyFor(sc, slot);
+          if (body.rx === body.ry) {
+            expect(d(tip, body.center), `${sc.stage} ${key} 杆端离 ${body.name} 中心 ${d(tip, body.center).toFixed(1)}px（safe ${body.rx - 5}）`).toBeLessThanOrEqual(body.rx - 5);
+          } else {
+            const t = Math.min(1, (body.rx - 5) / body.rx, (body.ry - 5) / body.ry);
+            const nx = (tip[0] - body.center[0]) / (body.rx * t);
+            const ny = (tip[1] - body.center[1]) / (body.ry * t);
+            expect(Math.hypot(nx, ny), `${sc.stage} ${key} 杆端椭圆归一化距离 ${Math.hypot(nx, ny).toFixed(3)}（safe 1）`).toBeLessThanOrEqual(1);
+          }
+        }
+      }
+    }
   });
 });
