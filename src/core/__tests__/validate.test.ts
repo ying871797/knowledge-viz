@@ -50,4 +50,47 @@ describe("validateCourse", () => {
     bad.stages[0].numbers!.dna = 8; // 与 chromosome=4 不等
     expect(() => validateCourse(bad)).toThrow(/dna 应等于 chromosome/);
   });
+  it("有 chartConfigs 时可省略 numbers", () => {
+    const noNum: Course = {
+      meta: { id: "pcr", title: "PCR", chapter: "选必三", difficulty: 2 },
+      stages: [
+        { id: "s0", title: "模板", narration: ["双链"], sceneState: {} },
+        { id: "s1", title: "变性", narration: ["分开"], sceneState: {} },
+      ],
+      chartConfigs: [
+        { title: "产物", series: [{ label: "产物量", values: [1, 2], color: "#2563eb" }] },
+      ],
+    };
+    expect(validateCourse(noNum)).toEqual(noNum);
+  });
+  it("chartConfigs 缺少 title 抛错", () => {
+    const bad: Course = {
+      meta: { id: "pcr", title: "PCR", chapter: "选必三", difficulty: 2 },
+      stages: [{ id: "s0", title: "模板", narration: ["双链"], sceneState: {} }],
+      chartConfigs: [{ title: "", series: [{ label: "x", values: [1], color: "#000" }] }],
+    };
+    expect(() => validateCourse(bad)).toThrow(/title/);
+  });
+  it("chartConfigs series 长度与 stages 不一致抛错", () => {
+    const bad: Course = {
+      meta: { id: "pcr", title: "PCR", chapter: "选必三", difficulty: 2 },
+      stages: [
+        { id: "s0", title: "模板", narration: ["双链"], sceneState: {} },
+        { id: "s1", title: "变性", narration: ["分开"], sceneState: {} },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "产物", values: [1, 2, 4], color: "#000" }] }],
+    };
+    expect(() => validateCourse(bad)).toThrow(/长度/);
+  });
+  it("chartConfigs values 含非数值抛错", () => {
+    const bad: Course = {
+      meta: { id: "pcr", title: "PCR", chapter: "选必三", difficulty: 2 },
+      stages: [
+        { id: "s0", title: "模板", narration: ["双链"], sceneState: {} },
+        { id: "s1", title: "变性", narration: ["分开"], sceneState: {} },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "产物", values: [1, "x" as unknown as number], color: "#000" }] }],
+    };
+    expect(() => validateCourse(bad)).toThrow(/数值/);
+  });
 });

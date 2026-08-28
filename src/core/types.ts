@@ -57,8 +57,8 @@ export function validateCourse(input: unknown): Course {
     const tag = s.id ?? `stage[${i}]`;
     if (!s.id || !s.title) throw new Error(`${tag} 缺少 id/title`);
     if (!Array.isArray(s.narration)) throw new Error(`${tag}.narration 必须是数组`);
-    // hideCharts 课程无数目语义，跳过数目校验
-    if (c.meta.hideCharts) return;
+    // hideCharts 或 chartConfigs 课程无数目语义，跳过数目校验
+    if (c.meta.hideCharts || c.chartConfigs) return;
     const n = s.numbers;
     if (!n) throw new Error(`${tag} 缺少 numbers`);
     (["chromosome", "dna", "chromatid", "dnaPerChromosome"] as const).forEach((k) => {
@@ -74,6 +74,26 @@ export function validateCourse(input: unknown): Course {
     if (n.chromatid === 0 && n.dna !== n.chromosome)
       throw new Error(`${tag} 无染色单体时 dna 应等于 chromosome`);
   });
+
+  // 若提供 chartConfigs，进行基础一致性校验
+  if (c.chartConfigs) {
+    if (!Array.isArray(c.chartConfigs)) throw new Error("chartConfigs 必须是数组");
+    c.chartConfigs.forEach((config, ci) => {
+      if (!config.title || typeof config.title !== "string")
+        throw new Error(`chartConfigs[${ci}] 缺少 title`);
+      if (!Array.isArray(config.series)) throw new Error(`chartConfigs[${ci}] series 必须是数组`);
+      config.series.forEach((series, si) => {
+        if (!series.label || typeof series.label !== "string")
+          throw new Error(`chartConfigs[${ci}].series[${si}] 缺少 label`);
+        if (!Array.isArray(series.values))
+          throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是数组`);
+        if (series.values.length !== c.stages.length)
+          throw new Error(`chartConfigs[${ci}].series[${si}] values 长度必须等于 stages 数量（${c.stages.length}）`);
+        if (series.values.some((v) => typeof v !== "number" || !Number.isFinite(v)))
+          throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是有限数值`);
+      });
+    });
+  }
 
   return c;
 }
