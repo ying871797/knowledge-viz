@@ -80,7 +80,7 @@ let cleanup: CoursePageHandle | null = null;
 
 // 反馈问卷链接：填入你创建的问卷星/腾讯问卷地址后，「反馈」按钮会在新标签页打开它；
 // 留空则按钮不生效（不发邮件、不跳转）
-export const FEEDBACK_URL = "";
+export const FEEDBACK_URL = "https://wj.qq.com/s2/27708003/9m68/";
 // 课程页描述通用后缀：与课程 title/chapter 拼接，供分享卡片与搜索引擎使用
 const COURSE_DESC_SUFFIX =
   "分步动画演示，可逐步播放、调速、任意阶段暂停；对齐教材与考纲，免费在线使用。";
