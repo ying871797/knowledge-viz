@@ -78,8 +78,9 @@ const root = document.getElementById("app")!;
 // 当前课程页的清理句柄：离开/重进课程页前必须销毁，避免播放器 interval 泄漏
 let cleanup: CoursePageHandle | null = null;
 
-// 反馈接收邮箱：填入你的邮箱后，「反馈」按钮会把邮件发到这里；留空则只唤起邮件客户端
-const FEEDBACK_EMAIL = "";
+// 反馈问卷链接：填入你创建的问卷星/腾讯问卷地址后，「反馈」按钮会在新标签页打开它；
+// 留空则按钮不生效（不发邮件、不跳转）
+export const FEEDBACK_URL = "";
 // 课程页描述通用后缀：与课程 title/chapter 拼接，供分享卡片与搜索引擎使用
 const COURSE_DESC_SUFFIX =
   "分步动画演示，可逐步播放、调速、任意阶段暂停；对齐教材与考纲，免费在线使用。";
@@ -97,13 +98,6 @@ function applySeo(title: string, description: string): void {
     document.head.appendChild(meta);
   }
   meta.content = description;
-}
-
-/** 构建反馈 mailto 链接：预填主题与页面上下文，学生/老师无需注册即可反馈 */
-export function buildFeedbackUrl(): string {
-  const subject = encodeURIComponent("生物过程动画 · 反馈/建议");
-  const body = encodeURIComponent(`当前页面：${location.hash}\n完整地址：${location.href}\n\n反馈内容：\n`);
-  return `mailto:${FEEDBACK_EMAIL}?subject=${subject}&body=${body}`;
 }
 
 /** 渲染目录页（首页） */
@@ -152,16 +146,20 @@ function route(): void {
   else renderHome();
 }
 
-// 全局反馈入口：固定于右下角，点击唤起预填邮件（含当前页面上下文）
+// 全局反馈入口：固定于右下角，点击在新标签页打开反馈问卷（外部链接，学生无需注册）
 const feedbackBtn = document.createElement("a");
 feedbackBtn.className = "feedback-btn";
-feedbackBtn.href = "#";
 feedbackBtn.textContent = "反馈";
 feedbackBtn.title = "提建议 / 报告问题";
-feedbackBtn.addEventListener("click", (ev) => {
-  ev.preventDefault();
-  location.href = buildFeedbackUrl();
-});
+if (FEEDBACK_URL) {
+  feedbackBtn.href = FEEDBACK_URL;
+  feedbackBtn.target = "_blank";
+  feedbackBtn.rel = "noopener";
+} else {
+  // 未配置问卷链接前不跳转，避免死按钮（RAT 上线前必须配置）
+  feedbackBtn.href = "#";
+  feedbackBtn.addEventListener("click", (ev) => ev.preventDefault());
+}
 document.body.appendChild(feedbackBtn);
 
 window.addEventListener("hashchange", route);

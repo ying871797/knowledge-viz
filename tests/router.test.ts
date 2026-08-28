@@ -77,18 +77,18 @@ describe("hash 路由", () => {
     expect(meta?.content).toContain("必修二");
   });
 
-  it("反馈按钮存在；buildFeedbackUrl 生成带页面上下文的 mailto 链接", async () => {
-    await import("../src/main");
+  it("反馈按钮存在；配置问卷链接后以新标签页打开", async () => {
+    const { FEEDBACK_URL } = await import("../src/main");
     const btn = document.body.querySelector<HTMLAnchorElement>(".feedback-btn");
     expect(btn).toBeTruthy();
     expect(btn?.textContent).toContain("反馈");
-
-    // 直接验证真实函数：jsdom 不支持 mailto 导航，这里只测链接构造
-    const { buildFeedbackUrl } = await import("../src/main");
-    const url = buildFeedbackUrl();
-    expect(url.startsWith("mailto:")).toBe(true);
-    expect(url).toContain("subject=");
-    expect(url).toContain("body=");
-    expect(decodeURIComponent(url)).toContain("反馈内容");
+    // 未配置问卷时按钮不跳转（href 为 #）；配置后为外链且新标签页打开
+    if (FEEDBACK_URL) {
+      expect(btn?.href).toBe(FEEDBACK_URL);
+      expect(btn?.target).toBe("_blank");
+      expect(btn?.rel).toContain("noopener");
+    } else {
+      expect(btn?.getAttribute("href")).toBe("#");
+    }
   });
 });
