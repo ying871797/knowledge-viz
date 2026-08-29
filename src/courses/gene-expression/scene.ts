@@ -20,6 +20,7 @@ const SEP_XS = [300, 420, 540];        // 密码子组界线 x（codon 边界）
 const RIBO_W = 264;                    // 核糖体窗宽（罩住两个密码子）
 const RIBO_P_OFF = 64, RIBO_A_OFF = 184; // P/A 位中心相对窗左缘偏移
 const TRNA_BEAD_Y = 210;               // 肽链珠行 y（大亚基下缘）
+const TRNA_ENTRY_DY = 90;              // 待入场 tRNA 与其氨基酸珠在锚点下方等候的位移（绑定上升入场）
 // 核膜弧（两段留 90px 缺口 = 核孔）
 const MEM_L = "M 50 236 Q 240 308 432 296";
 const MEM_R = "M 524 294 Q 620 286 752 238";
@@ -39,7 +40,9 @@ interface Gx {
   riboX: number | null;                 // 核糖体窗左缘 x（null = 退场）
   trnaX: (number | null)[];             // 三只 tRNA 中心 x（null = 该只不可见）
   trnaLeaving?: number[];               // 处于离场中的 tRNA 索引：下坠 96px 并半透明，下一帧彻底退场
+  trnaEntry?: number[];                 // 处于待入场（下方等候）的 tRNA 索引：在各自锚点下方 +90px、透明度 0，下一帧绑定上升入场
   beads: ([number, number] | null)[];   // 肽链珠坐标（珠数 = 肽链长度）
+  beadPark?: ([number, number] | null)[]; // 隐藏珠的停靠坐标（默认 0,0）：出场前落在槽位，避免从画布角落滑入
   folded: boolean;                      // 折叠完成态（珠聚拢成团）
 }
 const HB_ALL = Array.from({ length: 12 }, () => true);
@@ -77,39 +80,47 @@ const GEOM: Record<string, Gx> = {
     groups: false, riboX: null, trnaX: [...NONE_3], beads: [...NO_BEADS], folded: false,
   },
   "l1-codons": {
-    // 翻译开场：DNA 整组退场，mRNA 升至工作位，组界线显现
+    // 翻译开场：DNA 整组退场，mRNA 升至工作位，组界线显现；起始 tRNA① 在 P 位锚点（220）下方+90px 静候出场
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: null, trnaX: [...NONE_3], beads: [...NO_BEADS], folded: false,
+    groups: true, riboX: null, trnaX: [220, null, null], trnaEntry: [0],
+    beads: [...NO_BEADS], beadPark: [[220, TRNA_BEAD_Y + TRNA_ENTRY_DY], null, null], folded: false,
   },
   "l2-assemble": {
+    // 起始 tRNA① 携甲硫氨酸珠一同上升入 P 位；第二个 tRNA② 携珠在 A 位锚点（340）下方等候
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 156, trnaX: [220, null, null], beads: [[220, TRNA_BEAD_Y], null, null], folded: false,
+    groups: true, riboX: 156, trnaX: [220, 340, null], trnaEntry: [1],
+    beads: [[220, TRNA_BEAD_Y], null, null], beadPark: [null, [340, TRNA_BEAD_Y + TRNA_ENTRY_DY], null], folded: false,
   },
   "l3-peptide1": {
+    // 进位帧：新 tRNA② 携其氨基酸珠绑定上升入 A 位（锚点 156+184=340），两者同址同行程；
+    // 旧链珠以 22px 间距向左排开（珠间距=键线可见区间），成肽后链挂在持链 tRNA② 上；tRNA③ 携珠在 460 下方等候
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 156, trnaX: [220, 340, null], beads: [[296, TRNA_BEAD_Y], [318, TRNA_BEAD_Y], null], folded: false,
+    groups: true, riboX: 156, trnaX: [220, 340, null], beads: [[318, TRNA_BEAD_Y], [340, TRNA_BEAD_Y], null],
+    beadPark: [null, null, [460, TRNA_BEAD_Y + TRNA_ENTRY_DY]], folded: false,
   },
   "l4-shift": {
     // 移位：仅核糖体窗右移一格（+120 = 3×STEP）；tRNA 与密码子氢键结合、横向不动，
-    // 原 A 位持链 tRNA② 被"套入"新 P 位锚点（276+64=340）——绝不回移（用户目检抓帧混淆 bug）
+    // 原 A 位持链 tRNA② 被"套入"新 P 位锚点（276+64=340）——绝不回移（用户目检抓帧混淆 bug）；
+    // tRNA③ 携珠在 A 位锚点（276+184=460）下方等候，下一帧绑定入场
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 276, trnaX: [220, 340, null], trnaLeaving: [0], beads: [[296, TRNA_BEAD_Y], [318, TRNA_BEAD_Y], null], folded: false,
+    groups: true, riboX: 276, trnaX: [220, 340, 460], trnaLeaving: [0], trnaEntry: [2],
+    beads: [[318, TRNA_BEAD_Y], [340, TRNA_BEAD_Y], null], beadPark: [null, null, [460, TRNA_BEAD_Y + TRNA_ENTRY_DY]], folded: false,
   },
   "l5-peptide2": {
-    // 第三只 tRNA 进位至新 A 位锚点（276+184=460，对 UGU），肽链延长为 3 珠
+    // 进位帧：新氨基酸珠③与新 tRNA③ 同位（A 位锚点 276+184=460，对 UGU），肽链延长为 3 珠
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 276, trnaX: [null, 340, 460], beads: [[394, TRNA_BEAD_Y], [416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y]], folded: false,
+    groups: true, riboX: 276, trnaX: [null, 340, 460], beads: [[416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y], [460, TRNA_BEAD_Y]], folded: false,
   },
   "l6-stop": {
     // 再移位后 A 位对准终止密码子（窗左缘 396 → A 位中心 580 = codon4 UAG），无 tRNA 对位
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 396, trnaX: [null, 340, 460], trnaLeaving: [1], beads: [[394, TRNA_BEAD_Y], [416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y]], folded: false,
+    groups: true, riboX: 396, trnaX: [null, 340, 460], trnaLeaving: [1], beads: [[416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y], [460, TRNA_BEAD_Y]], folded: false,
   },
   "l7-fold": {
     // 完成：核糖体与 tRNA 退场，肽链珠盘曲成团示意功能蛋白
@@ -208,20 +219,28 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
     ribo.style.opacity = g.riboX === null ? "0" : "1";
     ribo.style.transform = `translate(${g.riboX ?? 0}px, 0px)`;
 
-    // —— tRNA ×3：倒 T 杆，底部反密码子对位当前密码子；离场者下坠并半透明（下一帧退场） ——
+    // —— tRNA ×3：倒 T 杆，底部反密码子对位当前密码子；离场者下坠并半透明（下一帧退场），
+    //     待入场者在其锚点下方 +TRNA_ENTRY_DY 静候（半透明 0），下一帧与所携氨基酸珠一同绑定上升 ——
     const LEAVING_DY = 96;
     trnas.forEach((tgrp, k) => {
       const x = g.trnaX[k];
       const leaving = (g.trnaLeaving ?? []).includes(k);
+      const entering = (g.trnaEntry ?? []).includes(k);
       tgrp.style.opacity = x === null ? "0" : leaving ? "0.45" : "1";
-      tgrp.style.transform = `translate(${x ?? 0}px, ${leaving ? LEAVING_DY : 0}px)`;
+      tgrp.style.transform = `translate(${x ?? 0}px, ${leaving ? LEAVING_DY : entering ? TRNA_ENTRY_DY : 0}px)`;
     });
 
     // —— 肽链珠 + 肽键线（键线只在相邻两珠齐备且未折叠时显示） ——
+    // 珠坐标每帧落位（含隐藏珠的 beadPark 停靠坐标）：出场时珠已停在槽位，淡入/上升不外滑不飞角
     beads.forEach((c, k) => {
       const p = g.beads[k];
+      const park = g.beadPark?.[k];
+      const pos = p ?? park;
       c.style.opacity = p ? "1" : "0";
-      if (p) { c.setAttribute("cx", String(p[0])); c.setAttribute("cy", String(p[1])); }
+      if (pos) {
+        c.setAttribute("cx", String(pos[0]));
+        c.setAttribute("cy", String(pos[1]));
+      }
     });
     bonds.forEach((l, j) => {
       const a = g.beads[j], b = g.beads[j + 1];

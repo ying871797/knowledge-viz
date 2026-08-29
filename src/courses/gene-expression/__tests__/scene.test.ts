@@ -136,6 +136,43 @@ describe("基因的表达场景（固定元素池）", () => {
     expect(`${SEQ_TEMPLATE[9]}${SEQ_TEMPLATE[10]}${SEQ_TEMPLATE[11]}`).toBe("ATC");
   });
 
+  it("进位 tRNA 携带氨基酸入场：tRNA 与其氨基酸同锚点、同行程，从核糖体下方绑定上升", () => {
+    // l1→l2：起始 tRNA① 与甲硫氨酸珠在 P 位锚点（220）下方 +90px 等待，随后一同上升入 P 位
+    scene.render({ stage: "l1-codons" });
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 90px)");
+    expect(bead(0).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l2-assemble" });
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 0px)");
+    expect(trnaEl(0).style.opacity).toBe("1");
+    expect(bead(0).getAttribute("cx")).toBe("220");
+    expect(bead(0).getAttribute("cy")).toBe("210");
+    // l2→l3：第二个 tRNA② 与其氨基酸珠在 A 位锚点（340）下方等待，绑定上升
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 90px)");
+    expect(bead(1).getAttribute("cx")).toBe("340");
+    expect(bead(1).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l3-peptide1" });
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 0px)");
+    expect(trnaEl(1).style.opacity).toBe("1");
+    expect(bead(1).getAttribute("cx")).toBe("340");
+    expect(bead(1).getAttribute("cy")).toBe("210");
+    // 旧链珠向左按 22px 间距排开，珠缘到珠缘短键保持可见
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(0).style.opacity).toBe("1");
+    // l4→l5：第三个 tRNA③ 与氨基酸珠③ 同样绑定入场（A 位锚点 460）
+    scene.render({ stage: "l4-shift" });
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 90px)");
+    expect(bead(2).getAttribute("cx")).toBe("460");
+    expect(bead(2).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l5-peptide2" });
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 0px)");
+    expect(trnaEl(2).style.opacity).toBe("1");
+    expect(bead(2).getAttribute("cx")).toBe("460");
+    expect(bead(2).getAttribute("cy")).toBe("210");
+    expect(Number(bead(2).getAttribute("cx")) - Number(bead(1).getAttribute("cx"))).toBe(22);
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(1).style.opacity).toBe("1");
+  });
+
   it("折叠完成：核糖体与 tRNA 全部退场，肽链珠聚拢成团、键线隐没", () => {
     scene.render({ stage: "l7-fold" });
     expect(ribo().style.opacity).toBe("0");
