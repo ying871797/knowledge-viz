@@ -1,11 +1,11 @@
-import type { Course, Stage } from "../../core/types";
+import type { Course, Stage, StageIdState } from "../../core/types";
 import { buildChartConfigs } from "../../core/chartUtils";
 
 /** 有丝分裂数目数据（2n=4） */
 interface MitoNumbers { chromosome: number; dna: number; chromatid: number; dnaPerChromosome: number }
 
 /** 构造阶段（sceneState 注入阶段 id 供场景查槽位表） */
-const st = (id: string, title: string, narration: string[], n: MitoNumbers): Course["stages"][number] => ({
+const st = (id: string, title: string, narration: string[], n: MitoNumbers): Stage<StageIdState> => ({
   id,
   title,
   narration,
@@ -13,7 +13,7 @@ const st = (id: string, title: string, narration: string[], n: MitoNumbers): Cou
   numbers: n,
 });
 
-const mitosisStages: Stage[] = [
+const mitosisStages: Stage<StageIdState>[] = [
     st("interphase-before", "间期前（未复制）", [
       "体细胞中染色体数为 2n（两对同源染色体）",
       "间期开始前：每条染色体含 1 个 DNA 分子，无姐妹染色单体",
@@ -49,7 +49,7 @@ const mitosisStages: Stage[] = [
     ], { chromosome: 4, dna: 4, chromatid: 0, dnaPerChromosome: 1 }),
 ];
 
-export const mitosisCourse: Course = {
+export const mitosisCourse: Course<StageIdState> = {
   meta: {
     id: "mitosis",
     title: "有丝分裂",

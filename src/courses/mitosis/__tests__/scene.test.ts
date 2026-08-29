@@ -2,13 +2,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMitosisScene, mitosisSlots, MITOSIS_FIBERS } from "../scene";
 import { mitosisCourse } from "../data";
+import type { StageIdState } from "../../../core/types";
 
-/** 构造场景状态（stage 必填以驱动槽位表） */
-const st = (over: { stage: string } & Record<string, unknown>): Record<string, unknown> => ({
-  cells: 1, replicated: false, pairing: false, crossingOver: false,
-  equatorial: "none", separating: "none", spermShape: false,
-  ...over,
-});
+/** 构造场景状态（仅 stage 驱动槽位表；replicated 等其余字段场景不读，忽略） */
+const st = (over: { stage: string } & Record<string, unknown>): StageIdState => ({ stage: over.stage });
 
 describe("有丝分裂场景", () => {
   let host: HTMLDivElement;

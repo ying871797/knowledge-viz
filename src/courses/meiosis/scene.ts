@@ -515,7 +515,7 @@ function describe(s: MeiosisState, chrom: string): string {
 }
 
 // ============ 场景组件 ============
-export function createMeiosisScene(): SceneComponent & { destroy(): void } {
+export function createMeiosisScene(): SceneComponent<MeiosisState> & { destroy(): void } {
   let root: SVGSVGElement | null = null;
   let wrap: HTMLDivElement | null = null;
   let bubble: HTMLDivElement | null = null;
@@ -690,8 +690,8 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
     },
 
     /** 渲染指定状态：隐藏气泡并重算布局 */
-    render(state: Record<string, unknown>) {
-      lastState = state as MeiosisState;
+    render(state: MeiosisState) {
+      lastState = state;
       hideBubble();
       layout(lastState);
     },

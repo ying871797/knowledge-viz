@@ -26,9 +26,9 @@ const st = (
   sceneState: Omit<MeiosisState, "stage">,
   numbers: Stage["numbers"],
   callout?: string,
-): Stage => ({ id, title, narration, sceneState: { ...sceneState, stage: id }, numbers, callout });
+): Stage<MeiosisState> => ({ id, title, narration, sceneState: { ...sceneState, stage: id }, numbers, callout });
 
-const spermStages: Stage[] = [
+const spermStages: Stage<MeiosisState>[] = [
     st("spermatogonium", "精原细胞（间期前）",
       ["染色体数 2n（两对同源染色体）", "长染色体一对（红）、短染色体一对（蓝）"],
       { cells: 1, replicated: false, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
@@ -74,7 +74,7 @@ const spermStages: Stage[] = [
       { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }),
 ];
 
-export const meiosisCourse: Course = {
+export const meiosisCourse: Course<MeiosisState> = {
   meta: { id: "meiosis", title: "减数分裂", chapter: "必修二 第一章第2节", difficulty: 4 },
   stages: spermStages,
   chartConfigs: buildChartConfigs(spermStages),
@@ -85,7 +85,7 @@ export const meiosisCourse: Course = {
  * 差异仅在细胞质的不均等分裂（两次）与极体演化（第一极体均分 → 共 3 个极体后退化）。
  * 知识点依据：人教版必修二；减Ⅱ中期停滞、受精后完成。
  */
-const ooStages: Stage[] = [
+const ooStages: Stage<MeiosisState>[] = [
     st("oo-oogonium", "卵原细胞（间期前）",
       ["染色体数 2n（两对同源染色体）", "发生在卵巢：卵原细胞经有丝分裂增殖"],
       { cells: 1, replicated: false, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
@@ -131,7 +131,7 @@ const ooStages: Stage[] = [
       { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }),
 ];
 
-export const oogenesisCourse: Course = {
+export const oogenesisCourse: Course<MeiosisState> = {
   meta: { id: "meiosis", title: "减数分裂（卵细胞形成）", chapter: "必修二 第一章第2节", difficulty: 4 },
   stages: ooStages,
   chartConfigs: buildChartConfigs(ooStages),

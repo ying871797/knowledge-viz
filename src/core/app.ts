@@ -35,7 +35,8 @@ export function mountCoursePage(
   }
 
   // —— 静态骨架：返回链接、标题、两栏网格 ——
-  const chartsEnabled = !course.meta.hideCharts;   // 无数目语义的课程（如 DNA 复制）隐藏曲线图表
+  const chartConfigs = course.chartConfigs;
+  const chartsEnabled = !!chartConfigs;   // 课程声明了图表配置才渲染曲线图表（chartConfigs 为单一事实源）
   const back = document.createElement("a");
   back.href = "#/";
   back.textContent = "← 返回目录";
@@ -165,9 +166,9 @@ export function mountCoursePage(
 
   // —— 曲线图表：按 chartConfigs 动态创建 ——
   const chartInstances: NumberChart[] = [];
-  if (chartsEnabled && course.chartConfigs) {
+  if (chartConfigs) {
     const labels = course.stages.map((s) => s.title);
-    for (const cfg of course.chartConfigs) {
+    for (const cfg of chartConfigs) {
       const card = document.createElement("div");
       card.className = "chart-card";
       const title = document.createElement("h4");

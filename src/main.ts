@@ -37,7 +37,7 @@ try {
   console.error("[registry]", err);
 }
 
-// DNA 分子复制：独立课程（hideCharts，无数目曲线）
+// DNA 分子复制：独立课程（无数目字段、无曲线图）
 try {
   const dnaCourse = validateCourse(dnaReplicationCourse);
   registry.push({
@@ -61,7 +61,7 @@ try {
   console.error("[registry]", err);
 }
 
-// 基因的表达：转录 + 翻译全程（hideCharts，无数目曲线）
+// 基因的表达：转录 + 翻译全程（无数目字段、无曲线图）
 try {
   const geCourse = validateCourse(geneExpressionCourse);
   registry.push({

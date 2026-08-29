@@ -1,4 +1,4 @@
-﻿import type { SceneComponent } from "../../core/types";
+﻿import type { SceneComponent, StageIdState } from "../../core/types";
 
 // ============ 画布几何 ============
 const NS = "http://www.w3.org/2000/svg";
@@ -261,7 +261,7 @@ function describe(s: Record<string, unknown>, chrom: string): string {
 }
 
 // ============ 场景组件 ============
-export function createMitosisScene(): SceneComponent & { destroy(): void } {
+export function createMitosisScene(): SceneComponent<StageIdState> & { destroy(): void } {
   let root: SVGSVGElement | null = null;
   let wrap: HTMLDivElement | null = null;
   let bubble: HTMLDivElement | null = null;
@@ -387,7 +387,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
     },
 
     /** 渲染指定状态：隐藏气泡并重算布局 */
-    render(state: Record<string, unknown>) {
+    render(state: StageIdState) {
       lastState = state;
       hideBubble();
       layout(lastState);
