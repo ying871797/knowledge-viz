@@ -23,12 +23,50 @@ const STRIP_TOP_BASE = 82, STRIP_BOT_BASE = 304;
 // 子链顶行归属：显式声明集合——不可用键名后缀猜测（r1/r2 等数字结尾键会被误判到底行）
 const TOP_ROW = new Set(["da-lt", "da-r1", "da-r2", "da-r3"]);
 
+// ============ 聚合酶-片段复合体绑定表（架构：显式绑定 + 坐标派生） ============
+// 片段键 → 其合成聚合酶键（复合体成员：同现、对位、绑定退场）。引物酶/连接酶不入表（独立元素）。
+// 导出供测试做「权威表 == 镜像表」一致性断言（scene-binding.test.ts），防止 BINDINGS 与测试镜像表漂移。
+export const BINDINGS: Record<string, string> = {
+  "da-r1": "pol-lag3", "da-r2": "pol-lag1", "da-r3": "pol-lag2",
+  "da-l1": "pol-lag-L1", "da-l2": "pol-lag-L2", "da-l3": "pol-lag-L3",
+  "da-rb": "pol-lead", "da-lt": "pol-lead-L",
+};
+// 反向：聚合酶键 → 片段键（layout 酶遍历用）
+const ENZ_TO_FRAG: Record<string, string> = {};
+for (const [frag, enz] of Object.entries(BINDINGS)) ENZ_TO_FRAG[enz] = frag;
+// 侧别分类（决定派生酶落左缘/右缘）——须与 TOP_ROW/LEADING_KEYS/BINDINGS 的侧别一致：
+// 右叉片段（da-rb/da-r1/r2/r3）生长端在右缘，其余左叉片段生长端在左缘。
+// 新增片段改侧别时须同步这几处，否则酶落错一侧（现有对位断言按片段区间 ±6px 判定，落错侧不报红灯）。
+// 导出供测试做结构断言（RIGHT_FORK 的补集=左叉、LEADING_KEYS 与后随键两两互斥）。
+export const RIGHT_FORK = new Set(["da-rb", "da-r1", "da-r2", "da-r3"]);
+// 前导链（连续合成）：聚合酶在叉端外侧；后随（冈崎片段）：聚合酶回退片段尖端内侧骑住杆端
+export const LEADING_KEYS = new Set(["da-rb", "da-lt"]);
+const ENZ_MARGIN = 5;   // 前导聚合酶相对叉端的向外余量
+const ENZ_INSET = 20;   // 后随聚合酶相对叉端的内侧回退（避开杆端线头）
+// 绑定聚合酶的行位 y（显式：分子定位在链带旁侧、朝向链外侧——顶行链在上、底行链在下，
+// 与链带/亲代带错开避免遮挡；非绑定不变式约束，故保留显式表）
+const ENZ_Y: Record<string, number> = {
+  "pol-lead": 342, "pol-lag1": 48, "pol-lag2": 48, "pol-lag3": 48,
+  "pol-lead-L": 48, "pol-lag-L1": 342, "pol-lag-L2": 342, "pol-lag-L3": 342,
+};
+
+// 由绑定片段几何派生聚合酶的落点 x 与可见性（绑定窗口且片段可见 → 酶可见，from 片段）
+function enzymeX(bar: ElBar, fragKey: string, active: boolean): number {
+  if (!active || bar.o === 0) return 0;
+  const right = RIGHT_FORK.has(fragKey);
+  if (LEADING_KEYS.has(fragKey)) {
+    return right ? bar.x + bar.w + ENZ_MARGIN : bar.x - ENZ_MARGIN;
+  }
+  return right ? bar.x + bar.w - ENZ_INSET : bar.x + ENZ_INSET;
+}
+
 // ============ 阶段几何状态（声明式状态表） ============
 interface DnaGeom {
   topY: number;
   botY: number;
   hbond: boolean[];                  // 12 个氢键是否可见（false = 已解旋）
   helicase: [number, number] | null; // 解旋酶位置（左右叉）
+  bindActive?: boolean;              // 聚合酶-片段复合体处于活动窗口（绑定推导生效）
   markers?: boolean;                 // 引物切除阶段：缺口虚线标记
   pairTicks?: boolean;               // 终态：母链-新链配对刻度 ×24 显隐
   labels?: boolean;                  // 终态：「母链/新链」成分标注显隐
@@ -73,69 +111,55 @@ const GEOM: Record<string, DnaGeom> = {
     enzymes: { ...NO_ENZ, primase: { x: 575, y: 170, o: 1 }, "primase-L": { x: 230, y: 170, o: 1 } },
   },
   leading: {
-    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [190, 610],
-    // 前导链自起点（400）向两叉生长（左 190~372、右 430~610）；
-    // 后随链已起始 r3（404~454）与 r2（480~530）——r1 最近叉口、此帧未起始
+    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [190, 610], bindActive: true,
+    // 前导链自起点（400）向两叉生长（右 430~610、左 190~372）；
+    // 后随链首两片段已起始并配酶——且都在其「真培育位」上（右 r3 404~454、r2 480~530；
+    // 左 l3 324~370、l2 252~298），与阶段5同坐标，故第4→5步片段不移动、不重排。
     bars: {
       ...NO_BARS,
-      "pr-rb": { x: 400, w: 28, o: 1 }, "pr-lt": { x: 374, w: 24, o: 1 },
       "da-rb": { x: 430, w: 180, o: 1 }, "da-lt": { x: 190, w: 182, o: 1 },
       "da-r3": { x: 404, w: 50, o: 1 }, "da-r2": { x: 480, w: 50, o: 1 },
+      "da-l3": { x: 324, w: 46, o: 1 }, "da-l2": { x: 252, w: 46, o: 1 },
     },
-    enzymes: {
-      ...NO_ENZ,
-      "pol-lead": { x: 620, y: 255, o: 1 }, "pol-lag1": { x: 515, y: 150, o: 1 },
-      "pol-lead-L": { x: 230, y: 48, o: 1 }, "pol-lag-L1": { x: 300, y: 336, o: 1 },
-    },
+    // 绑定聚合酶（pol-lead/lag*/lead-L）由 BINDINGS 派生；无独立酶
+    enzymes: { ...NO_ENZ },
   },
   lagging: {
-    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630],
+    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630], bindActive: true,
     // 半区归属（起点=400）：上链 = 左半前导（170~372）+ 右半冈崎 ×3（404/480/556）；
     // 下链 = 左半冈崎 ×3（180/252/324）+ 右半前导（430~630）。每条链半绿半橙
     bars: {
       ...NO_BARS,
-      "pr-rb": { x: 400, w: 28, o: 1 }, "pr-lt": { x: 374, w: 24, o: 1 },
-      "pr-rt": { x: 608, w: 22, o: 1 }, "pr-r2": { x: 532, w: 22, o: 1 }, "pr-r3": { x: 456, w: 22, o: 1 },
-      "pr-lb": { x: 228, w: 22, o: 1 }, "pr-l2": { x: 300, w: 22, o: 1 }, "pr-l3": { x: 372, w: 22, o: 1 },
       "da-rb": { x: 430, w: 200, o: 1 }, "da-lt": { x: 170, w: 202, o: 1 },
       "da-r1": { x: 556, w: 50, o: 1 }, "da-r2": { x: 480, w: 50, o: 1 }, "da-r3": { x: 404, w: 50, o: 1 },
       "da-l1": { x: 180, w: 46, o: 1 }, "da-l2": { x: 252, w: 46, o: 1 }, "da-l3": { x: 324, w: 46, o: 1 },
     },
-    enzymes: {
-      ...NO_ENZ,
-      "pol-lead": { x: 635, y: 255, o: 1 }, "pol-lag1": { x: 515, y: 150, o: 1 }, "pol-lag2": { x: 435, y: 150, o: 1 }, "pol-lag3": { x: 581, y: 150, o: 1 },
-      "pol-lead-L": { x: 220, y: 48, o: 1 }, "pol-lag-L1": { x: 205, y: 336, o: 1 }, "pol-lag-L2": { x: 277, y: 336, o: 1 }, "pol-lag-L3": { x: 349, y: 336, o: 1 },
-    },
+    // 绑定聚合酶 ×8（前导 2 + 后随 6）由 BINDINGS 派生；无独立酶
+    enzymes: { ...NO_ENZ },
   },
   removal: {
     // 引物切除：引物不可见（已从元素模型移除），以缺口虚线标记标示切除位置；片段位置不变
-    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630], markers: true,
+    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630], markers: true, bindActive: true,
     bars: {
       ...NO_BARS,
       "da-rb": { x: 430, w: 200, o: 1 }, "da-lt": { x: 170, w: 202, o: 1 },
       "da-r1": { x: 556, w: 50, o: 1 }, "da-r2": { x: 480, w: 50, o: 1 }, "da-r3": { x: 404, w: 50, o: 1 },
       "da-l1": { x: 180, w: 46, o: 1 }, "da-l2": { x: 252, w: 46, o: 1 }, "da-l3": { x: 324, w: 46, o: 1 },
     },
-    enzymes: {
-      ...NO_ENZ,
-      "pol-lead": { x: 635, y: 255, o: 1 }, "pol-lag1": { x: 515, y: 150, o: 1 }, "pol-lag2": { x: 435, y: 150, o: 1 },
-      "pol-lead-L": { x: 170, y: 45, o: 1 }, "pol-lag-L1": { x: 205, y: 345, o: 1 }, "pol-lag-L2": { x: 277, y: 345, o: 1 }, "pol-lag-L3": { x: 349, y: 345, o: 1 },
-    },
+    // pol-lag3 由 BINDINGS 绑定 r1，随 r1 保留在此帧——不再莫名消失
+    enzymes: { ...NO_ENZ },
   },
   filling: {
-    // 缺口填补：相邻带延伸封闭缺口；前导引物缺口以绿色填补（延伸至起点 400）
-    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630],
+    // 缺口填补：相邻带延伸封闭缺口；前导引物缺口以绿色填补（延伸至起点 400）。
+    // 各片段仍各配一枚聚合酶（r1 虽渐并入，聚合酶仍在工作直至连接前）
+    topY: 110, botY: 290, hbond: [...ALL_OPEN], helicase: [170, 630], bindActive: true,
     bars: {
       ...NO_BARS,
       "da-rb": { x: 400, w: 230, o: 1 }, "da-lt": { x: 170, w: 230, o: 1 },
       "da-r1": { x: 530, w: 76, o: 1 }, "da-r2": { x: 454, w: 76, o: 1 }, "da-r3": { x: 404, w: 50, o: 1 },
       "da-l1": { x: 180, w: 72, o: 1 }, "da-l2": { x: 252, w: 72, o: 1 }, "da-l3": { x: 324, w: 72, o: 1 },
     },
-    enzymes: {
-      ...NO_ENZ,
-      "pol-lead": { x: 615, y: 255, o: 1 }, "pol-lag1": { x: 492, y: 150, o: 1 }, "pol-lag2": { x: 429, y: 150, o: 1 },
-      "pol-lead-L": { x: 185, y: 45, o: 1 }, "pol-lag-L1": { x: 216, y: 345, o: 1 }, "pol-lag-L2": { x: 288, y: 345, o: 1 }, "pol-lag-L3": { x: 360, y: 345, o: 1 },
-    },
+    enzymes: { ...NO_ENZ },
   },
   ligation: {
     // 连接：三段合拢为连续链（404|480|556|630 与 180|256|332|400），双连接酶封合两行接缝
@@ -270,11 +294,22 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     // 终态配对刻度与成分标注：仅 done 阶段经布尔通道显示（同 markers 通道模式）
     pairTicks.forEach((t) => { t.style.opacity = geom.pairTicks ? "1" : "0"; });
     duplexLabels.forEach((t) => { t.style.opacity = geom.labels ? "1" : "0"; });
-    // 酶：查表设位置/透明度（style.transform 走 CSS transition 通道）
+    // 酶：复合体成员（绑定聚合酶）坐标/显隐由所绑片段派生；引物酶/连接酶（独立）查表
     enzymes.forEach((g, key) => {
-      const st = geom.enzymes[key] ?? NO_ENZ[key] ?? { x: 0, y: 0, o: 0 };
-      g.style.transform = `translate(${st.x}px, ${st.y}px)`;
-      g.style.opacity = String(st.o);
+      const fragKey = ENZ_TO_FRAG[key];
+      let x: number, o: string;
+      if (fragKey !== undefined) {
+        const bar = geom.bars[fragKey] ?? HIDE(0);
+        const active = geom.bindActive === true;
+        x = enzymeX(bar, fragKey, active);
+        o = active && bar.o === 1 ? "1" : "0";
+        g.style.opacity = o;
+        g.style.transform = `translate(${x}px, ${ENZ_Y[key] ?? 0}px)`;
+      } else {
+        const st = geom.enzymes[key] ?? NO_ENZ[key] ?? { x: 0, y: 0, o: 0 };
+        g.style.transform = `translate(${st.x}px, ${st.y}px)`;
+        g.style.opacity = String(st.o);
+      }
     });
     // 缺口虚线标记：仅引物切除阶段显示
     gapMarkers.forEach((m) => {

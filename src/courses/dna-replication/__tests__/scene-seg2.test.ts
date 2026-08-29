@@ -35,18 +35,18 @@ describe("DNA 复制场景（段 2：合成）", () => {
     scene.render({ stage: "priming" });
     expect(enzyme("primase-L").style.opacity).toBe("1");
     expect(enzyme("primase-L").style.transform).toBe("translate(230px, 170px)");
-    // 阶段4：左叉前导聚合酶 + 片段1聚合酶显现，片段2/3聚合酶未现
+    // 阶段4：左叉前导聚合酶 + 首两段聚合酶 L3/L2 显现（各绑 a-l3/a-l2，非悬空）；L1 未现
     scene.render({ stage: "leading" });
     expect(enzyme("pol-lead-L").style.opacity).toBe("1");
-    expect(enzyme("pol-lag-L1").style.opacity).toBe("1");
-    expect(enzyme("pol-lag-L2").style.opacity).toBe("0");
-    expect(enzyme("pol-lag-L3").style.opacity).toBe("0");
-    // 阶段5：三片段聚合酶齐备，各自对位片段中心
+    expect(enzyme("pol-lag-L3").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L2").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L1").style.opacity).toBe("0");
+    // 阶段5：聚合酶落点由绑定片段派生（叉口/生长端），非手写
     scene.render({ stage: "lagging" });
-    expect(enzyme("pol-lag-L1").style.transform).toBe("translate(205px, 336px)");
-    expect(enzyme("pol-lag-L2").style.transform).toBe("translate(277px, 336px)");
-    expect(enzyme("pol-lag-L3").style.transform).toBe("translate(349px, 336px)");
-    expect(enzyme("pol-lead-L").style.transform).toBe("translate(220px, 48px)");
+    expect(enzyme("pol-lag-L1").style.transform).toBe("translate(200px, 342px)");
+    expect(enzyme("pol-lag-L2").style.transform).toBe("translate(272px, 342px)");
+    expect(enzyme("pol-lag-L3").style.transform).toBe("translate(344px, 342px)");
+    expect(enzyme("pol-lead-L").style.transform).toBe("translate(165px, 48px)");
   });
 
   it("阶段3 引物合成：仅引物酶图标显现，无引物红条", () => {
@@ -58,7 +58,7 @@ describe("DNA 复制场景（段 2：合成）", () => {
     expect(host.querySelector<SVGGElement>(".helicase-group")!.style.opacity).toBe("1");
   });
 
-  it("阶段4 前导链合成：子带自起点向两叉生长，后随链首两片段起头", () => {
+  it("阶段4 前导链合成：子带自起点向两叉生长，后随链各起头两段并配酶", () => {
     scene.render({ stage: "leading" });
     // 前导链（右叉下链）：x=430, w=180，绿色；左叉镜像（上链）：x=190, w=182
     expect(daughter("da-rb").getAttribute("x")).toBe("430");
@@ -66,14 +66,24 @@ describe("DNA 复制场景（段 2：合成）", () => {
     expect(daughter("da-rb").getAttribute("fill")).toBe("#10b981");
     expect(daughter("da-lt").getAttribute("x")).toBe("190");
     expect(daughter("da-lt").getAttribute("width")).toBe("182");
-    // 后随链首两片段（右叉上链 r3 404~454、r2 480~530），橙色
+    // 后随链各起头两段、都在真培育位（右 r3 404~454、r2 480~530；左 l3 324~370、l2 252~298）
     expect(daughter("da-r3").getAttribute("x")).toBe("404");
     expect(daughter("da-r2").getAttribute("x")).toBe("480");
-    expect(daughter("da-r3").getAttribute("fill")).toBe("#f59e0b");
-    expect(daughter("da-l1").getAttribute("fill")).toBe("#f59e0b");
-    // 聚合酶 ×2 显现；引物酶退场
+    expect(daughter("da-l3").getAttribute("x")).toBe("324");
+    expect(daughter("da-l2").getAttribute("x")).toBe("252");
+    expect(daughter("da-r2").getAttribute("fill")).toBe("#f59e0b");
+    expect(daughter("da-l3").getAttribute("fill")).toBe("#f59e0b");
+    // r1/l1 尚未起始
+    expect(daughter("da-r1").style.opacity).toBe("0");
+    expect(daughter("da-l1").style.opacity).toBe("0");
+    // 聚合酶随片片段显现：右 r3→pol-lag2、r2→pol-lag1；左 l3→pol-lag-L3、l2→pol-lag-L2；前导两枚
     expect(enzyme("pol-lead").style.opacity).toBe("1");
     expect(enzyme("pol-lag1").style.opacity).toBe("1");
+    expect(enzyme("pol-lag2").style.opacity).toBe("1");
+    expect(enzyme("pol-lead-L").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L3").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L2").style.opacity).toBe("1");
+    // 引物酶退场
     expect(enzyme("primase").style.opacity).toBe("0");
   });
 
@@ -100,16 +110,21 @@ describe("DNA 复制场景（段 2：合成）", () => {
     for (const key of ["da-l1", "da-l2", "da-l3"]) {
       expect(Number(daughter(key).getAttribute("x")) + Number(daughter(key).getAttribute("width"))).toBeLessThanOrEqual(400);
     }
-    // 聚合酶 ×4：前导 1 + 后随 3（每个冈崎片段各配一个）
+    // 聚合酶 ×8 齐备：前导 2 + 后随 6（每个冈崎片段各配一个，绑定派生）
     expect(enzyme("pol-lead").style.opacity).toBe("1");
+    expect(enzyme("pol-lead-L").style.opacity).toBe("1");
     expect(enzyme("pol-lag1").style.opacity).toBe("1");
     expect(enzyme("pol-lag2").style.opacity).toBe("1");
     expect(enzyme("pol-lag3").style.opacity).toBe("1");
-    // pol-lag3 对位最新片段 r1（叉口侧 556~606 的中点 ≈ 581）
-    expect(enzyme("pol-lag3").style.transform).toBe("translate(581px, 150px)");
+    expect(enzyme("pol-lag-L1").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L2").style.opacity).toBe("1");
+    expect(enzyme("pol-lag-L3").style.opacity).toBe("1");
+    // pol-lag3 派生到最新片段 r1（叉口侧 556~606 的生长端）
+    expect(enzyme("pol-lag3").style.transform).toBe("translate(586px, 48px)");
     // 对位核查：每个后随聚合酶的 x 都落在其对应片段区间内
     const fragOf: Record<string, [number, number]> = {
       "pol-lag3": [556, 606], "pol-lag1": [480, 530], "pol-lag2": [404, 454],
+      "pol-lag-L1": [180, 226], "pol-lag-L2": [252, 298], "pol-lag-L3": [324, 370],
     };
     for (const [enz, [lo, hi]] of Object.entries(fragOf)) {
       const m = enzyme(enz).style.transform.match(/translate\((-?\d+)px/)!;
@@ -131,9 +146,13 @@ describe("DNA 复制场景（段 2：合成）", () => {
     expect(daughter("da-lt").getAttribute("width")).toBe("182");
     expect(daughter("da-rb").getAttribute("x")).toBe("430");
     expect(daughter("da-rb").getAttribute("width")).toBe("180");
-    // 后随链已起始两片段（r3 最近起点 404~454、r2 480~530）；r1 最近叉口、此帧未起始
+    // 后随链各起头两段并在真培育位（右 r3/r2、左 l3/l2）；r1/l1 留待阶段5
     expect(daughter("da-r3").getAttribute("x")).toBe("404");
     expect(daughter("da-r2").getAttribute("x")).toBe("480");
+    expect(daughter("da-l3").getAttribute("x")).toBe("324");
+    expect(daughter("da-l2").getAttribute("x")).toBe("252");
+    expect(daughter("da-r1").style.opacity).toBe("0");
+    expect(daughter("da-l1").style.opacity).toBe("0");
   });
 
   it("行归属：右叉上链冈崎片段系（r1/r2/r3）在顶行，左叉下链系在底行", () => {
