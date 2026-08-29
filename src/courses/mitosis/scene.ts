@@ -33,6 +33,15 @@ const CHROM_INFO: Record<string, { gene: string; long: boolean }> = {
   B1: { gene: "B", long: true }, B2: { gene: "b", long: false },
 };
 
+/** 纺锤丝八根：绑定到各自姐妹单体（pole 声明极点端；着丝点端查 mitosisSlots 槽位，
+    杜绝手写坐标错连——后期错连即由此类手写产生，现已废除） */
+export const MITOSIS_FIBERS: { key: string; pole: "top" | "bottom" }[] = [
+  { key: "A1a", pole: "top" }, { key: "A1b", pole: "bottom" },
+  { key: "A2a", pole: "top" }, { key: "A2b", pole: "bottom" },
+  { key: "B1a", pole: "top" }, { key: "B1b", pole: "bottom" },
+  { key: "B2a", pole: "top" }, { key: "B2b", pole: "bottom" },
+];
+
 // ============ 槽位：每阶段 → 每单体 {x, y, a}（相对细胞中心 400,200） ============
 export interface Slot { x: number; y: number; a: number }
 export type Slots = Record<string, Slot>;
@@ -123,10 +132,9 @@ interface MitoBg {
   nuc1: NucEllipse;                  // 核膜 1（间期主核 / 末期上核）
   nuc2: NucEllipse;                  // 核膜 2（末期下核）
   plate: number | null;              // 细胞板 y（null 隐藏）
-  spindle: [number, number][] | null; // 纺锤丝 ×8：着丝点端坐标（极点端固定）
+  spindleVisible: boolean;            // 纺锤丝显隐（几何由 MITOSIS_FIBERS × 槽位推导，见 updateMitoPool）
 }
 const NUC_HIDDEN: NucEllipse = { cx: 0, cy: 0, rx: 0, ry: 0, o: 0 };
-const NO_SPINDLE: [number, number][] | null = null;
 
 /** 逐阶段背景状态表 */
 const BG: Record<string, MitoBg> = {
@@ -134,47 +142,37 @@ const BG: Record<string, MitoBg> = {
     nuc1: { cx: 400, cy: 200, rx: 130, ry: 100, o: 1 },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
-    spindle: NO_SPINDLE,
+    spindleVisible: false,
   },
   prophase: {
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
-    spindle: [
-      // 每条 X 双定向：奇数/偶数对 → 上/下极各一根（索引偶=上、奇=下）
-      [340, 160], [340, 160], [450, 155], [450, 155],
-      [360, 240], [360, 240], [455, 235], [455, 235],
-    ],
+    spindleVisible: true,
   },
   metaphase: {
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
-    spindle: [
-      [280, 200], [280, 200], [360, 200], [360, 200],
-      [440, 200], [440, 200], [520, 200], [520, 200],
-    ],
+    spindleVisible: true,
   },
   anaphase: {
     nuc1: { ...NUC_HIDDEN },
     nuc2: { ...NUC_HIDDEN },
     plate: null,
-    spindle: [
-      [280, 125], [360, 125], [440, 125], [520, 125],
-      [280, 275], [360, 275], [440, 275], [520, 275],
-    ],
+    spindleVisible: true,
   },
   telophase: {
     nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
     nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
     plate: 200,
-    spindle: NO_SPINDLE,
+    spindleVisible: false,
   },
   daughter: {
     nuc1: { cx: 400, cy: 110, rx: 130, ry: 45, o: 1 },
     nuc2: { cx: 400, cy: 290, rx: 130, ry: 45, o: 1 },
     plate: 200,
-    spindle: NO_SPINDLE,
+    spindleVisible: false,
   },
 };
 const BG_FALLBACK = BG.interphase;
@@ -187,8 +185,8 @@ const mitoPool = {
   nuc1: null as SVGEllipseElement | null,
   nuc2: null as SVGEllipseElement | null,
   cellPlate: null as SVGLineElement | null,
-  // 纺锤丝：池化 line，几何直接由极点→染色体（setAttribute + CSS transition 平滑）
-  spindleLines: [] as SVGLineElement[],
+  // 纺锤丝：池化 path，几何 = 极点→单体着丝点（d = "M 极点 L 槽位"），CSS transition 驱动
+  spindleLines: [] as SVGPathElement[],
 };
 
 /** 更新背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend） */
@@ -220,18 +218,17 @@ function updateMitoPool(s: Record<string, unknown>): void {
     mitoPool.cellPlate!.style.opacity = "0";
   }
 
-  // 纺锤丝 ×8：由极点斜向指向染色体（极点端固定在两极，染色体端跟随）
-  mitoPool.spindleLines.forEach((line, i) => {
-    if (bg.spindle) {
-      const [tx, ty] = bg.spindle[i];
-      const pole = i % 2 === 0 ? POLE_TOP : POLE_BOT;
-      line.setAttribute("x1", String(pole[0]));
-      line.setAttribute("y1", String(pole[1]));
-      line.setAttribute("x2", String(tx));
-      line.setAttribute("y2", String(ty));
-      line.style.opacity = "1";
+  // 纺锤丝 ×8：极点端固定（绑定表 pole），着丝点端 = 当前槽位（查 mitosisSlots，杜绝手写坐标错连）
+  const slots = mitosisSlots(String(s.stage));
+  mitoPool.spindleLines.forEach((path, i) => {
+    if (bg.spindleVisible) {
+      const fib = MITOSIS_FIBERS[i];
+      const slot = slots[fib.key];
+      const pole = fib.pole === "top" ? POLE_TOP : POLE_BOT;
+      path.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${400 + slot.x} ${200 + slot.y}`);
+      path.style.opacity = "1";
     } else {
-      line.style.opacity = "0";
+      path.style.opacity = "0";
     }
   });
 }
@@ -334,11 +331,12 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       svgRoot.append(mitoPool.nuc1, mitoPool.nuc2);
       mitoPool.cellPlate = el("line", { class: "cell-plate", x1: CELL.x + 40, x2: CELL.x + CELL.w - 40, stroke: "#059669", "stroke-width": 4, opacity: 0 });
       svgRoot.appendChild(mitoPool.cellPlate);
-      // 纺锤丝池：8 根 line，几何由 updateMitoPool 每次重设（极点端固定）
-      for (let i = 0; i < 8; i++) {
-        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
-        mitoPool.spindleLines.push(line);
-        svgRoot.appendChild(line);
+      // 纺锤丝池：8 根 path（d = M 极点 L 着丝点），几何由 updateMitoPool 每次重设；
+      // 两命令跨阶段同构 → CSS d transition 平滑（与单体 transform 同 --tween-ms / ease-out）
+      for (let i = 0; i < MITOSIS_FIBERS.length; i++) {
+        const p = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        mitoPool.spindleLines.push(p);
+        svgRoot.appendChild(p);
       }
 
       // 8 个单体组：杆 + 着丝点 + 标注（一次创建，全程复用）

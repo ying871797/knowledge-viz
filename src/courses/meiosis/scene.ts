@@ -360,8 +360,8 @@ const bgPool = {
   oocyteLarge: null as SVGCircleElement | null,
   polarBodies: [] as SVGCircleElement[],
   oocyteEccentric: null as SVGEllipseElement | null,
-  // 纺锤丝：池化 line，几何由 updateSpindleLines 每次重设（极点端固定两极）
-  spindleLines: [] as SVGLineElement[],
+  // 纺锤丝：池化 path（d = M 极点 L 单体），CSS d transition 平滑
+  spindleLines: [] as SVGPathElement[],
 };
 
 /** 更新背景元素池的显隐与几何：精子模式 vs 卵细胞模式互斥 */
@@ -468,10 +468,7 @@ function updateSpindleLines(
       : [center[0], center[1] + off + yOff];
 
     const line = bgPool.spindleLines[idx];
-    line.setAttribute("x1", String(pole[0]));
-    line.setAttribute("y1", String(pole[1]));
-    line.setAttribute("x2", String(tx));
-    line.setAttribute("y2", String(ty));
+    line.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${tx} ${ty}`);
     line.style.opacity = "1";
   });
 
@@ -630,10 +627,10 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       bgPool.oocyteEccentric = el("ellipse", { class: "cell-outline", ...BG_STYLE, opacity: 0 });
       svgRoot.appendChild(bgPool.oocyteEccentric);
 
-      // 纺锤丝池：16 根 line，几何由 updateSpindleLines 每次重设（极点端固定）
-      for (let i = 0; i < 16; i++) {
-        const line = el("line", { class: "spindle-line", x1: 0, y1: 0, x2: 0, y2: 0, stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
-        bgPool.spindleLines.push(line);
+// 纺锤丝池：16 根 path（d = M 极点 L 单体），与有丝分裂同构（同命令 d 过渡）
+  for (let i = 0; i < 16; i++) {
+    const line = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+    bgPool.spindleLines.push(line);
         svgRoot.appendChild(line);
       }
 

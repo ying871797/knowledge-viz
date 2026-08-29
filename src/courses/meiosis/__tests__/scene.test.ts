@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 减数分裂场景测试（固定 8 杆模型 · 段 1）：
  * 元素模型、阶段 1~2（未复制/复制 X 形）、交互与布局不变式。
  * 段 2/3/4 将逐阶段追加槽位断言与不变式矩阵。
@@ -15,6 +15,18 @@ const st = (over: Partial<MeiosisState> & { stage: string }): MeiosisState => ({
   equatorial: "none", separating: "none", spermShape: false,
   ...over,
 });
+
+/** 解析纺锤丝 path d（M 极点 L 着丝点）→ [极点[x,y], 着丝点[x,y]]（模块级，供各 describe 复用） */
+const dPoints = (p: SVGPathElement): { pole: [number, number]; end: [number, number] } => {
+  const d = p.getAttribute("d") || "";
+  const m = /M\s+([\d.]+)\s+([\d.]+)\s+L\s+([\d.]+)\s+([\d.]+)/.exec(d);
+  if (!m) throw new Error(`d 缺 M/L 指令: ${d}`);
+  return { pole: [Number(m[1]), Number(m[2])], end: [Number(m[3]), Number(m[4])] };
+};
+
+/** 当前可见的纺锤丝（path），宿主由调用方传入（模块级） */
+const visibleFibers = (host: HTMLDivElement) =>
+  [...host.querySelectorAll<SVGPathElement>(".spindle-line")].filter((p) => parseFloat(p.style.opacity || "0") > 0);
 
 describe("减数分裂场景（固定 8 杆模型）", () => {
   let host: HTMLDivElement;
@@ -342,11 +354,8 @@ describe.each([
 describe("纺锤丝显隐与池隔离", () => {
   let host: HTMLDivElement;
   const scene = createMeiosisScene();
-  /** 计算可见 spindle-line 数量 */
-  const visibleSpindleCount = () =>
-    [...host.querySelectorAll<SVGLineElement>(".spindle-line")].filter(
-      (el) => parseFloat(el.style.opacity || "0") > 0,
-    ).length;
+  /** 计算可见 spindle 数量 */
+  const visibleSpindleCount = () => visibleFibers(host).length;
 
   beforeEach(() => {
     host = document.createElement("div");
@@ -375,35 +384,34 @@ describe("纺锤丝显隐与池隔离", () => {
     }
   });
 
-  // 几何：纺锤丝必须是斜向汇聚（x2 ≠ 极点 x1），不是竖直棍
-  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（x2 ≠ 极点 x）", () => {
+  // 几何：纺锤丝必须是斜向汇聚（着丝点 x ≠ 极点 x），不是竖直棍
+  it("减Ⅰ后期：纺锤丝斜向汇聚染色体（着丝点 ≠ 极点 x）", () => {
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
-    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    const visible = visibleFibers(host);
     expect(visible.length).toBe(4);
     for (const l of visible) {
-      expect(Math.abs(Number(l.getAttribute("x2")))).toBeGreaterThan(0);
+      const { pole, end } = dPoints(l);
+      expect(Math.abs(end[0])).toBeGreaterThan(0);
       // 极点端与染色体端 x 不同 → 斜向汇聚（非竖直棍）
-      expect(Number(l.getAttribute("x2"))).not.toBe(Number(l.getAttribute("x1")));
+      expect(end[0]).not.toBe(pole[0]);
     }
   });
 
-  // 极点锚定：极点端必须固定在两极（x1/y1 = 极点坐标）
+  // 极点锚定：极点端必须固定在两极（M 点 = 极点坐标）
   it("减Ⅰ后期：纺锤丝极点端固定于两极（A1a→上极、A2a→下极）", () => {
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
-    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    const visible = visibleFibers(host);
     expect(visible.length).toBe(4);
     // MI_FIBERS 顺序：A1a top, B1a top, A2a bottom, B2a bottom
     // 上极 (400, 90)，下极 (400, 310)
-    expect(visible[0].getAttribute("x1")).toBe("400");
-    expect(visible[0].getAttribute("y1")).toBe("90");
-    expect(visible[1].getAttribute("x1")).toBe("400");
-    expect(visible[1].getAttribute("y1")).toBe("90");
-    expect(visible[2].getAttribute("x1")).toBe("400");
-    expect(visible[2].getAttribute("y1")).toBe("310");
-    expect(visible[3].getAttribute("x1")).toBe("400");
-    expect(visible[3].getAttribute("y1")).toBe("310");
+    expect(dPoints(visible[0]).pole[0]).toBe(400);
+    expect(dPoints(visible[0]).pole[1]).toBe(90);
+    expect(dPoints(visible[1]).pole[0]).toBe(400);
+    expect(dPoints(visible[1]).pole[1]).toBe(90);
+    expect(dPoints(visible[2]).pole[0]).toBe(400);
+    expect(dPoints(visible[2]).pole[1]).toBe(310);
+    expect(dPoints(visible[3]).pole[0]).toBe(400);
+    expect(dPoints(visible[3]).pole[1]).toBe(310);
   });
 
   // 池隔离：两次 mount 后丝数不累积
@@ -422,48 +430,46 @@ describe("纺锤丝显隐与池隔离", () => {
   // 减Ⅱ双定向：每条 X 的姐妹分连上/下两极（有丝分裂式），中期即如此
   it("减Ⅱ中期：每条 X 双定向——A1a 连上极、A1b 连下极", () => {
     scene.render(st({ stage: "metaphase-II", replicated: true, cells: 2, equatorial: "single" }));
-    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    const visible = visibleFibers(host);
     expect(visible.length).toBe(8);
     // MII_SPERM 顺序：A1a top, A1b bottom, B2a top, B2b bottom, A2a top, A2b bottom, B1a top, B1b bottom
-    // 细胞0 上极 (215,90)、下极 (215,310)；A1a 与 A1b 的 x2 均指向 A1 X 位置 (202,200)
-    expect(visible[0].getAttribute("x1")).toBe("215");
-    expect(visible[0].getAttribute("y1")).toBe("90");
-    expect(visible[1].getAttribute("x1")).toBe("215");
-    expect(visible[1].getAttribute("y1")).toBe("310");
-    expect(visible[0].getAttribute("x2")).toBe("202");
-    expect(visible[1].getAttribute("x2")).toBe("202");
+    // 细胞0 上极 (215,90)、下极 (215,310)；A1a 与 A1b 的着丝点端均指向 A1 X 位置 (202,200)
+    expect(dPoints(visible[0]).pole[0]).toBe(215);
+    expect(dPoints(visible[0]).pole[1]).toBe(90);
+    expect(dPoints(visible[1]).pole[0]).toBe(215);
+    expect(dPoints(visible[1]).pole[1]).toBe(310);
+    expect(dPoints(visible[0]).end[0]).toBe(202);
+    expect(dPoints(visible[1]).end[0]).toBe(202);
   });
 
   // 卵细胞减Ⅱ：第一极体同步分裂带微纺锤丝（8 根，含极体纤维）
   it("卵细胞减Ⅱ后期：8 根纤维（大细胞 4 + 极体① 4），极体纤维极点=极体圆心", () => {
     scene.render(st({ stage: "oo-anaphase-II", replicated: false, cells: 2, unequal: true, polarBodies: 1 }));
-    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
+    const visible = visibleFibers(host);
     expect(visible.length).toBe(8);
     // 顺序：A1a A1b B1a B1b（大细胞，极点 OO_CENTER±110-20）+ A2a A2b B2a B2b（极体①，极点 [357,61]±22）
-    expect(visible[0].getAttribute("x1")).toBe("240");
-    expect(visible[0].getAttribute("y1")).toBe("70");
-    expect(visible[4].getAttribute("x1")).toBe("357");
-    expect(visible[4].getAttribute("y1")).toBe("39");
-    expect(visible[5].getAttribute("x1")).toBe("357");
-    expect(visible[5].getAttribute("y1")).toBe("83");
+    expect(dPoints(visible[0]).pole[0]).toBe(240);
+    expect(dPoints(visible[0]).pole[1]).toBe(70);
+    expect(dPoints(visible[4]).pole[0]).toBe(357);
+    expect(dPoints(visible[4]).pole[1]).toBe(39);
+    expect(dPoints(visible[5]).pole[0]).toBe(357);
+    expect(dPoints(visible[5]).pole[1]).toBe(83);
     // A2a 纤维染色体端指向 A2a 分裂位 [344,51]
-    expect(visible[4].getAttribute("x2")).toBe("344");
-    expect(visible[4].getAttribute("y2")).toBe("51");
+    expect(dPoints(visible[4]).end[0]).toBe(344);
+    expect(dPoints(visible[4]).end[1]).toBe(51);
   });
 
   // 卵细胞模式：oo-anaphase-I 极点偏移 -20px
   it("卵细胞模式：oo-anaphase-I 极点偏移 -20px", () => {
     // 先渲染 anaphase-I（精子模式）获取基准极点
     scene.render(st({ stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" }));
-    const baseLine = host.querySelector(".spindle-line") as SVGLineElement;
-    const baseY = Number(baseLine.getAttribute("y1"));
+    const baseLine = host.querySelector(".spindle-line") as SVGPathElement;
+    const baseY = dPoints(baseLine).pole[1];
 
     // 渲染 oo-anaphase-I（卵细胞模式，unequal=true）
     scene.render(st({ stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true }));
-    const ooLine = host.querySelector(".spindle-line") as SVGLineElement;
-    const ooY = Number(ooLine.getAttribute("y1"));
+    const ooLine = host.querySelector(".spindle-line") as SVGPathElement;
+    const ooY = dPoints(ooLine).pole[1];
 
     // 极点 y 坐标应偏移 -20px
     expect(ooY - baseY).toBe(-20);
