@@ -219,29 +219,29 @@ function updateMitoPool(s: Record<string, unknown>, prevVisible: boolean[]): voi
   }
 
   // 纺锤丝 ×8：极点端固定（绑定表 pole），着丝点端 = 当前槽位（查 mitosisSlots，杜绝手写坐标错连）。
-// 入场（隐藏→可见）：d 瞬切到位 + class grow 走 dasharray 绘制动画（pathLength=1，从两极长出）；
-// 可见期 dasharray 保持 1 1，d 走 CSS 过渡贴合。prevVisible 就地更新为上帧可见集。
-const slots = mitosisSlots(String(s.stage));
-const seen = new Set<number>();
-for (let i = 0; i < mitoPool.spindleLines.length; i++) mitoPool.spindleLines[i].classList.remove("grow");
-mitoPool.spindleLines.forEach((path, i) => {
-  if (bg.spindleVisible) {
-    const fib = MITOSIS_FIBERS[i];
-    const slot = slots[fib.key];
-    const pole = fib.pole === "top" ? POLE_TOP : POLE_BOT;
-    seen.add(i);
-    const firstAppear = !prevVisible[i];
-    path.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${400 + slot.x} ${200 + slot.y}`);
-    if (firstAppear) path.classList.add("grow");
-    path.style.strokeDasharray = "1 1";
-    path.style.opacity = "1";
-    prevVisible[i] = true;
-  } else {
-    path.style.opacity = "0";
-    path.style.strokeDasharray = "0 1";
-    prevVisible[i] = false;
-  }
-});
+  // 入场（隐藏→可见）：d 瞬切到位 + class grow 走 dasharray 绘制动画（pathLength=1，从两极长出）；
+  // 可见期 dasharray 保持 1 1，d 走 CSS 过渡贴合。prevVisible 就地更新为上帧可见集。
+  const slots = mitosisSlots(String(s.stage));
+  const seen = new Set<number>();
+  for (let i = 0; i < mitoPool.spindleLines.length; i++) mitoPool.spindleLines[i].classList.remove("grow");
+  mitoPool.spindleLines.forEach((path, i) => {
+    if (bg.spindleVisible) {
+      const fib = MITOSIS_FIBERS[i];
+      const slot = slots[fib.key];
+      const pole = fib.pole === "top" ? POLE_TOP : POLE_BOT;
+      seen.add(i);
+      const firstAppear = !prevVisible[i];
+      path.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${400 + slot.x} ${200 + slot.y}`);
+      if (firstAppear) path.classList.add("grow");
+      path.style.strokeDasharray = "1 1";
+      path.style.opacity = "1";
+      prevVisible[i] = true;
+    } else {
+      path.style.opacity = "0";
+      path.style.strokeDasharray = "0 1";
+      prevVisible[i] = false;
+    }
+  });
 }
 
 // ============ 工具 ============

@@ -438,6 +438,46 @@ describe("纺锤丝显隐与池隔离", () => {
     }
   });
 
+  // 卵细胞模式同样受 comboAlt 影响：oo-anaphase-I + 自由组合切换时 B 对右列内对调极性，
+  // 槽位须与 fibersFor 返回的 MI_COMBO_ALT 极向一致（否则丝极向与染色体所赴半区相反会错连）
+  it("卵细胞 oo-anaphase-I：同极丝端同水平带——默认与自由组合均为上 y<200、下 y>200，B 对右列内对调", () => {
+    // 用独立 scene 实例隔离本测试的 comboAlt 初始态（共享闭包可能被前例点击污染）
+    const s2 = createMeiosisScene();
+    const h2 = document.createElement("div");
+    document.body.appendChild(h2);
+    s2.mount(h2);
+    const base = { stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true } as const;
+    s2.render(st(base));
+    const cg = (key: string) => h2.querySelector<SVGGElement>(`.chromatid.chromo-${key}`)!;
+    const vis = () => visibleFibers(h2);
+    // 默认：B1 上、B2 下（右列上下拉开；A 对左列不变）
+    expect(cg("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(cg("A2a").style.transform).toContain("translate(347px, 238px)");
+    expect(cg("B1a").style.transform).toContain("translate(453px, 162px)");
+    expect(cg("B2a").style.transform).toContain("translate(453px, 238px)");
+    for (let combo = 0; combo < 2; combo++) {
+      const visible = vis();
+      expect(visible.length).toBe(4);
+      const ends = visible.map((l) => dPoints(l).end);
+      expect(ends[0][1]).toBeLessThan(200);
+      expect(ends[1][1]).toBeLessThan(200);
+      expect(ends[2][1]).toBeGreaterThan(200);
+      expect(ends[3][1]).toBeGreaterThan(200);
+      expect(ends[0][1]).toBe(ends[1][1]);
+      expect(ends[2][1]).toBe(ends[3][1]);
+      const btn = h2.querySelector<HTMLButtonElement>(".scene-controls button")!;
+      expect(btn.disabled).toBe(false);
+      if (combo === 0) btn.click();
+    }
+    // 自由组合：B2 上、B1 下（仍右列，与 MI_COMBO_ALT 极向对齐）
+    expect(cg("B2a").style.transform).toContain("translate(453px, 162px)");
+    expect(cg("B1a").style.transform).toContain("translate(453px, 238px)");
+    expect(cg("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(cg("A2a").style.transform).toContain("translate(347px, 238px)");
+    s2.destroy();
+    h2.remove();
+  });
+
   // 池隔离：两次 mount 后丝数不累积
   it("池隔离：重新 mount 后纺锤丝数不累积", () => {
     scene.render(st({ stage: "metaphase-I" }));

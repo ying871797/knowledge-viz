@@ -251,7 +251,7 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
 }
 
 /** 卵细胞模式逐阶段槽位表（阶段 6~10 的 x/y 为画布绝对坐标） */
-function oocyteSlots(id: string): Slots {
+function oocyteSlots(id: string, comboAlt: boolean): Slots {
   const S: Slots = {};
   switch (id) {
     case "oo-oogonium":
@@ -284,11 +284,13 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-anaphase-I": {
-      // 卵细胞减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿；不均等分裂由轮廓表达）
+      // 卵细胞减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿；不均等分裂由轮廓表达）。
+      // comboAlt（自由组合切换）：B 对右列内两极对调（B2 上/B1 下），与精子模式 oocyteSlots 之外的
+      // fibersFor 返回 MI_COMBO_ALT 保持一致——否则丝极向与染色体所赴半区相反会错连
       xpair(S, "A1", 0, -POLE_X, -POLE_Y);
       xpair(S, "A2", 0, -POLE_X, POLE_Y);
-      xpair(S, "B1", 0, POLE_X, -POLE_Y);
-      xpair(S, "B2", 0, POLE_X, POLE_Y);
+      xpair(S, comboAlt ? "B2" : "B1", 0, POLE_X, -POLE_Y);
+      xpair(S, comboAlt ? "B1" : "B2", 0, POLE_X, POLE_Y);
       break;
     }
     case "oo-telophase-I": {
@@ -347,7 +349,7 @@ function oocyteSlots(id: string): Slots {
 
 /** 槽位总入口：模式 + 阶段 + 自由组合 → 每单体的目标位 */
 export function slotsFor(s: MeiosisState, comboAlt = false): Slots {
-  return s.stage?.startsWith("oo-") ? oocyteSlots(s.stage) : spermSlots(s.stage, comboAlt);
+  return s.stage?.startsWith("oo-") ? oocyteSlots(s.stage, comboAlt) : spermSlots(s.stage, comboAlt);
 }
 
 // ============ 细胞轮廓（预声明 DOM 池 + updatePool 按阶段切换显隐） ============
