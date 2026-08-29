@@ -1,6 +1,6 @@
 /** 有丝分裂场景测试（段 1+2）：元素模型、6 阶段渲染、背景元素、布局不变式 */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { createMitosisScene, mitosisSlots } from "../scene";
+import { createMitosisScene, mitosisSlots, MITOSIS_FIBERS } from "../scene";
 import { mitosisCourse } from "../data";
 
 /** 构造场景状态（stage 必填以驱动槽位表） */
@@ -62,17 +62,18 @@ describe("有丝分裂场景", () => {
 
   // 几何：纺锤丝极点端固定在两极、斜向汇聚染色体（非竖直棍）
   it("前期：纺锤丝极点端固定于两极且斜向汇聚", () => {
-    scene.render(st({ stage: "prophase", replicated: true }));
-    const lines = [...host.querySelectorAll<SVGLineElement>(".spindle-line")];
-    const visible = lines.filter((l) => parseFloat(l.style.opacity || "0") > 0);
-    expect(visible.length).toBe(8);
-    for (const l of visible) {
-      // 极点端固定于上极或下极
-      const y1 = Number(l.getAttribute("y1"));
-      expect([60, 340]).toContain(y1);
+    const ds = spindleD("prophase");
+    expect(ds).toHaveLength(8);
+    for (const d of ds) {
+      const m = /M\s+([\d.]+)\s+([\d.]+)\s+L\s+([\d.]+)\s+([\d.]+)/.exec(d);
+      if (!m) throw new Error(`d 缺 M/L 指令: ${d}`);
+      const [px, py, tx, ty] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4])];
+      // 极点端固定于上极 (400,60) 或下极 (400,340)
+      expect([60, 340]).toContain(py);
+      expect(px).toBe(400);
       // 染色体端 x 与极点端 x 不同 → 斜向汇聚
-      expect(Math.abs(Number(l.getAttribute("x2")))).toBeGreaterThan(0);
-      expect(Number(l.getAttribute("x2"))).not.toBe(Number(l.getAttribute("x1")));
+      expect(Math.abs(tx)).toBeGreaterThan(0);
+      expect(tx).not.toBe(px);
     }
   });
 
@@ -101,6 +102,76 @@ describe("有丝分裂场景", () => {
     input.checked = true;
     input.dispatchEvent(new Event("change"));
     expect(chromatid("A1a").querySelector("text.gene-label")!.getAttribute("visibility")).toBe("visible");
+  });
+});
+
+/** 取指定阶段可见纺锤丝的 d 属性（path 格式：M 极点 L 着丝点） */
+const spindleD = (stage: string): string[] => {
+  const scene = createMitosisScene();
+  const h = document.createElement("div");
+  document.body.appendChild(h);
+  scene.mount(h);
+  scene.render(st({ stage, replicated: true }));
+  const ds = [...h.querySelectorAll<SVGPathElement>(".spindle-line")].map((p) => p.getAttribute("d") || "");
+  scene.destroy();
+  h.remove();
+  return ds;
+};
+/** 解析 path d 的 L 端点（着丝点端） */
+const lEnd = (d: string): [number, number] => {
+  const m = /L\s+([\d.]+)\s+([\d.]+)/.exec(d);
+  if (!m) throw new Error(`d 无 L 指令: ${d}`);
+  return [Number(m[1]), Number(m[2])];
+};
+
+describe("有丝分裂纺锤丝", () => {
+  it("结构断言：纺锤丝数量 = 绑定表长度 8", () => {
+    expect(MITOSIS_FIBERS.length).toBe(8);
+  });
+
+  it("结构断言：中期每根丝的着丝点端 == 绑定单体槽位坐标（丝接对染色体）", () => {
+    for (const d of spindleD("metaphase")) {
+      const [tx, ty] = lEnd(d);
+      // 中期所有单体着丝点排列在赤道板 y=200，x 为各自槽位
+      expect(ty).toBe(200);
+      expect(tx).toBeGreaterThan(200);
+      expect(tx).toBeLessThan(600);
+    }
+    // 精确：每根丝的 L 端必须等于某个单体槽位（结构不脱节）
+    const slots = mitosisSlots("metaphase");
+    for (const d of spindleD("metaphase")) {
+      const [tx, ty] = lEnd(d);
+      const hit = Object.values(slots).some((s) => s.x === tx - 400 && s.y === ty - 200);
+      expect(hit).toBe(true);
+    }
+  });
+
+  it("语义断言：后期上极丝连 y<200 单体、下极丝连 y>200 单体（无交叉错连）", () => {
+    const ds = spindleD("anaphase");
+    const slots = mitosisSlots("anaphase");
+    MITOSIS_FIBERS.forEach((fib, i) => {
+      const [tx, ty] = lEnd(ds[i]);
+      // 先验：每根丝 L 端确实是其绑定单体的槽位
+      const bound = slots[fib.key];
+      expect(tx).toBe(400 + bound.x);
+      expect(ty).toBe(200 + bound.y);
+      // 语义：上极丝终点在上半区，下极丝终点在下半区
+      if (fib.pole === "top") expect(ty).toBeLessThan(200);
+      else expect(ty).toBeGreaterThan(200);
+    });
+  });
+
+  it("语义断言：中期绑定表极点分配应两极各有 4 根（极向互补）", () => {
+    const tops = MITOSIS_FIBERS.filter((f) => f.pole === "top").length;
+    const bots = MITOSIS_FIBERS.filter((f) => f.pole === "bottom").length;
+    expect(tops).toBe(4);
+    expect(bots).toBe(4);
+    // 且同一单体不会被同时指向上、下两极（物理不可能）
+    const seen = new Map<string, string>();
+    for (const f of MITOSIS_FIBERS) {
+      expect(!seen.has(f.key)).toBe(true);
+      seen.set(f.key, f.pole);
+    }
   });
 });
 

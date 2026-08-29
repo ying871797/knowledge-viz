@@ -286,14 +286,12 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 .cell-wall, .nuclear-membrane, .cell-plate, .spindle-line {
   transition: opacity var(--tween-ms, 1350ms) ease-in-out;
 }
-/* 纺锤丝：几何（x1/y1/x2/y2）走 CSS transition，极点端固定、染色体端平滑跟随 */
+/* 纺锤丝：几何走 d 过渡（M 极点 L 着丝点，两命令跨阶段同构 → Chrome/Edge/FF 平滑、Safari 渐进增强），
+   极点端固定、着丝点端沿 d 插值——与单体 transform 同 --tween-ms / ease-out 使过渡全程贴合 */
 .meiosis-scene .spindle-line, .mito-scene .spindle-line {
   transition:
     opacity var(--tween-ms, 1350ms) ease-in-out,
-    x1 var(--tween-ms, 1350ms) ease-out,
-    y1 var(--tween-ms, 1350ms) ease-out,
-    x2 var(--tween-ms, 1350ms) ease-out,
-    y2 var(--tween-ms, 1350ms) ease-out;
+    d var(--tween-ms, 1350ms) ease-out;
   pointer-events: none;
 }
 
