@@ -239,34 +239,36 @@ describe("减数分裂场景（固定 8 杆模型）", () => {
     expect(chromatid("B2a").style.transform).toContain("translate(455px, 227px)");
   });
 
-  it("阶段4 减Ⅰ中期：两对分列赤道板左右", () => {
+  it("阶段4 减Ⅰ中期：同源染色体成对排列在赤道面（对内水平并排）", () => {
     scene.render(st({ stage: "metaphase-I", replicated: true, pairing: true, equatorial: "paired" }));
-    // 每对 ±66 → A 对 (334,187/213)、B 对 (466,187/213)
-    expect(chromatid("A1a").style.transform).toContain("translate(334px, 187px)");
-    expect(chromatid("A2a").style.transform).toContain("translate(334px, 213px)");
-    expect(chromatid("B1a").style.transform).toContain("translate(466px, 187px)");
-    expect(chromatid("B2a").style.transform).toContain("translate(466px, 213px)");
+    // 对心距 60 → A 对 x=327/353、B 对 x=447/473，均 y=200（赤道面）
+    expect(chromatid("A1a").style.transform).toContain("translate(327px, 200px)");
+    expect(chromatid("A2a").style.transform).toContain("translate(353px, 200px)");
+    expect(chromatid("B1a").style.transform).toContain("translate(447px, 200px)");
+    expect(chromatid("B2a").style.transform).toContain("translate(473px, 200px)");
   });
 
-  it("阶段5 减Ⅰ后期：同源分离两极；自由组合点击切换 B 对极性", () => {
+  it("阶段5 减Ⅰ后期：同源分离——左右同列、上下拉开；自由组合切换 B 对极性", () => {
     scene.render(st({ stage: "anaphase-I", replicated: true, separating: "homolog" }));
-    // 默认组合：A1+B1 上极、A2+B2 下极（sx=53, sy=38）
+    // 默认组合：A 对左列（上 347,162 / 下 347,238）、B 对右列（上 453,162 / 下 453,238）——同列不横穿
     expect(chromatid("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(chromatid("A2a").style.transform).toContain("translate(347px, 238px)");
     expect(chromatid("B1a").style.transform).toContain("translate(453px, 162px)");
-    expect(chromatid("A2a").style.transform).toContain("translate(453px, 238px)");
-    expect(chromatid("B2a").style.transform).toContain("translate(347px, 238px)");
-    // 自由组合按钮可用；点击后 B 对对调极性（A1 与 B2 同极）
+    expect(chromatid("B2a").style.transform).toContain("translate(453px, 238px)");
+    // 自由组合按钮可用；点击后 B 对同一右列内对调极性（A1 与 B2 同极上、A2 与 B1 同极下）
     const btn = host.querySelector<HTMLButtonElement>(".scene-controls button")!;
     expect(btn.disabled).toBe(false);
     btn.click();
-    expect(chromatid("B2a").style.transform).toContain("translate(373px, 162px)");
-    expect(chromatid("B1a").style.transform).toContain("translate(427px, 238px)");
+    expect(chromatid("B2a").style.transform).toContain("translate(453px, 162px)");
+    expect(chromatid("B1a").style.transform).toContain("translate(453px, 238px)");
+    expect(chromatid("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(chromatid("A2a").style.transform).toContain("translate(347px, 238px)");
     const hint = host.querySelector<HTMLDivElement>(".combo-hint")!;
     expect(hint.style.display).toBe("inline-block");
     expect(hint.textContent).toContain("方式二");
     // 再点一次还原
     btn.click();
-    expect(chromatid("B2a").style.transform).toContain("translate(347px, 238px)");
+    expect(chromatid("B2a").style.transform).toContain("translate(453px, 238px)");
   });
 
   it("非减Ⅰ后期阶段：自由组合按钮禁用", () => {
@@ -414,6 +416,68 @@ describe("纺锤丝显隐与池隔离", () => {
     expect(dPoints(visible[3]).pole[1]).toBe(310);
   });
 
+  // 后期同列分离语义：上极丝牵着上半区、下极丝牵着下半区（y 与极向一致）；
+  // 且同极两条 y 相等（同一水平带）→ 同列上下拉开，无对角线横穿；默认与自由组合两态都成立
+  it("减Ⅰ后期：同极丝端同水平带——上极 y<200、下极 y>200（默认与自由组合）", () => {
+    const base = { stage: "anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog" } as const;
+    scene.render(st(base));
+    for (const combo of [false, true]) {
+      const visible = visibleFibers(host);
+      expect(visible.length).toBe(4);
+      const ends = visible.map((l) => dPoints(l).end);
+      // 上极两条 y<200、下极两条 y>200；同极两条横向各守半场、y 同带
+      expect(ends[0][1]).toBeLessThan(200);
+      expect(ends[1][1]).toBeLessThan(200);
+      expect(ends[2][1]).toBeGreaterThan(200);
+      expect(ends[3][1]).toBeGreaterThan(200);
+      expect(ends[0][1]).toBe(ends[1][1]);
+      expect(ends[2][1]).toBe(ends[3][1]);
+      const btn = host.querySelector<HTMLButtonElement>(".scene-controls button")!;
+      expect(btn.disabled).toBe(false);
+      if (!combo) btn.click();
+    }
+  });
+
+  // 卵细胞模式同样受 comboAlt 影响：oo-anaphase-I + 自由组合切换时 B 对右列内对调极性，
+  // 槽位须与 fibersFor 返回的 MI_COMBO_ALT 极向一致（否则丝极向与染色体所赴半区相反会错连）
+  it("卵细胞 oo-anaphase-I：同极丝端同水平带——默认与自由组合均为上 y<200、下 y>200，B 对右列内对调", () => {
+    // 用独立 scene 实例隔离本测试的 comboAlt 初始态（共享闭包可能被前例点击污染）
+    const s2 = createMeiosisScene();
+    const h2 = document.createElement("div");
+    document.body.appendChild(h2);
+    s2.mount(h2);
+    const base = { stage: "oo-anaphase-I", cells: 1, replicated: true, pairing: true, crossingOver: true, separating: "homolog", unequal: true } as const;
+    s2.render(st(base));
+    const cg = (key: string) => h2.querySelector<SVGGElement>(`.chromatid.chromo-${key}`)!;
+    const vis = () => visibleFibers(h2);
+    // 默认：B1 上、B2 下（右列上下拉开；A 对左列不变）
+    expect(cg("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(cg("A2a").style.transform).toContain("translate(347px, 238px)");
+    expect(cg("B1a").style.transform).toContain("translate(453px, 162px)");
+    expect(cg("B2a").style.transform).toContain("translate(453px, 238px)");
+    for (let combo = 0; combo < 2; combo++) {
+      const visible = vis();
+      expect(visible.length).toBe(4);
+      const ends = visible.map((l) => dPoints(l).end);
+      expect(ends[0][1]).toBeLessThan(200);
+      expect(ends[1][1]).toBeLessThan(200);
+      expect(ends[2][1]).toBeGreaterThan(200);
+      expect(ends[3][1]).toBeGreaterThan(200);
+      expect(ends[0][1]).toBe(ends[1][1]);
+      expect(ends[2][1]).toBe(ends[3][1]);
+      const btn = h2.querySelector<HTMLButtonElement>(".scene-controls button")!;
+      expect(btn.disabled).toBe(false);
+      if (combo === 0) btn.click();
+    }
+    // 自由组合：B2 上、B1 下（仍右列，与 MI_COMBO_ALT 极向对齐）
+    expect(cg("B2a").style.transform).toContain("translate(453px, 162px)");
+    expect(cg("B1a").style.transform).toContain("translate(453px, 238px)");
+    expect(cg("A1a").style.transform).toContain("translate(347px, 162px)");
+    expect(cg("A2a").style.transform).toContain("translate(347px, 238px)");
+    s2.destroy();
+    h2.remove();
+  });
+
   // 池隔离：两次 mount 后丝数不累积
   it("池隔离：重新 mount 后纺锤丝数不累积", () => {
     scene.render(st({ stage: "metaphase-I" }));
@@ -425,6 +489,44 @@ describe("纺锤丝显隐与池隔离", () => {
     scene.mount(host);
     scene.render(st({ stage: "metaphase-I" }));
     expect(visibleSpindleCount()).toBe(count1);
+  });
+
+  // 入场生长：隐藏→可见时走 dasharray 绘制（从极点绘向着丝点），d 已瞬切到正确位置
+  it("纺锤丝入场：隐藏→可见 dasharray 0→1（极点长出）；再 tick 保留 dasharray、d 转过渡；隐藏重置", () => {
+    // 挂载后未进入任何有丝阶段：全部隐藏、dasharray=0 1、pathLength=1
+    scene.render(st({ stage: "spermatogonium" }));
+    const allLines = [...host.querySelectorAll<SVGPathElement>(".spindle-line")];
+    expect(allLines.length).toBe(16);
+    expect(allLines.every((l) => l.style.strokeDasharray === "0 1")).toBe(true);
+    expect(allLines.every((l) => l.getAttribute("pathLength") === "1")).toBe(true);
+
+    // 首次进入有丝阶段：d 目标已瞬切到位（无 d 过渡飞插），走 grow 绘制
+    scene.render(st({ stage: "metaphase-I" }));
+    const first = visibleFibers(host);
+    expect(first.length).toBe(4);
+    for (const l of first) {
+      expect(l.classList.contains("grow")).toBe(true);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+    // 极点端已在两极（非画布原点），grow 期间丝由 M 极点绘向 L 着丝点
+    expect(dPoints(first[0]).pole).toEqual([400, 90]);
+    expect(dPoints(first[0]).end[0]).toBeGreaterThan(0);
+
+    // 再次同阶段 render（进入可见期）：grow 撤销、dasharray 保持满绘
+    scene.render(st({ stage: "metaphase-I" }));
+    const steady = visibleFibers(host);
+    expect(steady.length).toBe(4);
+    for (const l of steady) {
+      expect(l.classList.contains("grow")).toBe(false);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+
+    // 隐藏重置：dasharray 归零
+    scene.render(st({ stage: "telophase-I" }));
+    expect(visibleSpindleCount()).toBe(0);
+    for (const l of [...host.querySelectorAll<SVGPathElement>(".spindle-line")]) {
+      expect(l.style.strokeDasharray).toBe("0 1");
+    }
   });
 
   // 减Ⅱ双定向：每条 X 的姐妹分连上/下两极（有丝分裂式），中期即如此

@@ -173,6 +173,49 @@ describe("有丝分裂纺锤丝", () => {
       seen.set(f.key, f.pole);
     }
   });
+
+  // 入场生长：隐藏→可见 dasharray 0→1（从两极长出），d 已瞬切到位；再渲染保留 dasharray、隐藏重置
+  it("入场：前期 dasharray 0→1 从两极长出（grow）/可见期转 d 过渡/末期隐藏重置", () => {
+    const scene = createMitosisScene();
+    const h = document.createElement("div");
+    document.body.appendChild(h);
+    scene.mount(h);
+    const lines = () => [...h.querySelectorAll<SVGPathElement>(".spindle-line")];
+    const visible = () => lines().filter((p) => parseFloat(p.style.opacity || "0") > 0);
+
+    // 间期：全部隐藏、dasharray=0 1、pathLength=1
+    scene.render(st({ stage: "interphase", replicated: true }));
+    expect(lines().every((l) => l.style.strokeDasharray === "0 1")).toBe(true);
+    expect(lines().every((l) => l.getAttribute("pathLength") === "1")).toBe(true);
+
+    // 前期首现：走 grow，d 已到极点（400,60/340），非原点
+    scene.render(st({ stage: "prophase", replicated: true }));
+    const first = visible();
+    expect(first.length).toBe(8);
+    for (const l of first) {
+      expect(l.classList.contains("grow")).toBe(true);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+    const m = /M\s+([\d.]+)\s+([\d.]+)/.exec(first[0].getAttribute("d") || "")!;
+    expect([Number(m[1]), Number(m[2])]).toEqual([400, 60]);
+
+    // 中期（可见期）：grow 撤销、dasharray 满绘沿 d 贴近
+    scene.render(st({ stage: "metaphase", replicated: true }));
+    const steady = visible();
+    expect(steady.length).toBe(8);
+    for (const l of steady) {
+      expect(l.classList.contains("grow")).toBe(false);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+
+    // 末期：隐藏重置 dasharray 0 1
+    scene.render(st({ stage: "telophase" }));
+    expect(visible().length).toBe(0);
+    expect(lines().every((l) => l.style.strokeDasharray === "0 1")).toBe(true);
+
+    scene.destroy();
+    h.remove();
+  });
 });
 
 /** 布局不变式 */

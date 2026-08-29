@@ -170,26 +170,25 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
       break;
     }
     case "metaphase-I": {
-      // 减Ⅰ中期：两对分列赤道板左右（对心距 132 → 每对 ±66），对内上下紧贴（±13）
-      const pc = 66;
-      xpair(S, "A1", 0, -pc, -PAIR_GAP);
-      xpair(S, "A2", 0, -pc, PAIR_GAP);
-      xpair(S, "B1", 0, pc, -PAIR_GAP);
-      xpair(S, "B2", 0, pc, PAIR_GAP);
+      // 减Ⅰ中期：同源染色体成对排列在赤道面——对内水平并排（±13）、A 对左/B 对右（对心距 60）
+      const pc = 60;
+      xpair(S, "A1", 0, -pc - PAIR_GAP, 0);   // (327,200)
+      xpair(S, "A2", 0, -pc + PAIR_GAP, 0);   // (353,200)
+      xpair(S, "B1", 0, pc - PAIR_GAP, 0);    // (447,200)
+      xpair(S, "B2", 0, pc + PAIR_GAP, 0);    // (473,200)
       break;
     }
     case "anaphase-I": {
-      // 减Ⅰ后期：同源分离——A1+B1 移向上极、A2+B2 移向下极（X 整体移动）；
-      // 自由组合切换：B 对对调极性（A1 与 B1 同极 ↔ A1 与 B2 同极）
-      const d = PAIR_GAP * 2;
-      xpair(S, "A1", 0, -POLE_X, -POLE_Y);
-      xpair(S, "A2", 0, POLE_X, POLE_Y);
+      // 减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿）；
+      // 自由组合切换：B 对两极对调（A1 与 B1 同极 ↔ A1 与 B2 同极），仍同列
+      xpair(S, "A1", 0, -POLE_X, -POLE_Y);    // (347,162)
+      xpair(S, "A2", 0, -POLE_X, POLE_Y);     // (347,238)
       if (comboAlt) {
-        xpair(S, "B2", 0, -POLE_X + d, -POLE_Y);
-        xpair(S, "B1", 0, POLE_X - d, POLE_Y);
+        xpair(S, "B2", 0, POLE_X, -POLE_Y);   // (453,162)
+        xpair(S, "B1", 0, POLE_X, POLE_Y);    // (453,238)
       } else {
-        xpair(S, "B1", 0, POLE_X, -POLE_Y);
-        xpair(S, "B2", 0, -POLE_X, POLE_Y);
+        xpair(S, "B1", 0, POLE_X, -POLE_Y);   // (453,162)
+        xpair(S, "B2", 0, POLE_X, POLE_Y);    // (453,238)
       }
       break;
     }
@@ -252,7 +251,7 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
 }
 
 /** 卵细胞模式逐阶段槽位表（阶段 6~10 的 x/y 为画布绝对坐标） */
-function oocyteSlots(id: string): Slots {
+function oocyteSlots(id: string, comboAlt: boolean): Slots {
   const S: Slots = {};
   switch (id) {
     case "oo-oogonium":
@@ -276,20 +275,22 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-metaphase-I": {
-      // 对心距 132 → 每对 ±66
-      const pc = 66;
-      xpair(S, "A1", 0, -pc, -PAIR_GAP);
-      xpair(S, "A2", 0, -pc, PAIR_GAP);
-      xpair(S, "B1", 0, pc, -PAIR_GAP);
-      xpair(S, "B2", 0, pc, PAIR_GAP);
+      // 减Ⅰ中期：同源染色体成对排列在赤道面——对内水平并排（±13）、A 对左/B 对右（对心距 60）
+      const pc = 60;
+      xpair(S, "A1", 0, -pc - PAIR_GAP, 0);
+      xpair(S, "A2", 0, -pc + PAIR_GAP, 0);
+      xpair(S, "B1", 0, pc - PAIR_GAP, 0);
+      xpair(S, "B2", 0, pc + PAIR_GAP, 0);
       break;
     }
     case "oo-anaphase-I": {
-      // 卵细胞减Ⅰ后期：同源分离（X 整体移动；不均等分裂由轮廓表达）
+      // 卵细胞减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿；不均等分裂由轮廓表达）。
+      // comboAlt（自由组合切换）：B 对右列内两极对调（B2 上/B1 下），与精子模式 oocyteSlots 之外的
+      // fibersFor 返回 MI_COMBO_ALT 保持一致——否则丝极向与染色体所赴半区相反会错连
       xpair(S, "A1", 0, -POLE_X, -POLE_Y);
-      xpair(S, "A2", 0, POLE_X, POLE_Y);
-      xpair(S, "B1", 0, POLE_X, -POLE_Y);
-      xpair(S, "B2", 0, -POLE_X, POLE_Y);
+      xpair(S, "A2", 0, -POLE_X, POLE_Y);
+      xpair(S, comboAlt ? "B2" : "B1", 0, POLE_X, -POLE_Y);
+      xpair(S, comboAlt ? "B1" : "B2", 0, POLE_X, POLE_Y);
       break;
     }
     case "oo-telophase-I": {
@@ -348,7 +349,7 @@ function oocyteSlots(id: string): Slots {
 
 /** 槽位总入口：模式 + 阶段 + 自由组合 → 每单体的目标位 */
 export function slotsFor(s: MeiosisState, comboAlt = false): Slots {
-  return s.stage?.startsWith("oo-") ? oocyteSlots(s.stage) : spermSlots(s.stage, comboAlt);
+  return s.stage?.startsWith("oo-") ? oocyteSlots(s.stage, comboAlt) : spermSlots(s.stage, comboAlt);
 }
 
 // ============ 细胞轮廓（预声明 DOM 池 + updatePool 按阶段切换显隐） ============
@@ -441,19 +442,30 @@ function updatePool(root: SVGSVGElement, s: MeiosisState): void {
 }
 
 // ============ 纺锤丝：池化 line + setAttribute 几何 + CSS transition ============
-/** 更新纺锤丝：每根 line 直接由极点指向染色体（极点端固定在两极，染色体端跟随） */
+/**
+ * 更新纺锤丝：每根 line 直接由极点指向染色体（极点端固定在两极，染色体端跟随）。
+ * 入场（隐藏→可见）：d 先瞬切到位 + class grow 走 dasharray 绘制动画（pathLength=1，
+ * dasharray 0→1 沿 path 从 M 极点绘到 L 着丝点 = 从两极长出），d 不参与过渡故无旧坐标飞插；
+ * 可见期保持 dasharray 1 1，d 走 CSS 过渡贴合染色体移动。prevVisible 就地更新为上帧可见集。
+ */
 function updateSpindleLines(
   s: MeiosisState,
   slots: Record<string, { cell: number; x: number; y: number; a: number }>,
   comboAlt: boolean,
+  prevVisible: boolean[],
 ): void {
   const fibers = fibersFor(s, comboAlt);
   const centers = CELL_CENTERS[s.cells] ?? [];
   const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞两细胞期：槽位即画布绝对坐标
+  const seen = new Set<number>();
+
+  // 撤销上一轮入场 class：出现帧的瞬切仅当帧生效，下一 layout 即恢复 d 过渡
+  for (const line of bgPool.spindleLines) line.classList.remove("grow");
 
   fibers.forEach((f, idx) => {
     const sl = slots[f.key];
     if (!sl) return;
+    seen.add(idx);
     // 染色体画布坐标
     const [bx, by] = oocyteAbs ? [0, 0] : centers[sl.cell] ?? [0, 0];
     const tx = bx + sl.x;
@@ -468,13 +480,20 @@ function updateSpindleLines(
       : [center[0], center[1] + off + yOff];
 
     const line = bgPool.spindleLines[idx];
+    const firstAppear = !prevVisible[idx];
     line.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${tx} ${ty}`);
+    if (firstAppear) line.classList.add("grow");
+    line.style.strokeDasharray = "1 1";
     line.style.opacity = "1";
+    prevVisible[idx] = true;
   });
 
   // 隐藏未使用的线
-  for (let i = fibers.length; i < bgPool.spindleLines.length; i++) {
+  for (let i = 0; i < bgPool.spindleLines.length; i++) {
+    if (seen.has(i)) continue;
     bgPool.spindleLines[i].style.opacity = "0";
+    bgPool.spindleLines[i].style.strokeDasharray = "0 1";
+    prevVisible[i] = false;
   }
 }
 
@@ -506,13 +525,14 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
   let showGenes = false;
   let lastState: MeiosisState | null = null;
   const groups = new Map<string, SVGGElement>();
+  let prevVisible: boolean[] = [];   // 纺锤丝上帧可见集（入场检测）
 
   /** 核心：查槽位表 → 每单体设置 translate+rotate（唯一渲染路径，无特判） */
   function layout(s: MeiosisState): void {
     if (!root) return;
     updatePool(root, s);
     const slots = slotsFor(s, comboAlt);
-    updateSpindleLines(s, slots, comboAlt);
+    updateSpindleLines(s, slots, comboAlt, prevVisible);
     const centers = CELL_CENTERS[s.cells] ?? [];
     const oocyteAbs = s.cells === 2 && s.unequal;   // 卵细胞 cells=2 阶段：槽位即绝对坐标
     const radius = CELL_RADIUS[s.cells] ?? 62;
@@ -565,6 +585,7 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       // 纺锤丝池清空（测试隔离）
       bgPool.spindleLines.forEach((l) => l.remove());
       bgPool.spindleLines.length = 0;
+      prevVisible = [];
       bubble = document.createElement("div");
       bubble.className = "chromo-bubble";
       bubble.style.display = "none";
@@ -628,9 +649,12 @@ export function createMeiosisScene(): SceneComponent & { destroy(): void } {
       svgRoot.appendChild(bgPool.oocyteEccentric);
 
 // 纺锤丝池：16 根 path（d = M 极点 L 单体），与有丝分裂同构（同命令 d 过渡）
+// 入场生长动画依赖 pathLength=1 归一化（dasharray 0→1 沿 path 从 M 极点到 L 着丝点绘制）
   for (let i = 0; i < 16; i++) {
-    const line = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+    const line = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", pathLength: 1, fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+    line.style.strokeDasharray = "0 1";
     bgPool.spindleLines.push(line);
+    prevVisible.push(false);
         svgRoot.appendChild(line);
       }
 
