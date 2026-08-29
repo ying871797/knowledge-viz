@@ -136,6 +136,23 @@ describe("基因的表达场景（固定元素池）", () => {
     expect(`${SEQ_TEMPLATE[9]}${SEQ_TEMPLATE[10]}${SEQ_TEMPLATE[11]}`).toBe("ATC");
   });
 
+  it("进位 tRNA 携带氨基酸入场：新氨基酸珠与新 tRNA 同锚点，禁止各自盲入", () => {
+    scene.render({ stage: "l3-peptide1" });
+    // A 位锚点 = 156+184 = 340：新 tRNA② 与它携带的新氨基酸珠同位（同 x 淡入 = 一起过来）
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 0px)");
+    expect(bead(1).getAttribute("cx")).toBe("340");
+    // 旧链珠向左按 22px 间距排开，珠缘到珠缘短键保持可见
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(0).style.opacity).toBe("1");
+    scene.render({ stage: "l5-peptide2" });
+    // A 位锚点 = 276+184 = 460：新 tRNA③ 与它的新氨基酸珠③同位
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 0px)");
+    expect(bead(2).getAttribute("cx")).toBe("460");
+    expect(Number(bead(2).getAttribute("cx")) - Number(bead(1).getAttribute("cx"))).toBe(22);
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(1).style.opacity).toBe("1");
+  });
+
   it("折叠完成：核糖体与 tRNA 全部退场，肽链珠聚拢成团、键线隐没", () => {
     scene.render({ stage: "l7-fold" });
     expect(ribo().style.opacity).toBe("0");

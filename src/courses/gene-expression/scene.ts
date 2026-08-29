@@ -88,28 +88,30 @@ const GEOM: Record<string, Gx> = {
     groups: true, riboX: 156, trnaX: [220, null, null], beads: [[220, TRNA_BEAD_Y], null, null], folded: false,
   },
   "l3-peptide1": {
+    // 进位帧：新氨基酸珠与新 tRNA② 同位（A 位锚点 156+184=340）——氨基酸由 tRNA 携带入场，禁止各自盲入；
+    // 旧链珠以 22px 间距向左排开（珠间距=键线可见区间），成肽后链挂在持链 tRNA② 上
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 156, trnaX: [220, 340, null], beads: [[296, TRNA_BEAD_Y], [318, TRNA_BEAD_Y], null], folded: false,
+    groups: true, riboX: 156, trnaX: [220, 340, null], beads: [[318, TRNA_BEAD_Y], [340, TRNA_BEAD_Y], null], folded: false,
   },
   "l4-shift": {
     // 移位：仅核糖体窗右移一格（+120 = 3×STEP）；tRNA 与密码子氢键结合、横向不动，
     // 原 A 位持链 tRNA② 被"套入"新 P 位锚点（276+64=340）——绝不回移（用户目检抓帧混淆 bug）
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 276, trnaX: [220, 340, null], trnaLeaving: [0], beads: [[296, TRNA_BEAD_Y], [318, TRNA_BEAD_Y], null], folded: false,
+    groups: true, riboX: 276, trnaX: [220, 340, null], trnaLeaving: [0], beads: [[318, TRNA_BEAD_Y], [340, TRNA_BEAD_Y], null], folded: false,
   },
   "l5-peptide2": {
-    // 第三只 tRNA 进位至新 A 位锚点（276+184=460，对 UGU），肽链延长为 3 珠
+    // 进位帧：新氨基酸珠③与新 tRNA③ 同位（A 位锚点 276+184=460，对 UGU），肽链延长为 3 珠
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 276, trnaX: [null, 340, 460], beads: [[394, TRNA_BEAD_Y], [416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y]], folded: false,
+    groups: true, riboX: 276, trnaX: [null, 340, 460], beads: [[416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y], [460, TRNA_BEAD_Y]], folded: false,
   },
   "l6-stop": {
     // 再移位后 A 位对准终止密码子（窗左缘 396 → A 位中心 580 = codon4 UAG），无 tRNA 对位
     bubble: -1, dnaOp: 0, roleLabels: false, hbond: [...HB_ALL],
     mrnaLen: 12, mrnaY: MRNA_Y_RIBO, mrnaTicks: false, polX: null, membrane: false,
-    groups: true, riboX: 396, trnaX: [null, 340, 460], trnaLeaving: [1], beads: [[394, TRNA_BEAD_Y], [416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y]], folded: false,
+    groups: true, riboX: 396, trnaX: [null, 340, 460], trnaLeaving: [1], beads: [[416, TRNA_BEAD_Y], [438, TRNA_BEAD_Y], [460, TRNA_BEAD_Y]], folded: false,
   },
   "l7-fold": {
     // 完成：核糖体与 tRNA 退场，肽链珠盘曲成团示意功能蛋白
