@@ -295,7 +295,7 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
     d var(--tween-ms, 1350ms) ease-out;
   pointer-events: none;
 }
-.meiosis-scene .spindle-line.grow {
+.meiosis-scene .spindle-line.grow, .mito-scene .spindle-line.grow {
   transition:
     opacity var(--tween-ms, 1350ms) ease-in-out,
     stroke-dasharray var(--tween-ms, 1350ms) ease-out;

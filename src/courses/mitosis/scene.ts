@@ -190,7 +190,7 @@ const mitoPool = {
 };
 
 /** 更新背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend） */
-function updateMitoPool(s: Record<string, unknown>): void {
+function updateMitoPool(s: Record<string, unknown>, prevVisible: boolean[]): void {
   const bg = BG[String(s.stage)] ?? BG_FALLBACK;
   const isDaughter = String(s.stage) === "daughter";
 
@@ -218,19 +218,30 @@ function updateMitoPool(s: Record<string, unknown>): void {
     mitoPool.cellPlate!.style.opacity = "0";
   }
 
-  // 纺锤丝 ×8：极点端固定（绑定表 pole），着丝点端 = 当前槽位（查 mitosisSlots，杜绝手写坐标错连）
-  const slots = mitosisSlots(String(s.stage));
-  mitoPool.spindleLines.forEach((path, i) => {
-    if (bg.spindleVisible) {
-      const fib = MITOSIS_FIBERS[i];
-      const slot = slots[fib.key];
-      const pole = fib.pole === "top" ? POLE_TOP : POLE_BOT;
-      path.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${400 + slot.x} ${200 + slot.y}`);
-      path.style.opacity = "1";
-    } else {
-      path.style.opacity = "0";
-    }
-  });
+  // 纺锤丝 ×8：极点端固定（绑定表 pole），着丝点端 = 当前槽位（查 mitosisSlots，杜绝手写坐标错连）。
+// 入场（隐藏→可见）：d 瞬切到位 + class grow 走 dasharray 绘制动画（pathLength=1，从两极长出）；
+// 可见期 dasharray 保持 1 1，d 走 CSS 过渡贴合。prevVisible 就地更新为上帧可见集。
+const slots = mitosisSlots(String(s.stage));
+const seen = new Set<number>();
+for (let i = 0; i < mitoPool.spindleLines.length; i++) mitoPool.spindleLines[i].classList.remove("grow");
+mitoPool.spindleLines.forEach((path, i) => {
+  if (bg.spindleVisible) {
+    const fib = MITOSIS_FIBERS[i];
+    const slot = slots[fib.key];
+    const pole = fib.pole === "top" ? POLE_TOP : POLE_BOT;
+    seen.add(i);
+    const firstAppear = !prevVisible[i];
+    path.setAttribute("d", `M ${pole[0]} ${pole[1]} L ${400 + slot.x} ${200 + slot.y}`);
+    if (firstAppear) path.classList.add("grow");
+    path.style.strokeDasharray = "1 1";
+    path.style.opacity = "1";
+    prevVisible[i] = true;
+  } else {
+    path.style.opacity = "0";
+    path.style.strokeDasharray = "0 1";
+    prevVisible[i] = false;
+  }
+});
 }
 
 // ============ 工具 ============
@@ -261,6 +272,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
   const spindleLines: SVGLineElement[] = [];
   const nuclearMembranes: SVGEllipseElement[] = [];
   let cellPlate: SVGLineElement | null = null;
+  let prevVisible: boolean[] = [];   // 纺锤丝上帧可见集（入场检测）
 
   /** 核心：查槽位表 + 背景状态 → 渲染（唯一渲染路径） */
   function layout(s: Record<string, unknown>): void {
@@ -268,7 +280,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
     const slots = mitosisSlots(String(s.stage));
 
     // 背景元素池：按阶段切换显隐与几何（禁止每帧 remove+reappend）
-    updateMitoPool(s);
+    updateMitoPool(s, prevVisible);
 
     // 染色体：查槽位设 translate+rotate
     CHROMATIDS.forEach((spec) => {
@@ -294,6 +306,7 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       }
       mitoPool.spindleLines.forEach((l) => l.remove());
       mitoPool.spindleLines.length = 0;
+      prevVisible = [];
       wrap = document.createElement("div");
       wrap.className = "mito-scene";
       const svgRoot = el("svg", { viewBox: `0 0 800 400`, width: "100%" });
@@ -332,10 +345,13 @@ export function createMitosisScene(): SceneComponent & { destroy(): void } {
       mitoPool.cellPlate = el("line", { class: "cell-plate", x1: CELL.x + 40, x2: CELL.x + CELL.w - 40, stroke: "#059669", "stroke-width": 4, opacity: 0 });
       svgRoot.appendChild(mitoPool.cellPlate);
       // 纺锤丝池：8 根 path（d = M 极点 L 着丝点），几何由 updateMitoPool 每次重设；
-      // 两命令跨阶段同构 → CSS d transition 平滑（与单体 transform 同 --tween-ms / ease-out）
+      // 两命令跨阶段同构 → CSS d transition 平滑（与单体 transform 同 --tween-ms / ease-out）；
+      // pathLength=1 归一化供入场 grow 动画（dasharray 0→1 沿 path 从 M 极点绘向 L 着丝点）
       for (let i = 0; i < MITOSIS_FIBERS.length; i++) {
-        const p = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        const p = el("path", { class: "spindle-line", d: "M 0 0 L 0 0", pathLength: 1, fill: "none", stroke: "#d4a574", "stroke-width": 1.5, opacity: 0 });
+        p.style.strokeDasharray = "0 1";
         mitoPool.spindleLines.push(p);
+        prevVisible.push(false);
         svgRoot.appendChild(p);
       }
 
