@@ -451,6 +451,44 @@ describe("纺锤丝显隐与池隔离", () => {
     expect(visibleSpindleCount()).toBe(count1);
   });
 
+  // 入场生长：隐藏→可见时走 dasharray 绘制（从极点绘向着丝点），d 已瞬切到正确位置
+  it("纺锤丝入场：隐藏→可见 dasharray 0→1（极点长出）；再 tick 保留 dasharray、d 转过渡；隐藏重置", () => {
+    // 挂载后未进入任何有丝阶段：全部隐藏、dasharray=0 1、pathLength=1
+    scene.render(st({ stage: "spermatogonium" }));
+    const allLines = [...host.querySelectorAll<SVGPathElement>(".spindle-line")];
+    expect(allLines.length).toBe(16);
+    expect(allLines.every((l) => l.style.strokeDasharray === "0 1")).toBe(true);
+    expect(allLines.every((l) => l.getAttribute("pathLength") === "1")).toBe(true);
+
+    // 首次进入有丝阶段：d 目标已瞬切到位（无 d 过渡飞插），走 grow 绘制
+    scene.render(st({ stage: "metaphase-I" }));
+    const first = visibleFibers(host);
+    expect(first.length).toBe(4);
+    for (const l of first) {
+      expect(l.classList.contains("grow")).toBe(true);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+    // 极点端已在两极（非画布原点），grow 期间丝由 M 极点绘向 L 着丝点
+    expect(dPoints(first[0]).pole).toEqual([400, 90]);
+    expect(dPoints(first[0]).end[0]).toBeGreaterThan(0);
+
+    // 再次同阶段 render（进入可见期）：grow 撤销、dasharray 保持满绘
+    scene.render(st({ stage: "metaphase-I" }));
+    const steady = visibleFibers(host);
+    expect(steady.length).toBe(4);
+    for (const l of steady) {
+      expect(l.classList.contains("grow")).toBe(false);
+      expect(l.style.strokeDasharray).toBe("1 1");
+    }
+
+    // 隐藏重置：dasharray 归零
+    scene.render(st({ stage: "telophase-I" }));
+    expect(visibleSpindleCount()).toBe(0);
+    for (const l of [...host.querySelectorAll<SVGPathElement>(".spindle-line")]) {
+      expect(l.style.strokeDasharray).toBe("0 1");
+    }
+  });
+
   // 减Ⅱ双定向：每条 X 的姐妹分连上/下两极（有丝分裂式），中期即如此
   it("减Ⅱ中期：每条 X 双定向——A1a 连上极、A1b 连下极", () => {
     scene.render(st({ stage: "metaphase-II", replicated: true, cells: 2, equatorial: "single" }));
