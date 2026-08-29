@@ -170,26 +170,25 @@ function spermSlots(id: string, comboAlt: boolean): Slots {
       break;
     }
     case "metaphase-I": {
-      // 减Ⅰ中期：两对分列赤道板左右（对心距 132 → 每对 ±66），对内上下紧贴（±13）
-      const pc = 66;
-      xpair(S, "A1", 0, -pc, -PAIR_GAP);
-      xpair(S, "A2", 0, -pc, PAIR_GAP);
-      xpair(S, "B1", 0, pc, -PAIR_GAP);
-      xpair(S, "B2", 0, pc, PAIR_GAP);
+      // 减Ⅰ中期：同源染色体成对排列在赤道面——对内水平并排（±13）、A 对左/B 对右（对心距 60）
+      const pc = 60;
+      xpair(S, "A1", 0, -pc - PAIR_GAP, 0);   // (327,200)
+      xpair(S, "A2", 0, -pc + PAIR_GAP, 0);   // (353,200)
+      xpair(S, "B1", 0, pc - PAIR_GAP, 0);    // (447,200)
+      xpair(S, "B2", 0, pc + PAIR_GAP, 0);    // (473,200)
       break;
     }
     case "anaphase-I": {
-      // 减Ⅰ后期：同源分离——A1+B1 移向上极、A2+B2 移向下极（X 整体移动）；
-      // 自由组合切换：B 对对调极性（A1 与 B1 同极 ↔ A1 与 B2 同极）
-      const d = PAIR_GAP * 2;
-      xpair(S, "A1", 0, -POLE_X, -POLE_Y);
-      xpair(S, "A2", 0, POLE_X, POLE_Y);
+      // 减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿）；
+      // 自由组合切换：B 对两极对调（A1 与 B1 同极 ↔ A1 与 B2 同极），仍同列
+      xpair(S, "A1", 0, -POLE_X, -POLE_Y);    // (347,162)
+      xpair(S, "A2", 0, -POLE_X, POLE_Y);     // (347,238)
       if (comboAlt) {
-        xpair(S, "B2", 0, -POLE_X + d, -POLE_Y);
-        xpair(S, "B1", 0, POLE_X - d, POLE_Y);
+        xpair(S, "B2", 0, POLE_X, -POLE_Y);   // (453,162)
+        xpair(S, "B1", 0, POLE_X, POLE_Y);    // (453,238)
       } else {
-        xpair(S, "B1", 0, POLE_X, -POLE_Y);
-        xpair(S, "B2", 0, -POLE_X, POLE_Y);
+        xpair(S, "B1", 0, POLE_X, -POLE_Y);   // (453,162)
+        xpair(S, "B2", 0, POLE_X, POLE_Y);    // (453,238)
       }
       break;
     }
@@ -276,20 +275,20 @@ function oocyteSlots(id: string): Slots {
       break;
     }
     case "oo-metaphase-I": {
-      // 对心距 132 → 每对 ±66
-      const pc = 66;
-      xpair(S, "A1", 0, -pc, -PAIR_GAP);
-      xpair(S, "A2", 0, -pc, PAIR_GAP);
-      xpair(S, "B1", 0, pc, -PAIR_GAP);
-      xpair(S, "B2", 0, pc, PAIR_GAP);
+      // 减Ⅰ中期：同源染色体成对排列在赤道面——对内水平并排（±13）、A 对左/B 对右（对心距 60）
+      const pc = 60;
+      xpair(S, "A1", 0, -pc - PAIR_GAP, 0);
+      xpair(S, "A2", 0, -pc + PAIR_GAP, 0);
+      xpair(S, "B1", 0, pc - PAIR_GAP, 0);
+      xpair(S, "B2", 0, pc + PAIR_GAP, 0);
       break;
     }
     case "oo-anaphase-I": {
-      // 卵细胞减Ⅰ后期：同源分离（X 整体移动；不均等分裂由轮廓表达）
+      // 卵细胞减Ⅰ后期：同源分离——A 对左列上下拉开、B 对右列上下拉开（同列不横穿；不均等分裂由轮廓表达）
       xpair(S, "A1", 0, -POLE_X, -POLE_Y);
-      xpair(S, "A2", 0, POLE_X, POLE_Y);
+      xpair(S, "A2", 0, -POLE_X, POLE_Y);
       xpair(S, "B1", 0, POLE_X, -POLE_Y);
-      xpair(S, "B2", 0, -POLE_X, POLE_Y);
+      xpair(S, "B2", 0, POLE_X, POLE_Y);
       break;
     }
     case "oo-telophase-I": {
