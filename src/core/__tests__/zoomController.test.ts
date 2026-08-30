@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { ZoomController } from "../zoomController";
+import { ZoomController, MIN_ZOOM, MAX_ZOOM } from "../zoomController";
 
 function makeSvg(viewBox = "0 0 800 400") {
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -100,6 +100,48 @@ describe("ZoomController", () => {
     expect(vb[3]).toBeCloseTo(200);
     ctrl2.destroy();
     c2.remove();
+  });
+
+  it("zoom 超过上限 MAX_ZOOM 夹在 4×", () => {
+    ctrl.zoom(8);
+    expect(ctrl.zoomLevel).toBeCloseTo(MAX_ZOOM);
+    const vb = svg.getAttribute("viewBox")!.split(/\s+/).map(Number);
+    expect(vb[2]).toBeCloseTo(800 / MAX_ZOOM);
+  });
+
+  it("zoom 低于下限 MIN_ZOOM 夹在 0.5×", () => {
+    ctrl.zoom(0.1);
+    expect(ctrl.zoomLevel).toBeCloseTo(MIN_ZOOM);
+    const vb = svg.getAttribute("viewBox")!.split(/\s+/).map(Number);
+    expect(vb[2]).toBeCloseTo(800 / MIN_ZOOM);
+  });
+
+  it("已达到上限后再放大不越界（滚轮连滚）", () => {
+    ctrl.zoom(4);
+    ctrl.zoom(2);
+    expect(ctrl.zoomLevel).toBeCloseTo(MAX_ZOOM);
+  });
+
+  it("pan 夹取：视口中心不越出初始视野（初始 800×400）", () => {
+    ctrl.zoom(2);   // 视口缩到 400×200
+    ctrl.pan(10000, 10000);
+    const vb = svg.getAttribute("viewBox")!.split(/\s+/).map(Number);
+    const cx = vb[0] + vb[2] / 2;
+    const cy = vb[1] + vb[3] / 2;
+    expect(cx).toBeGreaterThanOrEqual(0);
+    expect(cx).toBeLessThanOrEqual(800);
+    expect(cy).toBeGreaterThanOrEqual(0);
+    expect(cy).toBeLessThanOrEqual(400);
+    // 已推到边界：中心贴到初始视野的左/上边缘
+    expect(cx).toBeCloseTo(0);
+    expect(cy).toBeCloseTo(0);
+  });
+
+  it("zoom 参数非法（0/负数/NaN/Infinity）为 no-op", () => {
+    for (const bad of [0, -1, NaN, Infinity]) {
+      ctrl.zoom(bad);
+      expect(svg.getAttribute("viewBox")).toBe("0 0 800 400");
+    }
   });
 
   it("destroy 后不再响应事件（拖动无效）", () => {

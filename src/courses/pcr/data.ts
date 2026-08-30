@@ -16,7 +16,7 @@ export type PcrState = {
 }
 
 /** 11 幕 PCR 课程数据（单模式：标准 3 轮循环） */
-const pcrStages: Stage[] = [
+const pcrStages: Stage<PcrState>[] = [
   {
     id: "s0-template",
     title: "双链 DNA 模板",
@@ -119,7 +119,7 @@ const pcrStages: Stage[] = [
 ];
 
 /** PCR 课程曲线图：4 条曲线展示产物量、消耗引物、下轮所需引物、目标片段 11 阶段数据点 */
-const chartConfigs: Course["chartConfigs"] = [
+const chartConfigs: Course<PcrState>["chartConfigs"] = [
   {
     title: "PCR 产物与引物变化",
     series: [
@@ -131,7 +131,7 @@ const chartConfigs: Course["chartConfigs"] = [
   },
 ];
 
-export const pcrCourse: Course = {
+export const pcrCourse: Course<PcrState> = {
   meta: { id: "pcr", title: "PCR——聚合酶链式反应", chapter: "选必三", difficulty: 2 },
   stages: pcrStages,
   chartConfigs,

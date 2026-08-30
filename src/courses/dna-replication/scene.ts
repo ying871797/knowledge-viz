@@ -1,4 +1,4 @@
-﻿import type { SceneComponent } from "../../core/types";
+﻿import type { SceneComponent, StageIdState } from "../../core/types";
 import { SEQ_BOT, SEQ_TOP } from "./data";
 
 // ============ 画布几何 ============
@@ -199,7 +199,7 @@ function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
 }
 
 // ============ 场景组件 ============
-export function createDnaReplicationScene(): SceneComponent & { destroy(): void } {
+export function createDnaReplicationScene(): SceneComponent<StageIdState> & { destroy(): void } {
   let root: SVGSVGElement | null = null;
   let wrap: HTMLDivElement | null = null;
   let bandTop: SVGGElement;
@@ -559,7 +559,7 @@ export function createDnaReplicationScene(): SceneComponent & { destroy(): void 
     },
 
     /** 渲染指定状态 */
-    render(state: Record<string, unknown>) {
+    render(state: StageIdState) {
       lastState = state;
       layout(state);
     },

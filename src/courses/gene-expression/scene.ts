@@ -1,4 +1,4 @@
-import type { SceneComponent } from "../../core/types";
+import type { SceneComponent, StageIdState } from "../../core/types";
 import { ANTICODONS, SEQ_CODING, SEQ_MRNA, SEQ_TEMPLATE } from "./data";
 
 // ============ 画布几何 ============
@@ -146,7 +146,7 @@ function chainPath(ySep: number, yFlat: number, bubble: number): string {
 }
 
 // ============ 场景组件 ============
-export function createGeneExpressionScene(): SceneComponent & { destroy(): void } {
+export function createGeneExpressionScene(): SceneComponent<StageIdState> & { destroy(): void } {
   let root: SVGSVGElement | null = null;
   let wrap: HTMLDivElement | null = null;
   let dnaGroup: SVGGElement;
@@ -392,7 +392,7 @@ export function createGeneExpressionScene(): SceneComponent & { destroy(): void 
       container.appendChild(wrap);
     },
 
-    render(state: Record<string, unknown>) {
+    render(state: StageIdState) {
       layout(state);
     },
 

@@ -6,14 +6,15 @@ import {
 } from "../data";
 
 describe("基因的表达课程数据", () => {
-  it("通过 validateCourse 门禁（hideCharts 无需数目字段）", () => {
+  it("通过 validateCourse 门禁（无 numbers 课程）", () => {
     expect(() => validateCourse(geneExpressionCourse)).not.toThrow();
   });
 
   it("meta 与幕 id 序列符合方案（12 幕）", () => {
     expect(geneExpressionCourse.meta).toMatchObject({
-      id: "gene-expression", chapter: "必修二 第4章第1节", difficulty: 3, hideCharts: true,
+      id: "gene-expression", chapter: "必修二 第4章第1节", difficulty: 3,
     });
+    expect(geneExpressionCourse.chartConfigs).toBeUndefined();
     const ids = geneExpressionCourse.stages.map((s) => s.id);
     expect(ids).toEqual([
       "t0-helix", "t1-bind", "t2-elongate", "t3-release", "t4-exit",

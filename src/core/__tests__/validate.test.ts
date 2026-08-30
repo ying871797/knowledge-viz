@@ -50,6 +50,25 @@ describe("validateCourse", () => {
     bad.stages[0].numbers!.dna = 8; // 与 chromosome=4 不等
     expect(() => validateCourse(bad)).toThrow(/dna 应等于 chromosome/);
   });
+  it("sceneState 缺失或非对象抛错", () => {
+    const noState = structuredClone(valid);
+    noState.stages[0].sceneState = undefined as unknown as Record<string, unknown>;
+    expect(() => validateCourse(noState)).toThrow(/sceneState/);
+
+    const primState = structuredClone(valid);
+    primState.stages[0].sceneState = 42 as unknown as Record<string, unknown>;
+    expect(() => validateCourse(primState)).toThrow(/sceneState/);
+  });
+  it("无 numbers 且无 chartConfigs 的纯动画课程通过（无数目语义课程）", () => {
+    const animOnly: Course = {
+      meta: { id: "animated", title: "示例", chapter: "必修二", difficulty: 2 },
+      stages: [
+        { id: "a", title: "甲", narration: ["一"], sceneState: {} },
+        { id: "b", title: "乙", narration: ["二"], sceneState: {} },
+      ],
+    };
+    expect(validateCourse(animOnly)).toEqual(animOnly);
+  });
   it("有 chartConfigs 时可省略 numbers", () => {
     const noNum: Course = {
       meta: { id: "pcr", title: "PCR", chapter: "选必三", difficulty: 2 },
@@ -62,6 +81,20 @@ describe("validateCourse", () => {
       ],
     };
     expect(validateCourse(noNum)).toEqual(noNum);
+  });
+  it("chartConfigs 课程带 numbers 仍受自洽校验（减数/有丝合法数据首启门禁）", () => {
+    const bad: Course = {
+      meta: { id: "mitosis", title: "有丝分裂", chapter: "必修一", difficulty: 3 },
+      stages: [
+        {
+          id: "prophase", title: "前期", narration: ["复制后"], sceneState: {},
+          numbers: { chromosome: 4, dna: 8, chromatid: 0, dnaPerChromosome: 2 },
+        },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "dna", values: [8], color: "#000" }] }],
+    };
+    // 不因 chartConfigs 而短路：numbers 存在即校验（无单体时 dna 应等于 chromosome）
+    expect(() => validateCourse(bad)).toThrow(/dna 应等于 chromosome/);
   });
   it("chartConfigs 缺少 title 抛错", () => {
     const bad: Course = {

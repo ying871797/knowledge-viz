@@ -7,6 +7,12 @@
  *   移动端 — 单指平移 + 双指捏合缩放
  *   兜底 — 调用方可在控制条加 +/−/⊙ 按钮调用 zoom/pan/reset
  */
+
+/** 缩放倍率下限（0.5×：可整体缩小看全局，不再继续缩小） */
+export const MIN_ZOOM = 0.5;
+/** 缩放倍率上限（4×：贴近看细节，不再继续放大） */
+export const MAX_ZOOM = 4;
+
 export class ZoomController {
   private svg: SVGSVGElement;
   private container: HTMLElement;
@@ -41,25 +47,40 @@ export class ZoomController {
 
   // —— 公共 API ——
 
-  /** 围绕 (cx, cy) 缩放；factor > 1 放大，< 1 缩小 */
+  /** 围绕 (cx, cy) 缩放；factor > 1 放大，< 1 缩小；倍率夹取在 [MIN_ZOOM, MAX_ZOOM]。
+   *  factor 必须为正的有限数值：非法输入为 no-op（防御性守卫，当前交互路径恒为正） */
   zoom(factor: number, cx?: number, cy?: number): void {
-    const { vb } = this;
+    if (!Number.isFinite(factor) || factor <= 0) return;
+    const { vb, initial } = this;
     if (cx === undefined) cx = vb.x + vb.w / 2;
     if (cy === undefined) cy = vb.y + vb.h / 2;
-    const nw = vb.w / factor;
-    const nh = vb.h / factor;
+    const nw0 = vb.w / factor;
+    // 倍率夹取：到边界后继续缩放不再越界
+    const nw = Math.min(initial.w / MIN_ZOOM, Math.max(initial.w / MAX_ZOOM, nw0));
+    const nh = vb.h * (nw / vb.w);
     vb.x = cx - (cx - vb.x) * (nw / vb.w);
     vb.y = cy - (cy - vb.y) * (nh / vb.h);
     vb.w = nw;
     vb.h = nh;
+    this.clampPan();
     this.apply();
   }
 
-  /** 平移（SVG 坐标系增量） */
+  /** 平移（SVG 坐标系增量）；视口中心不越出初始视野 */
   pan(dx: number, dy: number): void {
     this.vb.x -= dx;
     this.vb.y -= dy;
+    this.clampPan();
     this.apply();
+  }
+
+  /** 平移夹取：视口中心始终落在初始视野范围内 */
+  private clampPan(): void {
+    const { vb, initial } = this;
+    const halfW = vb.w / 2;
+    const halfH = vb.h / 2;
+    vb.x = Math.min(initial.x + initial.w - halfW, Math.max(initial.x - halfW, vb.x));
+    vb.y = Math.min(initial.y + initial.h - halfH, Math.max(initial.y - halfH, vb.y));
   }
 
   /** 重置到初始 viewBox */

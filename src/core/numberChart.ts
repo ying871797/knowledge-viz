@@ -1,13 +1,9 @@
+import type { Series } from "./types";
+
 /**
  * 通用数目曲线图：横轴为阶段，纵轴按数据最大值自适应。
  * 与主场景共享播放器索引实现联动（setActive 高亮竖线 + 放大数据点）。
  */
-export interface Series {
-  label: string;
-  values: number[];
-  color?: string;
-  dashed?: boolean;
-}
 
 // 画布尺寸与边距（viewBox 单位）
 export const W = 720;
@@ -170,13 +166,11 @@ export class NumberChart {
     this.markerLine.setAttribute("x2", String(x));
     this.markerLine.setAttribute("y1", String(M.top));
     this.markerLine.setAttribute("y2", String(H - M.bottom));
-    const yMax = this.yMax();
     // 放大当前列的数据点，其余恢复默认半径
     this.seriesLayer.querySelectorAll<SVGCircleElement>("circle.dot").forEach((d) => {
       const on = Number(d.getAttribute("data-stage")) === i;
       d.setAttribute("r", on ? "7" : "4");
     });
-    void yMax;
   }
 
   /** 练习模式：隐藏曲线、数据点、图例与阶段标签（保留坐标轴） */
