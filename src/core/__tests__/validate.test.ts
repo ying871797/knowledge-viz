@@ -50,6 +50,15 @@ describe("validateCourse", () => {
     bad.stages[0].numbers!.dna = 8; // 与 chromosome=4 不等
     expect(() => validateCourse(bad)).toThrow(/dna 应等于 chromosome/);
   });
+  it("sceneState 缺失或非对象抛错", () => {
+    const noState = structuredClone(valid);
+    noState.stages[0].sceneState = undefined as unknown as Record<string, unknown>;
+    expect(() => validateCourse(noState)).toThrow(/sceneState/);
+
+    const primState = structuredClone(valid);
+    primState.stages[0].sceneState = 42 as unknown as Record<string, unknown>;
+    expect(() => validateCourse(primState)).toThrow(/sceneState/);
+  });
   it("无 numbers 且无 chartConfigs 的纯动画课程通过（无数目语义课程）", () => {
     const animOnly: Course = {
       meta: { id: "animated", title: "示例", chapter: "必修二", difficulty: 2 },

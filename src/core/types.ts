@@ -67,6 +67,8 @@ export function validateCourse<State = Record<string, unknown>>(input: unknown):
     const tag = s.id ?? `stage[${i}]`;
     if (!s.id || !s.title) throw new Error(`${tag} 缺少 id/title`);
     if (!Array.isArray(s.narration)) throw new Error(`${tag}.narration 必须是数组`);
+    if (!s.sceneState || typeof s.sceneState !== "object" || Array.isArray(s.sceneState))
+      throw new Error(`${tag}.sceneState 必须是对象`);
     // numbers 全程可选：仅在存在时校验数值与自洽性（是否画图由 chartConfigs 决定，两者互不影响）
     const n = s.numbers;
     if (!n) return;

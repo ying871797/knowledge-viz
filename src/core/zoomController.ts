@@ -47,8 +47,10 @@ export class ZoomController {
 
   // —— 公共 API ——
 
-  /** 围绕 (cx, cy) 缩放；factor > 1 放大，< 1 缩小；倍率夹取在 [MIN_ZOOM, MAX_ZOOM] */
+  /** 围绕 (cx, cy) 缩放；factor > 1 放大，< 1 缩小；倍率夹取在 [MIN_ZOOM, MAX_ZOOM]。
+   *  factor 必须为正的有限数值：非法输入为 no-op（防御性守卫，当前交互路径恒为正） */
   zoom(factor: number, cx?: number, cy?: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) return;
     const { vb, initial } = this;
     if (cx === undefined) cx = vb.x + vb.w / 2;
     if (cy === undefined) cy = vb.y + vb.h / 2;

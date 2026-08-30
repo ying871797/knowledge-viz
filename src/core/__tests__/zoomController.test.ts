@@ -137,6 +137,13 @@ describe("ZoomController", () => {
     expect(cy).toBeCloseTo(0);
   });
 
+  it("zoom 参数非法（0/负数/NaN/Infinity）为 no-op", () => {
+    for (const bad of [0, -1, NaN, Infinity]) {
+      ctrl.zoom(bad);
+      expect(svg.getAttribute("viewBox")).toBe("0 0 800 400");
+    }
+  });
+
   it("destroy 后不再响应事件（拖动无效）", () => {
     ctrl.destroy();
     container.dispatchEvent(new MouseEvent("mousedown", { clientX: 100, clientY: 100, bubbles: true }));
