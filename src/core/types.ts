@@ -25,6 +25,8 @@ export interface StageNumbers {
 export interface Stage<State = Record<string, unknown>> {
   id: string;
   title: string;
+  /** 曲线图横轴短标签（可选）：用于图表 X 轴，避免完整标题互相遮挡；未设则回退 title */
+  chartLabel?: string;
   narration: string[];
   sceneState: State;
   /** 数目数据（曲线图表数据源）；无数目字段的课程可省略（如 PCR/抽象通路课程） */

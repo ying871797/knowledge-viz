@@ -167,7 +167,7 @@ export function mountCoursePage(
   // —— 曲线图表：按 chartConfigs 动态创建 ——
   const chartInstances: NumberChart[] = [];
   if (chartConfigs) {
-    const labels = course.stages.map((s) => s.title);
+    const labels = course.stages.map((s) => s.chartLabel ?? s.title);
     for (const cfg of chartConfigs) {
       const card = document.createElement("div");
       card.className = "chart-card";

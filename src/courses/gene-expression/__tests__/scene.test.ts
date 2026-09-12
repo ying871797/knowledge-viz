@@ -1,7 +1,9 @@
 /** 基因表达场景测试：元素池结构 / 转录泡快照 / 翻译循环 / 色相预算 */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createGeneExpressionScene } from "../scene";
-import { SEQ_TEMPLATE, SEQ_MRNA } from "../data";
+import { SEQ_TEMPLATE, SEQ_MRNA, geneExpressionCourse } from "../data";
+import type { StageIdState } from "../../../core/types";
+import { runSceneAudit } from "../../../test-utils/textAudit";
 
 describe("基因的表达场景（固定元素池）", () => {
   let host: HTMLDivElement;
@@ -201,5 +203,40 @@ describe("基因的表达场景（固定元素池）", () => {
   it("模板链-mRNA 配对自洽（场景刻度粗细的数据依据）", () => {
     const COMP: Record<string, string> = { A: "U", T: "A", C: "G", G: "C" };
     SEQ_TEMPLATE.forEach((b, i) => expect(COMP[b]).toBe(SEQ_MRNA[i]));
+  });
+});
+
+describe("全阶段文字不遮挡（回归门禁）", () => {
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    host = null;
+  });
+
+  it("全部阶段文字不遮挡（tRNA 与核糖体亚基为设计重叠，豁免）", () => {
+    const scene = createGeneExpressionScene();
+    const conflicts = runSceneAudit({
+      name: "gene-expression",
+      mount() {
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        scene.mount(host);
+      },
+      destroy() {
+        scene.destroy();
+        host?.remove();
+        host = null;
+      },
+      render(state: unknown) {
+        scene.render(state as StageIdState);
+      },
+      svg() {
+        return host?.querySelector("svg") ?? null;
+      },
+      extraExempt: (a, b) =>
+        !!a.closest(".trna") && !!b.closest(".ribosome"),
+      stages: geneExpressionCourse.stages.map((s) => ({ id: s.id, state: s.sceneState })),
+    });
+    expect(conflicts, conflicts.join("\n")).toEqual([]);
   });
 });
