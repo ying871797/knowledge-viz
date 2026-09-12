@@ -1,7 +1,9 @@
 ﻿/** DNA 复制场景测试（段 1）：元素池结构 + 阶段 1~2 几何状态 */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createDnaReplicationScene } from "../scene";
-import { SEQ_TOP } from "../data";
+import { SEQ_TOP, dnaReplicationCourse } from "../data";
+import type { StageIdState } from "../../../core/types";
+import { runSceneAudit } from "../../../test-utils/textAudit";
 
 describe("DNA 复制场景（固定元素池）", () => {
   let host: HTMLDivElement;
@@ -135,5 +137,50 @@ describe("DNA 复制场景（固定元素池）", () => {
     scene.render({ stage: "priming" });
     const lines = host.querySelectorAll<SVGLineElement>("line.hbond");
     expect(lines[3].style.opacity).toBe("0");
+  });
+});
+
+describe("全阶段文字不遮挡（回归门禁）", () => {
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    host = null;
+  });
+
+  it("全部阶段 × 平面/螺旋两视图：文字不遮挡", () => {
+    const scene = createDnaReplicationScene();
+    const conflicts = runSceneAudit({
+      name: "dna-replication",
+      mount() {
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        scene.mount(host);
+      },
+      destroy() {
+        scene.destroy();
+        host?.remove();
+        host = null;
+      },
+      render(state: unknown) {
+        scene.render(state as StageIdState);
+      },
+      svg() {
+        return host?.querySelector("svg") ?? null;
+      },
+      stages: dnaReplicationCourse.stages.map((s) => ({
+        id: s.id,
+        state: s.sceneState,
+        variants: [{
+          label: "helix",
+          enable() {
+            (host as HTMLDivElement).querySelector<HTMLButtonElement>(".view-switch")!.click();
+          },
+          disable() {
+            (host as HTMLDivElement).querySelector<HTMLButtonElement>(".view-switch")!.click();
+          },
+        }],
+      })),
+    });
+    expect(conflicts, conflicts.join("\n")).toEqual([]);
   });
 });

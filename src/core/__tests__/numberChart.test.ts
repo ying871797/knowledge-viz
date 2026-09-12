@@ -1,5 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
 import { NumberChart, xFor, yFor, W, M } from "../numberChart";
+import { meiosisCourse, oogenesisCourse } from "../../courses/meiosis/data";
+import { mitosisCourse } from "../../courses/mitosis/data";
+import { expectStageLabelsFit } from "../../test-utils/textAudit";
 
 describe("坐标映射", () => {
   it("xFor 均匀分布且覆盖绘图区", () => {
@@ -8,6 +11,21 @@ describe("坐标映射", () => {
   });
   it("yFor 值越大越靠上", () => {
     expect(yFor(0, 8)).toBeGreaterThan(yFor(8, 8));
+  });
+});
+
+describe("曲线图阶段标签间距（回归：标签互相遮挡）", () => {
+  it.each([
+    ["减数分裂（精子）", meiosisCourse],
+    ["减数分裂（卵细胞）", oogenesisCourse],
+    ["有丝分裂", mitosisCourse],
+  ])("%s：阶段标签在移动端字号 13px 下不互相遮挡", (_name, course) => {
+    expectStageLabelsFit(course.stages.map((s) => s.chartLabel ?? s.title), { fontSize: 13 });
+  });
+  it("减数分裂长标题在 13px 下应被 chartLabel 取代才会通过（验证门禁生效）", () => {
+    // 数据层作用：chartLabel 缺省时会用到 13 字标题，间距必然不达标
+    expect(meiosisCourse.stages[0].chartLabel).toBe("精原细胞");
+    expect(oogenesisCourse.stages[1].chartLabel).toBe("间期（复制）");
   });
 });
 

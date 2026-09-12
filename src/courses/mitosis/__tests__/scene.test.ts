@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createMitosisScene, mitosisSlots, MITOSIS_FIBERS } from "../scene";
 import { mitosisCourse } from "../data";
 import type { StageIdState } from "../../../core/types";
+import { runSceneAudit } from "../../../test-utils/textAudit";
 
 /** 构造场景状态（仅 stage 驱动槽位表；replicated 等其余字段场景不读，忽略） */
 const st = (over: { stage: string } & Record<string, unknown>): StageIdState => ({ stage: over.stage });
@@ -249,5 +250,44 @@ describe("有丝分裂图表 n 表示法", () => {
     // 有丝分裂 2n=4，DNA/染色体最大 8 → 刻度 0,4,8 → 0n,1n,2n
     const ticks = [0, 4, 8].map((v) => cfg.tickFormat!(v));
     expect(ticks).toEqual(["0n", "1n", "2n"]);
+  });
+});
+
+describe("全阶段文字不遮挡（回归门禁）", () => {
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    host = null;
+  });
+
+  it("全部阶段文字不遮挡（开启基因标注）", () => {
+    const scene = createMitosisScene();
+    const conflicts = runSceneAudit({
+      name: "mitosis",
+      mount() {
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        scene.mount(host);
+      },
+      destroy() {
+        scene.destroy();
+        host?.remove();
+        host = null;
+      },
+      pre() {
+        const input = (host as HTMLDivElement).querySelector<HTMLInputElement>(".scene-controls input")!;
+        input.checked = true;
+        input.dispatchEvent(new Event("change"));
+      },
+      render(state: unknown) {
+        scene.render(state as StageIdState);
+      },
+      svg() {
+        return host?.querySelector("svg") ?? null;
+      },
+      stages: mitosisCourse.stages.map((s) => ({ id: s.id, state: s.sceneState })),
+      allowGeneLabelOnRod: true,
+    });
+    expect(conflicts, conflicts.join("\n")).toEqual([]);
   });
 });
