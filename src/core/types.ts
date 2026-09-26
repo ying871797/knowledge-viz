@@ -12,6 +12,14 @@ export interface ChartConfig {
   series: Series[];                     // 曲线数据（本文件定义）
   tickFormat?: (v: number) => string;   // 纵轴刻度格式化（如 n 表示法）
   tickStep?: number;                    // 纵轴刻度步进（>1 时刻度只取 step 的整数倍，配合 n 表示法去真实条数）
+  /**
+   * 渐变段索引集合（可选）：该段内数量由上一段的值线性变化到本段的值（段内斜坡），
+   * 其余段一律「期内恒定 + 段边界阶跃」。索引指 stages 下标。
+   * 教材依据：DNA 复制是间期内的连续过程（"因复制而加倍"），
+   * 而着丝粒分裂与细胞一分为二都是瞬时事件 → 阶跃。
+   * 阶梯与斜坡无法从 values 推导（两者都表现为 values[i] ≠ values[i-1]），故须显式声明。
+   */
+  gradualSegments?: number[];
 }
 
 /** 阶段数目数据：三条曲线的数据点来源 */
@@ -105,6 +113,18 @@ export function validateCourse<State = Record<string, unknown>>(input: unknown):
         if (series.values.some((v) => typeof v !== "number" || !Number.isFinite(v)))
           throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是有限数值`);
       });
+      // 渐变段索引：必须落在 stages 范围内、不重复（越界会让斜坡画到绘图区外）
+      if (config.gradualSegments !== undefined) {
+        if (!Array.isArray(config.gradualSegments))
+          throw new Error(`chartConfigs[${ci}].gradualSegments 必须是数组`);
+        const seen = new Set<number>();
+        config.gradualSegments.forEach((gi) => {
+          if (!Number.isInteger(gi) || gi < 0 || gi >= c.stages.length)
+            throw new Error(`chartConfigs[${ci}].gradualSegments 索引 ${gi} 越界（合法范围 0..${c.stages.length - 1}）`);
+          if (seen.has(gi)) throw new Error(`chartConfigs[${ci}].gradualSegments 索引 ${gi} 重复`);
+          seen.add(gi);
+        });
+      }
     });
   }
 

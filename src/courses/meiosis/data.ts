@@ -29,6 +29,9 @@ const st = (
   chartLabel?: string,
 ): Stage<MeiosisState> => ({ id, title, narration, sceneState: { ...sceneState, stage: id }, numbers, callout, chartLabel });
 
+/** 渐变段：间期（index 1）内 DNA 复制是连续过程，段内画斜坡；其余期为「期内恒定 + 边界阶跃」 */
+const GRADUAL_SEGMENTS = [1];
+
 const spermStages: Stage<MeiosisState>[] = [
     st("spermatogonium", "精原细胞（间期前）",
       ["染色体数 2n（两对同源染色体）", "长染色体一对（红）、短染色体一对（蓝）"],
@@ -38,7 +41,7 @@ const spermStages: Stage<MeiosisState>[] = [
       ["染色体复制：每条染色体形成两条姐妹染色单体", "染色体数不变，DNA 数加倍"],
       { cells: 1, replicated: true, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
       { chromosome: 4, dna: 8, chromatid: 8, dnaPerChromosome: 2 },
-      "间期复制的实质：DNA 复制 → 每条染色体上 DNA 由 1 变 2"),
+      "间期复制的实质：DNA 复制 → 每条染色体上 DNA 由 1 变 2", "间期复制"),
     st("prophase-I", "减Ⅰ前期",
       ["同源染色体两两配对（联会），形成四分体", "四分体中的非姐妹染色单体常发生交叉互换"],
       { cells: 1, replicated: true, pairing: true, crossingOver: true, equatorial: "none", separating: "none", spermShape: false },
@@ -72,13 +75,13 @@ const spermStages: Stage<MeiosisState>[] = [
     st("sperm", "变形（精子）",
       ["精细胞变形：头部浓缩、长出尾部", "最终染色体数为 n，DNA 数也为 n"],
       { cells: 4, replicated: false, pairing: false, crossingOver: true, equatorial: "none", separating: "none", spermShape: true },
-      { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }),
+      { chromosome: 2, dna: 2, chromatid: 0, dnaPerChromosome: 1 }, undefined, "变形"),
 ];
 
 export const meiosisCourse: Course<MeiosisState> = {
   meta: { id: "meiosis", title: "减数分裂", chapter: "必修二 第一章第2节", difficulty: 4 },
   stages: spermStages,
-  chartConfigs: buildChartConfigs(spermStages),
+  chartConfigs: buildChartConfigs(spermStages, GRADUAL_SEGMENTS),
 };
 
 /**
@@ -95,7 +98,7 @@ const ooStages: Stage<MeiosisState>[] = [
       ["染色体复制：每条染色体形成两条姐妹染色单体", "复制后的细胞称为初级卵母细胞"],
       { cells: 1, replicated: true, pairing: false, crossingOver: false, equatorial: "none", separating: "none", spermShape: false },
       { chromosome: 4, dna: 8, chromatid: 8, dnaPerChromosome: 2 },
-      "间期复制的实质：DNA 复制 → 每条染色体上 DNA 由 1 变 2", "间期（复制）"),
+      "间期复制的实质：DNA 复制 → 每条染色体上 DNA 由 1 变 2", "间期复制"),
     st("oo-prophase-I", "减Ⅰ前期",
       ["同源染色体两两配对（联会），形成四分体", "四分体中的非姐妹染色单体常发生交叉互换"],
       { cells: 1, replicated: true, pairing: true, crossingOver: true, equatorial: "none", separating: "none", spermShape: false },
@@ -135,5 +138,5 @@ const ooStages: Stage<MeiosisState>[] = [
 export const oogenesisCourse: Course<MeiosisState> = {
   meta: { id: "meiosis", title: "减数分裂（卵细胞形成）", chapter: "必修二 第一章第2节", difficulty: 4 },
   stages: ooStages,
-  chartConfigs: buildChartConfigs(ooStages),
+  chartConfigs: buildChartConfigs(ooStages, GRADUAL_SEGMENTS),
 };

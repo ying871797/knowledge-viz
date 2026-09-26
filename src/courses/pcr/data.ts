@@ -15,11 +15,15 @@ export type PcrState = {
   extensionProgress: number;
 }
 
-/** 11 幕 PCR 课程数据（单模式：标准 3 轮循环） */
+/** 11 幕 PCR 课程数据（单模式：标准 3 轮循环）
+ *  chartLabel：曲线图横轴短标签。PCR 有 11 个阶段 → 段宽仅 660/11=60px，
+ *  完整标题（「第1轮·变性」等 6~7 字符）在 13px 移动端字号下必然互相遮挡，
+ *  故横轴用「第N轮·步骤」的紧凑写法（完整标题见讲解面板与步数徽标）。 */
 const pcrStages: Stage<PcrState>[] = [
   {
     id: "s0-template",
     title: "双链 DNA 模板",
+    chartLabel: "模板",
     narration: [
       "PCR 目标：从这段双链 DNA 中大量复制特定片段",
       "两端各设计一条引物，限定要扩增的区域",
@@ -29,6 +33,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s1-denature-1",
     title: "第1轮·变性",
+    chartLabel: "1变性",
     narration: [
       "加热至 95°C 左右，双链间氢键断裂",
       "DNA 分离为两条单链，作为复制的模板",
@@ -38,6 +43,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s2-anneal-1",
     title: "第1轮·退火",
+    chartLabel: "1退火",
     narration: [
       "降温至 55°C 左右，两条引物分别与两条单链 3' 端互补配对",
       "引物为新链合成提供起点",
@@ -47,6 +53,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s3-extend-1",
     title: "第1轮·延伸",
+    chartLabel: "1延伸",
     narration: [
       "升温至 72°C，Taq 聚合酶从引物 3' 端开始沿模板合成新链",
       "新链从引物端生长，直到模板另一端",
@@ -56,6 +63,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s4-denature-2",
     title: "第2轮·变性",
+    chartLabel: "2变性",
     narration: [
       "再次加热，原模板与第 1 轮产物再次分离",
       "此时共有 4 条单链可作为模板",
@@ -65,6 +73,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s5-anneal-2",
     title: "第2轮·退火",
+    chartLabel: "2退火",
     narration: [
       "4 条引物分别与 4 条单链 3' 端配对",
       "引物数量随产物数同步增长",
@@ -74,6 +83,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s6-extend-2",
     title: "第2轮·延伸",
+    chartLabel: "2延伸",
     narration: [
       "Taq 聚合酶合成 4 条新链",
       "产物总量翻倍为 4，但本轮新链仍只一端由引物限定",
@@ -83,6 +93,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s7-denature-3",
     title: "第3轮·变性",
+    chartLabel: "3变性",
     narration: [
       "第三次加热，8 条单链分离",
       "每一轮分离的单链数 = 上一轮产物数 × 2",
@@ -92,6 +103,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s8-anneal-3",
     title: "第3轮·退火",
+    chartLabel: "3退火",
     narration: [
       "8 条引物分别与 8 条单链配对",
       "退火阶段引物数量再次翻倍",
@@ -101,6 +113,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s9-extend-3",
     title: "第3轮·延伸",
+    chartLabel: "3延伸",
     narration: [
       "Taq 聚合酶合成 8 条新链",
       "本轮首次出现两端均由引物限定的目标片段（2 个）",
@@ -110,6 +123,7 @@ const pcrStages: Stage<PcrState>[] = [
   {
     id: "s10-result",
     title: "扩增产物",
+    chartLabel: "产物",
     narration: [
       "3 轮扩增后，产物从 1 个增长到 8 个，其中 2 个是目标片段",
       "真实 PCR 跑 25-35 轮，产物可达数十亿",

@@ -4,25 +4,29 @@ import { buildChartConfigs } from "../../core/chartUtils";
 /** 有丝分裂数目数据（2n=4） */
 interface MitoNumbers { chromosome: number; dna: number; chromatid: number; dnaPerChromosome: number }
 
-/** 构造阶段（sceneState 注入阶段 id 供场景查槽位表） */
-const st = (id: string, title: string, narration: string[], n: MitoNumbers): Stage<StageIdState> => ({
+/** 构造阶段（sceneState 注入阶段 id 供场景查槽位表；chartLabel 为曲线图横轴短标签） */
+const st = (id: string, title: string, narration: string[], n: MitoNumbers, chartLabel?: string): Stage<StageIdState> => ({
   id,
   title,
   narration,
   sceneState: { stage: id },
   numbers: n,
+  ...(chartLabel ? { chartLabel } : {}),
 });
+
+/** 渐变段：间期（index 1）内 DNA 复制是连续过程，段内画斜坡；其余期为「期内恒定 + 边界阶跃」 */
+const GRADUAL_SEGMENTS = [1];
 
 const mitosisStages: Stage<StageIdState>[] = [
     st("interphase-before", "间期前（未复制）", [
       "体细胞中染色体数为 2n（两对同源染色体）",
       "间期开始前：每条染色体含 1 个 DNA 分子，无姐妹染色单体",
-    ], { chromosome: 4, dna: 4, chromatid: 0, dnaPerChromosome: 1 }),
+    ], { chromosome: 4, dna: 4, chromatid: 0, dnaPerChromosome: 1 }, "间期前"),
     st("interphase", "间期（复制）", [
       "分裂间期：完成 DNA 分子的复制和有关蛋白质的合成，细胞适度生长",
       "复制结果：每条染色体含 2 条姐妹染色单体，DNA 数目加倍（4→8）",
       "此时染色体呈染色质形态，不易观察",
-    ], { chromosome: 4, dna: 8, chromatid: 8, dnaPerChromosome: 2 }),
+    ], { chromosome: 4, dna: 8, chromatid: 8, dnaPerChromosome: 2 }, "间期复制"),
     st("prophase", "前期", [
       "两消：核膜核仁消失，染色质螺旋缠绕成为染色体",
       "两现：染色体和纺锤体出现（植物细胞纺锤体由两极发出的纺锤丝形成；动物细胞由中心体发出星射线）",
@@ -57,5 +61,5 @@ export const mitosisCourse: Course<StageIdState> = {
     difficulty: 3,
   },
   stages: mitosisStages,
-  chartConfigs: buildChartConfigs(mitosisStages),
+  chartConfigs: buildChartConfigs(mitosisStages, GRADUAL_SEGMENTS),
 };
