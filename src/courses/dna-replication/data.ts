@@ -1,24 +1,23 @@
-import type { Course } from "../../core/types";
+import type { Course, Stage, StageIdState } from "../../core/types";
 
 // 碱基序列（12 对）：中段 pos4~8 A/T 富集（氢键 2 个，易解开 = 复制起点），两端含 G/C 稳定
 export const SEQ_TOP = ["C", "G", "T", "A", "A", "T", "A", "T", "G", "C", "C", "G"];
 export const SEQ_BOT = ["G", "C", "A", "T", "T", "A", "T", "A", "C", "G", "G", "C"];
 
-/** 构造阶段（hideCharts 课程无数目字段） */
-const st = (id: string, title: string, narration: string[]): Course["stages"][number] => ({
+/** 构造阶段（无数目字段课程） */
+const st = (id: string, title: string, narration: string[]): Stage<StageIdState> => ({
   id,
   title,
   narration,
   sceneState: { stage: id },
 });
 
-export const dnaReplicationCourse: Course = {
+export const dnaReplicationCourse: Course<StageIdState> = {
   meta: {
     id: "dna-replication",
     title: "DNA 分子的复制",
     chapter: "必修二 第3章第3节",
     difficulty: 3,
-    hideCharts: true,   // 无数目语义，隐藏曲线图表
   },
   stages: [
     st("helix", "双螺旋结构", [

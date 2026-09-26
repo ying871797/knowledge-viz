@@ -1,7 +1,9 @@
 /** 基因表达场景测试：元素池结构 / 转录泡快照 / 翻译循环 / 色相预算 */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { createGeneExpressionScene } from "../scene";
-import { SEQ_TEMPLATE, SEQ_MRNA } from "../data";
+import { SEQ_TEMPLATE, SEQ_MRNA, geneExpressionCourse } from "../data";
+import type { StageIdState } from "../../../core/types";
+import { runSceneAudit } from "../../../test-utils/textAudit";
 
 describe("基因的表达场景（固定元素池）", () => {
   let host: HTMLDivElement;
@@ -136,6 +138,43 @@ describe("基因的表达场景（固定元素池）", () => {
     expect(`${SEQ_TEMPLATE[9]}${SEQ_TEMPLATE[10]}${SEQ_TEMPLATE[11]}`).toBe("ATC");
   });
 
+  it("进位 tRNA 携带氨基酸入场：tRNA 与其氨基酸同锚点、同行程，从核糖体下方绑定上升", () => {
+    // l1→l2：起始 tRNA① 与甲硫氨酸珠在 P 位锚点（220）下方 +90px 等待，随后一同上升入 P 位
+    scene.render({ stage: "l1-codons" });
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 90px)");
+    expect(bead(0).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l2-assemble" });
+    expect(trnaEl(0).style.transform).toBe("translate(220px, 0px)");
+    expect(trnaEl(0).style.opacity).toBe("1");
+    expect(bead(0).getAttribute("cx")).toBe("220");
+    expect(bead(0).getAttribute("cy")).toBe("210");
+    // l2→l3：第二个 tRNA② 与其氨基酸珠在 A 位锚点（340）下方等待，绑定上升
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 90px)");
+    expect(bead(1).getAttribute("cx")).toBe("340");
+    expect(bead(1).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l3-peptide1" });
+    expect(trnaEl(1).style.transform).toBe("translate(340px, 0px)");
+    expect(trnaEl(1).style.opacity).toBe("1");
+    expect(bead(1).getAttribute("cx")).toBe("340");
+    expect(bead(1).getAttribute("cy")).toBe("210");
+    // 旧链珠向左按 22px 间距排开，珠缘到珠缘短键保持可见
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(0).style.opacity).toBe("1");
+    // l4→l5：第三个 tRNA③ 与氨基酸珠③ 同样绑定入场（A 位锚点 460）
+    scene.render({ stage: "l4-shift" });
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 90px)");
+    expect(bead(2).getAttribute("cx")).toBe("460");
+    expect(bead(2).getAttribute("cy")).toBe("300");
+    scene.render({ stage: "l5-peptide2" });
+    expect(trnaEl(2).style.transform).toBe("translate(460px, 0px)");
+    expect(trnaEl(2).style.opacity).toBe("1");
+    expect(bead(2).getAttribute("cx")).toBe("460");
+    expect(bead(2).getAttribute("cy")).toBe("210");
+    expect(Number(bead(2).getAttribute("cx")) - Number(bead(1).getAttribute("cx"))).toBe(22);
+    expect(Number(bead(1).getAttribute("cx")) - Number(bead(0).getAttribute("cx"))).toBe(22);
+    expect(bond(1).style.opacity).toBe("1");
+  });
+
   it("折叠完成：核糖体与 tRNA 全部退场，肽链珠聚拢成团、键线隐没", () => {
     scene.render({ stage: "l7-fold" });
     expect(ribo().style.opacity).toBe("0");
@@ -164,5 +203,40 @@ describe("基因的表达场景（固定元素池）", () => {
   it("模板链-mRNA 配对自洽（场景刻度粗细的数据依据）", () => {
     const COMP: Record<string, string> = { A: "U", T: "A", C: "G", G: "C" };
     SEQ_TEMPLATE.forEach((b, i) => expect(COMP[b]).toBe(SEQ_MRNA[i]));
+  });
+});
+
+describe("全阶段文字不遮挡（回归门禁）", () => {
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    host = null;
+  });
+
+  it("全部阶段文字不遮挡（tRNA 与核糖体亚基为设计重叠，豁免）", () => {
+    const scene = createGeneExpressionScene();
+    const conflicts = runSceneAudit({
+      name: "gene-expression",
+      mount() {
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        scene.mount(host);
+      },
+      destroy() {
+        scene.destroy();
+        host?.remove();
+        host = null;
+      },
+      render(state: unknown) {
+        scene.render(state as StageIdState);
+      },
+      svg() {
+        return host?.querySelector("svg") ?? null;
+      },
+      extraExempt: (a, b) =>
+        !!a.closest(".trna") && !!b.closest(".ribosome"),
+      stages: geneExpressionCourse.stages.map((s) => ({ id: s.id, state: s.sceneState })),
+    });
+    expect(conflicts, conflicts.join("\n")).toEqual([]);
   });
 });

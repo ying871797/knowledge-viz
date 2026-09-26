@@ -16,7 +16,7 @@ export type PcrState = {
 }
 
 /** 11 幕 PCR 课程数据（单模式：标准 3 轮循环） */
-const pcrStages: Stage[] = [
+const pcrStages: Stage<PcrState>[] = [
   {
     id: "s0-template",
     title: "双链 DNA 模板",
@@ -31,7 +31,7 @@ const pcrStages: Stage[] = [
     title: "第1轮·变性",
     narration: [
       "加热至 95°C 左右，双链间氢键断裂",
-      "DNA 分离为两条单链，作为复制的模板",
+      "两条母链上下位移分开，分别作为复制的模板",
     ],
     sceneState: { stage: "s1-denature-1", demoState: "denatured", poolCount: 1, targetCount: 0, extensionProgress: 0 },
   },
@@ -39,8 +39,8 @@ const pcrStages: Stage[] = [
     id: "s2-anneal-1",
     title: "第1轮·退火",
     narration: [
-      "降温至 55°C 左右，两条引物分别与两条单链 3' 端互补配对",
-      "引物为新链合成提供起点",
+      "降温至 55°C 左右，两条引物分别落在两条母链 3' 端下方互补配对",
+      "每条母链各挂 1 支引物，为新链合成提供起点",
     ],
     sceneState: { stage: "s2-anneal-1", demoState: "anneal", poolCount: 1, targetCount: 0, extensionProgress: 0 },
   },
@@ -48,8 +48,8 @@ const pcrStages: Stage[] = [
     id: "s3-extend-1",
     title: "第1轮·延伸",
     narration: [
-      "升温至 72°C，Taq 聚合酶从引物 3' 端开始沿模板合成新链",
-      "新链从引物端生长，直到模板另一端",
+      "升温至 72°C，每个分子 2 枚 Taq 聚合酶分别守双链两 3' 端",
+      "从引物 3' 端沿母链模板合成新链，新链在母链下方长出并延伸",
     ],
     sceneState: { stage: "s3-extend-1", demoState: "extend", poolCount: 2, targetCount: 0, extensionProgress: 1 },
   },
@@ -57,8 +57,8 @@ const pcrStages: Stage[] = [
     id: "s4-denature-2",
     title: "第2轮·变性",
     narration: [
-      "再次加热，原模板与第 1 轮产物再次分离",
-      "此时共有 4 条单链可作为模板",
+      "再次加热，两对双链分别上下位移分开",
+      "第 1 轮的新链同样作为下一轮模板，此时共有 4 条单链",
     ],
     sceneState: { stage: "s4-denature-2", demoState: "denatured", poolCount: 2, targetCount: 0, extensionProgress: 0 },
   },
@@ -66,8 +66,8 @@ const pcrStages: Stage[] = [
     id: "s5-anneal-2",
     title: "第2轮·退火",
     narration: [
-      "4 条引物分别与 4 条单链 3' 端配对",
-      "引物数量随产物数同步增长",
+      "4 条引物分别落在 4 条单链 3' 端下方互补配对",
+      "引物数量随产物数同步增长，每条链各挂 1 支",
     ],
     sceneState: { stage: "s5-anneal-2", demoState: "anneal", poolCount: 2, targetCount: 0, extensionProgress: 0 },
   },
@@ -75,8 +75,8 @@ const pcrStages: Stage[] = [
     id: "s6-extend-2",
     title: "第2轮·延伸",
     narration: [
-      "Taq 聚合酶合成 4 条新链",
-      "产物总量翻倍为 4，但本轮新链仍只一端由引物限定",
+      "每分子 2 枚 Taq 聚合酶合成 4 条新链，产物从 2 个增至 4 个",
+      "短链两端都落回扩增区但仍与中链配对构成双链；靶片段要等第 3 轮才出现",
     ],
     sceneState: { stage: "s6-extend-2", demoState: "extend", poolCount: 4, targetCount: 0, extensionProgress: 1 },
   },
@@ -93,8 +93,8 @@ const pcrStages: Stage[] = [
     id: "s8-anneal-3",
     title: "第3轮·退火",
     narration: [
-      "8 条引物分别与 8 条单链配对",
-      "退火阶段引物数量再次翻倍",
+      "8 条引物分别落在 8 条单链 3' 端下方互补配对",
+      "退火阶段引物数量再次翻倍，每条链各挂 1 支",
     ],
     sceneState: { stage: "s8-anneal-3", demoState: "anneal", poolCount: 4, targetCount: 0, extensionProgress: 0 },
   },
@@ -102,8 +102,8 @@ const pcrStages: Stage[] = [
     id: "s9-extend-3",
     title: "第3轮·延伸",
     narration: [
-      "Taq 聚合酶合成 8 条新链",
-      "本轮首次出现两端均由引物限定的目标片段（2 个）",
+      "每分子 2 枚 Taq 聚合酶合成 8 条新链",
+      "蓝短模板上长出绿短新链并配对成双链——首次出现 2 个目标片段",
     ],
     sceneState: { stage: "s9-extend-3", demoState: "extend", poolCount: 8, targetCount: 2, extensionProgress: 1 },
   },
@@ -118,21 +118,47 @@ const pcrStages: Stage[] = [
   },
 ];
 
-/** PCR 课程曲线图：4 条曲线展示产物量、消耗引物、下轮所需引物、目标片段 11 阶段数据点 */
-const chartConfigs: Course["chartConfigs"] = [
+/**
+ * PCR 课程曲线三图拆分 + 公式卡（v4 决策，见 .proposals/2026-08-29-001-pcr-course.html）。
+ * ① 扩增曲线：分子数 2ⁿ / 总链数 2ⁿ⁺¹；
+ * ② 引物曲线：累计消耗 2ⁿ⁺¹−2（退火列跳变）/ 第 n 次所需 2ⁿ⁺¹；
+ * ③ 目标产物迷你图：2ⁿ−2n（独立成图，避开与分子数序列共轴被压扁）。
+ */
+const chartConfigs: Course<PcrState>["chartConfigs"] = [
   {
-    title: "PCR 产物与引物变化",
+    title: "扩增曲线",
     series: [
-      { label: "产物总量", values: [1, 1, 1, 2, 2, 2, 4, 4, 4, 8, 8], color: "#2563eb" },
-      { label: "消耗引物", values: [0, 0, 2, 2, 2, 4, 6, 6, 8, 14, 14], color: "#ea580c" },
-      { label: "下轮所需引物", values: [2, 2, 2, 4, 4, 4, 8, 8, 8, 16, 16], color: "#7c3aed", dashed: true },
-      { label: "目标片段", values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], color: "#059669" },
+      { label: "分子数（2ⁿ）", values: [1, 1, 1, 2, 2, 2, 4, 4, 4, 8, 8], color: "#2563eb" },
+      { label: "总链数（2ⁿ⁺¹）", values: [2, 2, 2, 4, 4, 4, 8, 8, 8, 16, 16], color: "#64748b" },
+    ],
+  },
+  {
+    title: "引物曲线",
+    series: [
+      { label: "累计消耗引物（2ⁿ⁺¹−2）", values: [0, 0, 2, 2, 2, 6, 6, 6, 14, 14, 14], color: "#f59e0b" },
+      { label: "第 n 次所需引物（2ⁿ⁺¹）", values: [2, 2, 2, 4, 4, 4, 8, 8, 8, 16, 16], color: "#b45309", dashed: true },
+    ],
+  },
+  {
+    title: "目标产物迷你图",
+    series: [
+      { label: "目标产物（2ⁿ−2n）", values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2], color: "#22c55e" },
     ],
   },
 ];
 
-export const pcrCourse: Course = {
+/** 关键公式卡（通用能力 Course.formulas，schema 见 ADR-0003）：数量名 + 公式 + n=3 例值 */
+const formulas: Course["formulas"] = [
+  { name: "分子数", expr: "2ⁿ", example: "n=3 → 8" },
+  { name: "总链数", expr: "2ⁿ⁺¹", example: "n=3 → 16" },
+  { name: "累计消耗引物", expr: "2ⁿ⁺¹−2", example: "n=3 → 14" },
+  { name: "第 n 次所需引物", expr: "2ⁿ⁺¹", example: "n=3 → 16" },
+  { name: "目标产物", expr: "2ⁿ−2n", example: "n=3 → 2" },
+];
+
+export const pcrCourse: Course<PcrState> = {
   meta: { id: "pcr", title: "PCR——聚合酶链式反应", chapter: "选必三", difficulty: 2 },
   stages: pcrStages,
   chartConfigs,
+  formulas,
 };

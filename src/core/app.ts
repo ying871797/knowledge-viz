@@ -35,7 +35,8 @@ export function mountCoursePage(
   }
 
   // —— 静态骨架：返回链接、标题、两栏网格 ——
-  const chartsEnabled = !course.meta.hideCharts;   // 无数目语义的课程（如 DNA 复制）隐藏曲线图表
+  const chartConfigs = course.chartConfigs;
+  const chartsEnabled = !!chartConfigs;   // 课程声明了图表配置才渲染曲线图表（chartConfigs 为单一事实源）
   const back = document.createElement("a");
   back.href = "#/";
   back.textContent = "← 返回目录";
@@ -165,9 +166,9 @@ export function mountCoursePage(
 
   // —— 曲线图表：按 chartConfigs 动态创建 ——
   const chartInstances: NumberChart[] = [];
-  if (chartsEnabled && course.chartConfigs) {
-    const labels = course.stages.map((s) => s.title);
-    for (const cfg of course.chartConfigs) {
+  if (chartConfigs) {
+    const labels = course.stages.map((s) => s.chartLabel ?? s.title);
+    for (const cfg of chartConfigs) {
       const card = document.createElement("div");
       card.className = "chart-card";
       const title = document.createElement("h4");
@@ -186,6 +187,35 @@ export function mountCoursePage(
   callout.className = "callout";
   callout.style.display = "none";
   root.appendChild(callout);
+
+  // —— 关键公式卡：图表卡之后静态渲染（通用能力 Course.formulas，见 ADR-0003）——
+  if (course.formulas?.length) {
+    const form = document.createElement("div");
+    form.className = "formula-card";
+    const fTitle = document.createElement("h4");
+    fTitle.textContent = "关键公式";
+    form.appendChild(fTitle);
+    for (const f of course.formulas) {
+      const row = document.createElement("div");
+      row.className = "formula-row";
+      const nm = document.createElement("span");
+      nm.className = "formula-name";
+      nm.textContent = f.name;
+      row.appendChild(nm);
+      const fx = document.createElement("code");
+      fx.className = "formula-expr";
+      fx.textContent = f.expr;
+      row.appendChild(fx);
+      if (f.example) {
+        const ex = document.createElement("span");
+        ex.className = "formula-example";
+        ex.textContent = f.example;
+        row.appendChild(ex);
+      }
+      form.appendChild(row);
+    }
+    root.appendChild(form);
+  }
 
   let examMode = false;
   const player = new Player(course.stages.length, applyStage, 1500);

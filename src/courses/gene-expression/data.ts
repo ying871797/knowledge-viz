@@ -1,4 +1,4 @@
-import type { Course } from "../../core/types";
+import type { Course, Stage, StageIdState } from "../../core/types";
 
 // ============ 序列常量（12bp = 4 密码子） ============
 // 编码链（上行，不被读）；模板链（下行，被转录）；mRNA 为转录产物。
@@ -12,21 +12,20 @@ export const ANTICODONS = ["UAC", "GGC", "ACA"];
 // 每个密码子边界 x 坐标由场景按 STEP 计算，此处仅声明分组语义：4 组 × 3 碱基
 export const CODON_COUNT = 4;
 
-/** 构造阶段（hideCharts 课程无数目字段） */
-const st = (id: string, title: string, narration: string[]): Course["stages"][number] => ({
+/** 构造阶段（无数目字段课程） */
+const st = (id: string, title: string, narration: string[]): Stage<StageIdState> => ({
   id,
   title,
   narration,
   sceneState: { stage: id },
 });
 
-export const geneExpressionCourse: Course = {
+export const geneExpressionCourse: Course<StageIdState> = {
   meta: {
     id: "gene-expression",
     title: "基因的表达",
     chapter: "必修二 第4章第1节",
     difficulty: 3,
-    hideCharts: true,   // 无数目语义，隐藏曲线图表
   },
   stages: [
     // —— 转录（5 幕） ——

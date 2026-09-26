@@ -8,6 +8,7 @@ import { createMeiosisScene, slotsFor, usableRadius, CELL_CENTERS, CELL_RADIUS }
 import type { Slot } from "../scene";
 import { meiosisCourse, oogenesisCourse } from "../data";
 import type { MeiosisState } from "../data";
+import { runSceneAudit } from "../../../test-utils/textAudit";
 
 /** 构造场景状态（默认精原细胞；stage 必填以驱动槽位表） */
 const st = (over: Partial<MeiosisState> & { stage: string }): MeiosisState => ({
@@ -699,5 +700,63 @@ describe("越界回归：所有阶段所有杆端均落在所属细胞膜内", (
         }
       }
     }
+  });
+});
+
+describe("全阶段文字不遮挡（回归门禁）", () => {
+  let host: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    location.hash = "";
+    host = null;
+  });
+
+  const comboVariant = (): import("../../../test-utils/textAudit").SceneAuditVariant => {
+    const clickCombo = () => {
+      const btn = [...(host as HTMLDivElement).querySelectorAll<HTMLButtonElement>(".scene-controls button")]
+        .find((b) => b.textContent?.includes("组合"));
+      if (!btn || btn.disabled) throw new Error("combo 按钮不可用");
+      btn.click();
+    };
+    return { label: "combo-alt", enable: clickCombo, disable: clickCombo };
+  };
+
+  it.each([
+    ["减数分裂（精子）", meiosisCourse],
+    ["减数分裂（卵细胞）", oogenesisCourse],
+  ])("%s：全部阶段文字不遮挡（含自由组合变体）", (_name, course) => {
+    const scene = createMeiosisScene();
+    const conflicts = runSceneAudit({
+      name: "meiosis",
+      mount() {
+        host = document.createElement("div");
+        document.body.appendChild(host);
+        scene.mount(host);
+      },
+      destroy() {
+        scene.destroy();
+        host?.remove();
+        host = null;
+      },
+      pre() {
+        const input = (host as HTMLDivElement).querySelector<HTMLInputElement>(".scene-controls input")!;
+        input.checked = true;
+        input.dispatchEvent(new Event("change"));
+      },
+      render(state: unknown) {
+        scene.render(state as MeiosisState);
+      },
+      svg() {
+        return host?.querySelector("svg") ?? null;
+      },
+      stages: course.stages.map((s) => ({
+        id: s.id,
+        state: s.sceneState,
+        variants:
+          s.sceneState.separating === "homolog" ? [comboVariant()] : undefined,
+      })),
+      allowGeneLabelOnRod: true,
+    });
+    expect(conflicts, conflicts.join("\n")).toEqual([]);
   });
 });

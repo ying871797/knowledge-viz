@@ -4,12 +4,13 @@ import { dnaReplicationCourse, SEQ_TOP, SEQ_BOT } from "../data";
 import { validateCourse } from "../../../core/types";
 
 describe("DNA 复制课程数据", () => {
-  it("通过结构校验（hideCharts 跳过数目校验）", () => {
+  it("通过结构校验（无 numbers 课程不要求数目字段）", () => {
     expect(() => validateCourse(dnaReplicationCourse)).not.toThrow();
   });
 
-  it("meta：hideCharts 开启，标题/章节正确", () => {
-    expect(dnaReplicationCourse.meta.hideCharts).toBe(true);
+  it("meta 正确：无数目课程以无 chartConfigs 表达（无图）", () => {
+    expect(dnaReplicationCourse.chartConfigs).toBeUndefined();
+    expect(dnaReplicationCourse.meta).not.toHaveProperty("hideCharts");
     expect(dnaReplicationCourse.meta.title).toBe("DNA 分子的复制");
     expect(dnaReplicationCourse.meta.chapter).toBe("必修二 第3章第3节");
   });
