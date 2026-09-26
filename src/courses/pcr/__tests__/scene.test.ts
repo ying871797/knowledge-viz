@@ -1,13 +1,14 @@
 /**
- * PCR 场景测试（v6.3 分子间距版 P=47，基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
+ * PCR 场景测试（v6.3 分子间距版 P=47，v6.3.1 s7 变性幕同步分离；基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
  * v6.2.1 重叠修复方案 .proposals/2026-09-26-005-pcr-v62-overlap-fix.html、
  * v6.2.2 链距加大与目标框校准方案 .proposals/2026-09-26-006-pcr-v62-spacing-and-target.html、
- * v6.3 分子间距方案 .proposals/2026-09-26-007-pcr-v63-molecule-spacing.html 均已批准）。
+ * v6.3 分子间距方案 .proposals/2026-09-26-007-pcr-v63-molecule-spacing.html、v6.3.1 同步分离修复方案 .proposals/2026-09-26-008-pcr-v631-s7-denature-separate.html 均已批准）。
  *
  * 布局模型 = 单容器恒定基座 + 元素级垂直微排（s0/s1/s4 数值 = pcr_v6_demo.html 逐字段搬运；
  * s1 单侧 34→46 为 v6.3 结构性重推的代价；s2/s3 第 1 轮贴距 25；s5/s6 第 2 轮贴距 25、间距 73/73/75 均匀；
- * s7-s10 为 v6.3：第 3 轮 P=47、分子内 20/分子间 27（步进 47，P=47 为公式 2·h₁+t₁+t₂+168 硬上限，余量 1px，
- * P=48 无解；分子内压至「带净距 ≥7」下限、分子间净隙 14~15px）——见 .superpowers/sdd/progress.md v6.2 / v6.2.1 / v6.2.2 / v6.3 登记）。
+ * s7 为 v6.3.1：变性幕 4 分子同步分离（贴距 = 分子间 = 39 等距泳道，唯一整数解满足 s6→s7 ≤14、s7→s8 ≤28）；
+ * s8-s10 为 v6.3：第 3 轮 P=47、分子内 20/分子间 27（步进 47，P=47 为公式 2·h₁+t₁+t₂+168 硬上限，余量 1px，
+ * P=48 无解；分子内压至「带净距 ≥7」下限、分子间净隙 14~15px）——见 .superpowers/sdd/progress.md v6.2 / v6.2.1 / v6.2.2 / v6.3 / v6.3.1 登记）。
  * 测试职责分工：几何/数量/颜色/「切换安静三阈值」由断言强制；直观性/语义类（微排观感、无瞬切）以用户目检为准。
  * 本文件不测：addEvent 无关样式细节（颜色仅测 fill/stroke）、Taq（已彻底移除，另有专项用例）。
  */
@@ -194,21 +195,22 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     }
   });
 
-  it("变性层位表锚定：s4 v6.3 数值、s7 v6.3 数值，各层 y 精确", () => {
+  it("变性层位表锚定：s4 v6.3 数值、s7 v6.3.1 数值（4 分子同步分离 39/39 等距），各层 y 精确", () => {
     const m4 = mountAt("s4-denature-2");
     expect(elY(m4.chain("A"))).toBe(-70);
     expect(elY(m4.chain("B"))).toBe(44);
     expect(elY(m4.unit("newA"))).toBe(-25);   // A′ 下移贴 A 下方（变性分离）
     expect(elY(m4.unit("newB"))).toBe(95);    // B′ 下移贴 B 下方
     const m7 = mountAt("s7-denature-3");
-    expect(elY(m7.chain("A"))).toBe(-112);
-    expect(elY(m7.chain("B"))).toBe(48);
-    expect(elY(m7.unit("newA"))).toBe(-25);
-    expect(elY(m7.unit("newB"))).toBe(123);
-    expect(elY(m7.unit("r2-0"))).toBe(-73);
-    expect(elY(m7.unit("r2-1"))).toBe(0);
-    expect(elY(m7.unit("r2-2"))).toBe(73);
-    expect(elY(m7.unit("r2-3"))).toBe(161);   // v6.3：B″ 148→161（s6→s7 位移 13 ≤14）
+    // v6.3.1 全表：8 层 = A(−112) + 等距 39 泳道；贴距（分子内）= 分子间 = 39
+    expect(elY(m7.chain("A"))).toBe(-112);    // A：s6 −98→−112（位移 14 ≤14）
+    expect(elY(m7.chain("B"))).toBe(44);      // B：s6 48→44（位移 4，分子 3 顶链上移参与分离）
+    expect(elY(m7.unit("newA"))).toBe(-34);   // A′：s6 −25→−34（位移 9）
+    expect(elY(m7.unit("newB"))).toBe(122);   // B′：s6 123→122（位移 1）
+    expect(elY(m7.unit("r2-0"))).toBe(-73);   // A²：与 A 贴距 39（A −112 不动、A² 不动）
+    expect(elY(m7.unit("r2-1"))).toBe(5);     // A″：s6 0→5（位移 5），与 A′ 贴距 39
+    expect(elY(m7.unit("r2-2"))).toBe(83);    // B²：s6 73→83（位移 10），与 B 贴距 39
+    expect(elY(m7.unit("r2-3"))).toBe(161);   // B″：s6 148→161（位移 13 ≤14），与 B′ 贴距 39
   });
 
   it("v6.3 防回归：s9 同幕内相邻带间隙 ≥7，且方向标注字形（14px 粗体+描边 3px，身量 ±11px）不侵入任何邻带", () => {
