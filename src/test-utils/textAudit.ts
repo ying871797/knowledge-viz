@@ -18,6 +18,7 @@
  * - 背景/细参考线类图元默认不视为遮挡物（细胞轮廓、纺锤丝、氢键、刻度等）
  */
 import type { Course } from "../core/types";
+import { spanCenterX } from "../core/numberChart";
 
 export type Box = { x1: number; y1: number; x2: number; y2: number };
 
@@ -339,9 +340,11 @@ export function runSceneAudit(cfg: SceneAuditConfig): string[] {
 }
 
 // ============ 曲线图阶段标签间距 ============
-/** 阶段标签水平间距下限（numberChart 参数，与 numberChart.ts 保持一致） */
-export const CHART_SPACING = { left: 44, right: 16, width: 720 };
-
+/**
+ * 阶段标签的 x 位置直接复用 numberChart 的时期段几何（spanCenterX）。
+ * 早期版本在此复制了一份 xFor 实现并注释「与 numberChart.ts 保持一致」——
+ * 改图表几何而不同步它，门禁会静默审计旧几何而失去作用，故改为 import 消除重复。
+ */
 export interface StageLabelCheck {
   a: string; b: string; gap: number; need: number;
 }
@@ -352,11 +355,10 @@ export function stageLabelViolations(labels: string[], opts: { fontSize?: number
   const pad = opts.pad ?? 3;
   const n = labels.length;
   if (n <= 1) return [];
-  const xFor = (i: number): number =>
-    CHART_SPACING.left + (i * (CHART_SPACING.width - CHART_SPACING.left - CHART_SPACING.right)) / (n - 1);
   const bad: StageLabelCheck[] = [];
   for (let i = 0; i < n - 1; i++) {
-    const gap = xFor(i + 1) - xFor(i);
+    // 相邻标签中心距 = 一个时期段的宽度
+    const gap = spanCenterX(i + 1, n) - spanCenterX(i, n);
     const need = textWidth(labels[i], fs) / 2 + pad + textWidth(labels[i + 1], fs) / 2 + pad;
     if (need > gap) bad.push({ a: labels[i], b: labels[i + 1], gap: +gap.toFixed(1), need: +need.toFixed(1) });
   }

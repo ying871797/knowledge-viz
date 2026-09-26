@@ -5,7 +5,7 @@
  */
 import type { Stage, ChartConfig } from "./types";
 
-export function buildChartConfigs(stages: Stage[]): ChartConfig[] {
+export function buildChartConfigs(stages: Stage[], gradualSegments?: number[]): ChartConfig[] {
   const gameteN = stages[stages.length - 1].numbers!.chromosome;
   return [
     {
@@ -18,12 +18,15 @@ export function buildChartConfigs(stages: Stage[]): ChartConfig[] {
       // 刻度步进 = n，刻度只取 n 的整数倍（0, n, 2n, 3n, 4n），全部以 n 表示，不出现真实条数
       tickStep: gameteN,
       tickFormat: (v) => `${v / gameteN}n`,
+      // 两张图共用同一份渐变段声明（课程只需在调用处写一次）
+      gradualSegments,
     },
     {
       title: "每条染色体上的 DNA 数",
       series: [
         { label: "每条染色体DNA", values: stages.map((s) => s.numbers!.dnaPerChromosome), color: "#059669" },
       ],
+      gradualSegments,
     },
   ];
 }

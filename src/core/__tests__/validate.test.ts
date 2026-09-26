@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vitest";
 import { validateCourse, type Course } from "../types";
 
 // 合法的最小课程样例
@@ -125,5 +125,42 @@ describe("validateCourse", () => {
       chartConfigs: [{ title: "x", series: [{ label: "产物", values: [1, "x" as unknown as number], color: "#000" }] }],
     };
     expect(() => validateCourse(bad)).toThrow(/数值/);
+  });
+  it("gradualSegments 合法索引通过", () => {
+    const ok: Course = {
+      meta: { id: "mitosis", title: "有丝分裂", chapter: "必修一", difficulty: 3 },
+      stages: [
+        { id: "s0", title: "间期前", narration: ["未复制"], sceneState: {} },
+        { id: "s1", title: "间期", narration: ["复制"], sceneState: {} },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "DNA", values: [4, 8] }], gradualSegments: [1] }],
+    };
+    expect(validateCourse(ok)).toEqual(ok);
+  });
+  it("gradualSegments 索引越界抛错（斜坡会画到绘图区外）", () => {
+    const bad: Course = {
+      meta: { id: "mitosis", title: "有丝分裂", chapter: "必修一", difficulty: 3 },
+      stages: [
+        { id: "s0", title: "间期前", narration: ["未复制"], sceneState: {} },
+        { id: "s1", title: "间期", narration: ["复制"], sceneState: {} },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "DNA", values: [4, 8] }], gradualSegments: [2] }],
+    };
+    expect(() => validateCourse(bad)).toThrow(/越界/);
+  });
+  it("gradualSegments 负数/非整数/重复均抛错", () => {
+    const base: Course = {
+      meta: { id: "mitosis", title: "有丝分裂", chapter: "必修一", difficulty: 3 },
+      stages: [
+        { id: "s0", title: "间期前", narration: ["未复制"], sceneState: {} },
+        { id: "s1", title: "间期", narration: ["复制"], sceneState: {} },
+        { id: "s2", title: "前期", narration: ["出现"], sceneState: {} },
+      ],
+      chartConfigs: [{ title: "x", series: [{ label: "DNA", values: [4, 8, 8] }] }],
+    };
+    for (const gs of [[-1], [0.5], [1, 1]]) {
+      const bad: Course = { ...base, chartConfigs: [{ ...base.chartConfigs![0], gradualSegments: gs }] };
+      expect(() => validateCourse(bad)).toThrow(/gradualSegments/);
+    }
   });
 });
