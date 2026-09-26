@@ -1,66 +1,46 @@
 /**
- * PCR 场景（v6 反平行语义版，方案 .proposals/2026-09-26-002-pcr-v6-rebuild.html，已批准）。
+ * PCR 场景（v6.1 切换安静版，方案 .proposals/2026-09-26-003-pcr-v6-animation-quiet.html 已批准）。
  *
- * 模型（示意取舍登记 .superpowers/sdd/progress.md）：
- * - 一行 = 一条单链模板的延伸行 / 或泳道行（双链两条模板分开）；8 行固定元素池 + ROW_MAP 槽位表
- *   （沿用 v5「统一行模型」骨架：泳道 ±45、模板 −8 / 新链 +18；行数 1→2→4→8 如实翻倍）。
- * - 反平行语义（本版核心）：引物 5′ 端靠近旧链(模板) 3′ 端、3′ 端朝内为延伸起点；
- *   新链从引物 3′ 端向模板 5′ 端方向配满全长，新链 3′ 端与旧链 5′ 端同侧。
- * - 引物减短反平行（用户定稿）：PRIMER_W=24，L 248..272 / R 568..592——5′ 端恰好贴各自模板 3′ 端
- *   （A 类模板 3′ 端 616 → 引物 5′ 端 592；B 类模板 3′ 端 224 → 引物 5′ 端 248，各内缩 24px）。
- * - 新链 = 橙引物段（5′，原位停驻）+ 蓝合成段（3′）一条带；合成链作下轮模板时 = 自身橙段 + 蓝段
- *   （橙段守恒：链的 5′ 端橙段由当初的引物原地留下，永不消失）。
- * - 去 Taq（用户舍弃）：删 taq1/taq2 元素与图例紫色第 5 项。
- * - 目标产物：第 2 轮在 A′/B′（第 1 轮产物链）上合成出的第一条正确长度链 A″/B″，
- *   第 3 轮以它们为模板复制出互补链 → 2 个目标双链（绿虚线框 + 徽标「目标产物 2（2³−2×3）」）。
- * - 颜色：母链灰 / 合成段蓝 / 引物橙 / 目标绿（仅作虚线框标识，不作链色），色相 ≤4。
- * - 方向标注随链真实朝向（沿用 v5 裁决④）：四枚 aL/aR/bL/bR 贴各自链端，全程不省略。
+ * 模型（示取舍登记 .superpowers/sdd/progress.md）：
+ * - 布局模型 = 单容器恒定基座 + 元素级垂直微排（完全按 pcr_v6_demo.html）：
+ *   基座 BASE_Y=250 永不拆行、不行位置跳变；分子数 1→2→4→8 靠行内元素微排实现。
+ *   安静三阈值（测试强制）：延伸/结果幕 0 位移、变性幕 ≤14px、新轮微排 ≤28px；8 条模板 30px 均匀步进。
+ * - 反平行语义（v6 延续）：引物 5′ 端贴模板 3′ 端内侧 24px、3′ 端朝内为延伸起点；
+ *   新链 = 橙引物段（5′，原位停驻）+ 蓝合成段（3′）一条带；蓝段从引物 3′ 端锚点向模板 5′ 端配满全长
+ *   （width 锚点生长，几何等价 demo 的 scaleX；L 锚 272 右伸、R 锚 568 左伸）。
+ * - 合成单元（14 个固定池）= A′/B′（第 1 轮）+ r2×4（第 2 轮：A²/A″/B²/B″）+ r3×8（第 3 轮）。
+ *   每单元 = 橙段 cap（5′ 端）+ 蓝段 band（3′ 端）+ 退火 5′ 标注 + 成链方向标注；激活幕由 ann/ext 声明。
+ * - 去 Taq、方向标注随链真实朝向（贴链端 11px）、目标产物绿虚线框 + 徽标（仅 s9/s10）。
  */
 import type { SceneComponent } from "../../core/types";
+import type { PcrState } from "./data";
 
 const NS = "http://www.w3.org/2000/svg";
 const VB_W = 860;
 const VB_H = 500;
+const BASE_Y = 250;                          // 场景基座（恒定，永不拆行）
 
-// ---------- 几何常量（改动前先重算层位净距；反平行几何 = pcr_v6_demo.html 定稿） ----------
+// ---------- 几何常量（demo 定稿，改动前先重算层位净距） ----------
 const BAND_X = 224;                          // 全长链左缘
-const BAND_W = 392;                          // 全长链跨 224..616（demo 定稿）
+const BAND_W = 392;                          // 全长链跨 224..616
 const BAND_H = 14;
-const PRIMER_W = 24;                         // 反平行引物宽（用户定稿；5′ 端贴模板 3′ 端内侧 24px）
-const PRIMER_H = 10;
-const PRIMER_L_X = 248;                      // 248..272：B 类模板（3′ 端 224）引物，5′ 端 248、3′ 端 272
-const PRIMER_R_X = 568;                      // 568..592：A 类模板（3′ 端 616）引物，3′ 端 568、5′ 端 592
-const PRIMER_OFF = 14;                       // 退火泳道：引物贴链下方错开（不叠链带）
-const SS_OFF = 45;                           // 泳道两条链上下分离振幅（±45，净距 124−2×52=20）
-const EX_OFF = 8;                            // 模板/配对链贴拢（±8）
-const CHAIN_OFF = 18;                        // 新链层（模板下方；8 行档净距 52−41.5=10.5…下行顶 → ≥6）
-const NEW_H = 12;                            // 合成段高
-const CAP_H = 14;                            // 合成链橙段（5′ 端）与链带同高
-const MARK_X = 240;                          // 目标产物绿虚线框：240..600 包住靶区 248..592
-const MARK_W = 360;
-const MARK_Y = -16;                          // 框住模板(−8)与新链(+18)两层：−16..25，不跨 8 行档行界
-const MARK_H = 41;
+const PRIMER_W = 24;                         // 反平行引物宽（5′ 端贴模板 3′ 端内侧 24px）
+const PRIMER_H = 10;                         // 橙段高（退火引物/成链 5′ 端同一元素，恒 10px，忠实 demo 9px 近似）
+const PRIMER_L_X = 248;                      // 248..272：L 引物（5′ 端 248）
+const PRIMER_R_X = 568;                      // 568..592：R 引物（5′ 端 592）
+const NEW_H = 12;                            // 合成段蓝段高
+const DIR_OFF = 11;                          // 方向标注文本中心距链端 11px
+const P5_OFF = 4;                            // 退火引物 5′ 标注中心距引物 5′ 端 4px
+const TM_X = 240;                            // 目标产物绿虚线框：240..600 包住靶区 248..592
+const TM_W = 360;
 
 const GRAY = "#64748b";    // 母链（旧链/模板）
 const BLUE = "#2563eb";    // 合成段（新链 3′ 端）
 const ORANGE = "#f59e0b";  // 引物段（新链 5′ 端，原位停驻）
 const GREEN = "#22c55e";   // 目标产物标识（绿虚线框）
 
-/** 行数 → 各行列中心 y。4 行档位行距 124（泳道净距 = 124 − 2×(45+7) = 20 ≥ 20 断言） */
-const ROW_YS: Record<number, number[]> = {
-  1: [250],
-  2: [170, 330],
-  4: [52, 176, 300, 424],
-  8: [52, 104, 156, 208, 260, 312, 364, 416],
-};
-
-// ---------- 反平行链模型 ----------
-/**
- * 单链规格：three=3′ 端侧别（决定引物/锚点/橙段与标注，不决定槽位）；
- * kind=original 是灰母链全长 224..616；synth 是合成链（橙段 5′ 端 + 蓝段 3′ 端，blue=[蓝段起,止]）。
- * 母链：A=5′左3′右（3′ 端 616）、B=5′右3′左（3′ 端 224），两者反平行。
- * 合成链 5′ 端永远 = 当初引物留下来的橙段外侧（A′/A²：592；A″/B′/B²：248；B″：592）。
- */
+// ---------- 反平行链模型（v6 沿用） ----------
+/** 单链规格：three=3′ 端侧别；kind=original 是灰母链全长 224..616；synth 是合成链（橙段 5′ 端 + 蓝段 3′ 端） */
 interface StrandSpec {
   kind: "original" | "synth";
   three: "left" | "right";
@@ -68,15 +48,15 @@ interface StrandSpec {
   blue?: [number, number];
 }
 
-/** 8 种链形态（行模板本体，|A′|≡|A²|、|B′|≡|B²| 几何复用） */
-const A_SPEC: StrandSpec = { kind: "original", three: "right" };                       // A：灰 224..616，5′ 224 / 3′ 616
-const B_SPEC: StrandSpec = { kind: "original", three: "left" };                        // B：灰 224..616，3′ 224 / 5′ 616
-const AP_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [224, 568] };        // A′/A²：橙 568..592 + 蓝 224..568
-const AS_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 592] };       // A″：橙 248..272 + 蓝 272..592
-const BP_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 616] };       // B′/B²：橙 248..272 + 蓝 272..616
-const BS_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [248, 568] };        // B″：橙 568..592 + 蓝 248..568
+/** 8 种链形态（模板/新链几何复用：|A′|≡|A²|、|B′|≡|B²|） */
+const A_SPEC: StrandSpec = { kind: "original", three: "right" };                  // A：灰 224..616，5′ 224 / 3′ 616
+const B_SPEC: StrandSpec = { kind: "original", three: "left" };                   // B：灰 224..616，3′ 224 / 5′ 616
+const AP_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [224, 568] };   // A′/A²：橙 568..592 + 蓝 224..568
+const AS_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 592] };  // A″：橙 248..272 + 蓝 272..592
+const BP_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 616] };  // B′/B²：橙 248..272 + 蓝 272..616
+const BS_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [248, 568] };   // B″：橙 568..592 + 蓝 248..568
 
-/** 链 5′ 端坐标：母链 A=224/B=616；合成链 = 自身橙段外侧端（3′ 左→592、3′ 右→248） */
+/** 链 5′ 端坐标：母链 A=224/B=616；合成链 = 自身橙段外侧端（three 左→592、three 右→248） */
 function fiveOf(s: StrandSpec): number {
   if (s.kind === "original") return s.three === "right" ? BAND_X : BAND_X + BAND_W;
   return s.three === "left" ? PRIMER_R_X + PRIMER_W : PRIMER_L_X;
@@ -88,183 +68,97 @@ function threeOf(s: StrandSpec): number {
   return s.three === "left" ? s.blue![0] : s.blue![1];
 }
 
-/** 模板本轮引物侧别：3′ 端在左 → L(248..272)、在右 → R(568..592)（5′ 端贴模板 3′ 端内侧） */
-function primerOf(s: StrandSpec): "L" | "R" {
-  return s.three === "left" ? "L" : "R";
-}
-
-/** 本轮新链合成段（蓝段）span [from,to]：从引物 3′ 端向模板 5′ 端配满全长 */
-function synthSpan(s: StrandSpec): [number, number] {
-  const five = fiveOf(s);
-  return s.three === "left" ? [PRIMER_L_X + PRIMER_W, five] : [five, PRIMER_R_X];
-}
-
-/** 合成链（作模板时）自身橙段 5′ 端位置：3′ 左 → 568（右侧）、3′ 右 → 248（左侧） */
+/** 合成链自身橙段（5′ 端）起始 x：three 左 → 568（右侧）、three 右 → 248（左侧） */
 function capXOf(s: StrandSpec): number {
   return s.three === "left" ? PRIMER_R_X : PRIMER_L_X;
 }
 
-interface PairCfg { tag: "pair" }
-interface LaneCfg {
-  tag: "lane";
-  up: StrandSpec;
-  down: StrandSpec;
-  /** 退火阶段给每条链挂 1 支引物（贴各自 3′ 端内侧下方） */
-  anneal: boolean;
+/** 合成链蓝段锚点 x（引物 3′ 端，延伸起点）：three 左 → 568（左伸）、three 右 → 272（右伸） */
+function anchorOf(s: StrandSpec): number {
+  return s.three === "left" ? PRIMER_R_X : PRIMER_L_X + PRIMER_W;
 }
-interface ExtendCfg {
-  tag: "extend";
-  /** 模板链（恒在 bandT 上槽 −8） */
-  temp: StrandSpec;
-  /** 目标产物行（A″/B″ 谱系，s9/s10 绿虚线框标注） */
-  target?: boolean;
-}
-type RowCfg = PairCfg | LaneCfg | ExtendCfg;
 
-/** 合法槽位表：stage id → 各行形态（layout 内无 stage 分支，按 tag 分支即模型）。
- *  行数逐幕 1→1→1→2→2→2→4→4→4→8→8；目标产物位于第 3 轮行 4（A″）与行 8（B″）。 */
-const ROW_MAP: Record<string, RowCfg[]> = {
-  "s0-template": [{ tag: "pair" }],
-  "s1-denature-1": [
-    // 1 行泳道：双链两条母链打开、原位上下位移分开（都是模板，无新旧之分）
-    { tag: "lane", up: A_SPEC, down: B_SPEC, anneal: false },
-  ],
-  "s2-anneal-1": [
-    { tag: "lane", up: A_SPEC, down: B_SPEC, anneal: true },
-  ],
-  "s3-extend-1": [
-    // 第 1 轮：两条母链各成行 → 各自长出第 1 条新链 A′/B′（长母链 → 中链）
-    { tag: "extend", temp: A_SPEC },
-    { tag: "extend", temp: B_SPEC },
-  ],
-  "s4-denature-2": [
-    // 第 2 轮变性：2 行泳道，每行 = 上轮产物双链的两条（A/A′、B/B′）
-    { tag: "lane", up: A_SPEC, down: AP_SPEC, anneal: false },
-    { tag: "lane", up: B_SPEC, down: BP_SPEC, anneal: false },
-  ],
-  "s5-anneal-2": [
-    { tag: "lane", up: A_SPEC, down: AP_SPEC, anneal: true },
-    { tag: "lane", up: B_SPEC, down: BP_SPEC, anneal: true },
-  ],
-  "s6-extend-2": [
-    // 第 2 轮：A→A²、A′→A″（首条正确长度链）、B→B²、B′→B″
-    { tag: "extend", temp: A_SPEC },
-    { tag: "extend", temp: AP_SPEC },
-    { tag: "extend", temp: B_SPEC },
-    { tag: "extend", temp: BP_SPEC },
-  ],
-  "s7-denature-3": [
-    // 第 3 轮变性：4 行泳道（A/A²）、（A′/A″）、（B/B²）、（B′/B″）
-    { tag: "lane", up: A_SPEC, down: AP_SPEC, anneal: false },
-    { tag: "lane", up: AP_SPEC, down: AS_SPEC, anneal: false },
-    { tag: "lane", up: B_SPEC, down: BP_SPEC, anneal: false },
-    { tag: "lane", up: BP_SPEC, down: BS_SPEC, anneal: false },
-  ],
-  "s8-anneal-3": [
-    { tag: "lane", up: A_SPEC, down: AP_SPEC, anneal: true },
-    { tag: "lane", up: AP_SPEC, down: AS_SPEC, anneal: true },
-    { tag: "lane", up: B_SPEC, down: BP_SPEC, anneal: true },
-    { tag: "lane", up: BP_SPEC, down: BS_SPEC, anneal: true },
-  ],
-  "s9-extend-3": [
-    // 第 3 轮：8 条单链各成行；行 4(A″)/行 8(B″) 为目标产物（绿虚线框）
-    { tag: "extend", temp: A_SPEC },
-    { tag: "extend", temp: AP_SPEC },
-    { tag: "extend", temp: AP_SPEC },
-    { tag: "extend", temp: AS_SPEC, target: true },
-    { tag: "extend", temp: B_SPEC },
-    { tag: "extend", temp: BP_SPEC },
-    { tag: "extend", temp: BP_SPEC },
-    { tag: "extend", temp: BS_SPEC, target: true },
-  ],
-  "s10-result": [
-    { tag: "extend", temp: A_SPEC },
-    { tag: "extend", temp: AP_SPEC },
-    { tag: "extend", temp: AP_SPEC },
-    { tag: "extend", temp: AS_SPEC, target: true },
-    { tag: "extend", temp: B_SPEC },
-    { tag: "extend", temp: BP_SPEC },
-    { tag: "extend", temp: BP_SPEC },
-    { tag: "extend", temp: BS_SPEC, target: true },
-  ],
+// ---------- 合成单元（固定池 14 个） ----------
+interface SynthUnit {
+  key: string;
+  spec: StrandSpec;         // 成链后的链 spec（决定橙段/蓝段/五三端标注）
+  ann: number;              // 引物（橙段 cap）可见的最小 stage index
+  ext: number;              // 蓝段 band 生长/可见的最小 stage index
+  g: SVGGElement;
+  cap: SVGRectElement;      // 橙段（退火 = 引物；成链后 = 5′ 端）
+  band: SVGRectElement;     // 蓝合成段（3′ 端，锚点生长）
+  p5: SVGTextElement;       // 退火引物 5′ 标注（仅退火态 ann ≤ idx < ext）
+  d1: SVGTextElement;       // 成链方向标注（贴 five/three 端各 11px）
+  d2: SVGTextElement;
+  full: number;             // 蓝段全长
+  anchor: number;           // 蓝段锚点 x
+}
+
+/** 14 个合成单元的激活幕：newA/newB=第 1 轮(s2 引物/s3 延伸)、r2×4=第 2 轮(s5/s6)、r3×8=第 3 轮(s8/s9) */
+function unitSpecs(): Array<{ key: string; spec: StrandSpec; ann: number; ext: number }> {
+  return [
+    { key: "newA", spec: AP_SPEC, ann: 2, ext: 3 },
+    { key: "newB", spec: BP_SPEC, ann: 2, ext: 3 },
+    { key: "r2-0", spec: AP_SPEC, ann: 5, ext: 6 },   // A²（模板 A 上合成）
+    { key: "r2-1", spec: AS_SPEC, ann: 5, ext: 6 },   // A″（模板 A′ 上合成，正确长度）
+    { key: "r2-2", spec: BP_SPEC, ann: 5, ext: 6 },   // B²（模板 B 上合成）
+    { key: "r2-3", spec: BS_SPEC, ann: 5, ext: 6 },   // B″（模板 B′ 上合成，正确长度）
+    { key: "r3-0", spec: AP_SPEC, ann: 8, ext: 9 },   // 模板 A
+    { key: "r3-1", spec: AS_SPEC, ann: 8, ext: 9 },   // 模板 A²（≡A′）
+    { key: "r3-2", spec: AS_SPEC, ann: 8, ext: 9 },   // 模板 A′
+    { key: "r3-3", spec: BS_SPEC, ann: 8, ext: 9 },   // 模板 A″
+    { key: "r3-4", spec: BP_SPEC, ann: 8, ext: 9 },   // 模板 B
+    { key: "r3-5", spec: BS_SPEC, ann: 8, ext: 9 },   // 模板 B²（≡B′）
+    { key: "r3-6", spec: BS_SPEC, ann: 8, ext: 9 },   // 模板 B′
+    { key: "r3-7", spec: AS_SPEC, ann: 8, ext: 9 },   // 模板 B″
+  ];
+}
+
+// ---------- 逐幕层位表（y 相对基座 BASE_Y；数值 = demo STAGES 逐字段搬运） ----------
+interface ChainSlot { chainA: number; chainB: number; units: number[]; }
+/** units 顺序 = unitSpecs 顺序（newA/newB/r2×4/r3×8）；未激活单元填占位 0（不渲染） */
+const LAYOUT: Record<string, ChainSlot> = {
+  "s0-template":   { chainA: -10, chainB: 10, units: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s1-denature-1": { chainA: -44, chainB: 44, units: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s2-anneal-1":   { chainA: -44, chainB: 44, units: [-30, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s3-extend-1":   { chainA: -44, chainB: 44, units: [-30, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s4-denature-2": { chainA: -58, chainB: 34, units: [-18, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s5-anneal-2":   { chainA: -84, chainB: 42, units: [-12, 96, -70, 2, 56, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s6-extend-2":   { chainA: -84, chainB: 42, units: [-12, 96, -70, 2, 56, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s7-denature-3": { chainA: -92, chainB: 34, units: [-20, 88, -62, 10, 64, 118, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s8-anneal-3":   { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
+  "s9-extend-3":   { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
+  "s10-result":    { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
+};
+
+/** stage id → 幕序号（s0=0 … s10=10） */
+const STAGE_INDEX: Record<string, number> = {
+  "s0-template": 0, "s1-denature-1": 1, "s2-anneal-1": 2, "s3-extend-1": 3, "s4-denature-2": 4,
+  "s5-anneal-2": 5, "s6-extend-2": 6, "s7-denature-3": 7, "s8-anneal-3": 8, "s9-extend-3": 9, "s10-result": 10,
 };
 
 const TEMP_MAP: Record<string, "95" | "55" | "72" | null> = {
-  "s0-template": null,
-  "s1-denature-1": "95",
-  "s2-anneal-1": "55",
-  "s3-extend-1": "72",
-  "s4-denature-2": "95",
-  "s5-anneal-2": "55",
-  "s6-extend-2": "72",
-  "s7-denature-3": "95",
-  "s8-anneal-3": "55",
-  "s9-extend-3": "72",
-  "s10-result": null,
+  "s0-template": null, "s1-denature-1": "95", "s2-anneal-1": "55", "s3-extend-1": "72",
+  "s4-denature-2": "95", "s5-anneal-2": "55", "s6-extend-2": "72",
+  "s7-denature-3": "95", "s8-anneal-3": "55", "s9-extend-3": "72", "s10-result": null,
 };
 
 /** 计数徽章只在延伸完成/结果帧现身（s3/s6/s9/s10），文案 目标产物 2ⁿ−2n */
 const BADGE_ROUND: Record<string, number> = {
-  "s3-extend-1": 1,
-  "s6-extend-2": 2,
-  "s9-extend-3": 3,
-  "s10-result": 3,
+  "s3-extend-1": 1, "s6-extend-2": 2, "s9-extend-3": 3, "s10-result": 3,
 };
 const SUP = ["", "¹", "²", "³", "⁴", "⁵"];
 
-interface RowEls {
-  g: SVGGElement;
-  bandT: SVGRectElement;
-  bandTp: SVGRectElement;
-  bandB: SVGRectElement;
-  bandBp: SVGRectElement;
-  newEl: SVGRectElement;
-  primerL: SVGRectElement;
-  primerR: SVGRectElement;
-  marker: SVGGElement;
-  dirs: SVGTextElement[];
-  p5s: SVGTextElement[];
-}
+// 目标产物绿虚线框（demo 几何：包「目标模板层 + 其上第 3 轮新链层」）
+const TM1_Y = -13;   // 包 A″ 层(−2) 与其上 r3-3 层(+12)：−13..19
+const TM1_H = 32;
+const TM2_Y = 110;   // 包 B″ 层(+118) 与其上 r3-7 层(+132)：110..144
+const TM2_H = 34;
 
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string>): SVGElementTagNameMap[K] {
   const e = document.createElementNS(NS, tag);
   for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v);
   return e;
-}
-
-function makeRow(): RowEls {
-  const g = el("g", { class: "pcr-row" });
-  const bandT = el("rect", { class: "pcr-band", x: String(BAND_X), y: "0", width: String(BAND_W), height: String(BAND_H), rx: String(BAND_H / 2), fill: GRAY });
-  const bandTp = el("rect", { class: "pcr-cap", x: String(PRIMER_L_X), y: "0", width: String(PRIMER_W), height: String(CAP_H), rx: String(CAP_H / 2), fill: ORANGE });
-  const bandB = el("rect", { class: "pcr-band", x: String(BAND_X), y: "0", width: String(BAND_W), height: String(BAND_H), rx: String(BAND_H / 2), fill: GRAY });
-  const bandBp = el("rect", { class: "pcr-cap", x: String(PRIMER_L_X), y: "0", width: String(PRIMER_W), height: String(CAP_H), rx: String(CAP_H / 2), fill: ORANGE });
-  const newEl = el("rect", { class: "pcr-new", x: "0", y: "0", width: "0", height: String(NEW_H), rx: String(NEW_H / 2), fill: BLUE });
-  const primerL = el("rect", { class: "pcr-primer-L", x: String(PRIMER_L_X), y: "0", width: String(PRIMER_W), height: String(PRIMER_H), rx: String(PRIMER_H / 2), fill: ORANGE, stroke: "#b45309" });
-  const primerR = el("rect", { class: "pcr-primer-R", x: String(PRIMER_R_X), y: "0", width: String(PRIMER_W), height: String(PRIMER_H), rx: String(PRIMER_H / 2), fill: ORANGE, stroke: "#b45309" });
-
-  // 目标产物绿虚线框：包住模板(−8)与新链(+18)两层（rectangle 常驻，g 显隐）
-  const marker = el("g", { class: "pcr-target-mark" });
-  marker.appendChild(el("rect", { x: String(MARK_X), y: String(MARK_Y), width: String(MARK_W), height: String(MARK_H), rx: "9", fill: "rgba(34,197,94,.07)", stroke: GREEN, "stroke-width": "2", "stroke-dasharray": "7 4" }));
-  const markText = el("text", { x: String(MARK_X - 6), y: "4", fill: "#15803d", "font-size": "11", "font-weight": "700", "text-anchor": "end" });
-  markText.textContent = "目标产物";
-  marker.appendChild(markText);
-
-  // 5′/3′ 方向标注（四枚）：aL/aR 贴上链(模板)链端、bL/bR 贴下链或新链链端；x 随链几何动态写入
-  const dirDefs = ["aL", "aR", "bL", "bR"];
-  const dirs = dirDefs.map((side) => {
-    const t = el("text", { class: "pcr-dir", "data-side": side, x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
-    t.textContent = "";
-    return t;
-  });
-
-  // 退火引物 5′ 标注（反平行：贴引物 5′ 端；延伸并入新链后由 bL/bR 承担，此处隐藏）
-  const p5L = el("text", { class: "pcr-p5-L", x: String(PRIMER_L_X + 4), y: "4", fill: "#fff", "font-size": "9", "font-weight": "700", "text-anchor": "middle" });
-  p5L.textContent = "5′";
-  const p5R = el("text", { class: "pcr-p5-R", x: String(PRIMER_R_X + PRIMER_W - 4), y: "4", fill: "#fff", "font-size": "9", "font-weight": "700", "text-anchor": "middle" });
-  p5R.textContent = "5′";
-
-  g.append(bandT, bandTp, bandB, bandBp, newEl, primerL, primerR, marker, ...dirs, p5L, p5R);
-  return { g, bandT, bandTp, bandB, bandBp, newEl, primerL, primerR, marker, dirs, p5s: [p5L, p5R] };
 }
 
 function makeTempTab(temp: "95" | "55" | "72"): SVGGElement {
@@ -278,27 +172,23 @@ function makeTempTab(temp: "95" | "55" | "72"): SVGGElement {
   return g;
 }
 
-type PcrState = Record<string, unknown>;
-
 export function createPcrScene(): SceneComponent {
   const root = {
-    rows: [] as RowEls[],
+    base: null as SVGGElement | null,
+    chainA: null as SVGGElement | null,
+    chainB: null as SVGGElement | null,
+    chainDirs: [] as SVGTextElement[],   // chainA 2 枚 + chainB 2 枚
+    units: [] as SynthUnit[],
+    tm: [] as SVGGElement[],
     temps: [] as SVGGElement[],
     clear: null as HTMLElement | null,
   };
 
-  const setO = (e: ElementCSSInlineStyle, on: boolean, onVal = "1"): void => {
-    e.style.opacity = on ? onVal : "0";
+  const setO = (e: ElementCSSInlineStyle, on: boolean): void => {
+    e.style.opacity = on ? "1" : "0";
   };
 
-  function rowOff(r: RowEls): void {
-    for (const sel of [r.bandT, r.bandTp, r.bandB, r.bandBp, r.newEl, r.primerL, r.primerR]) setO(sel, false);
-    setO(r.marker, false);
-    r.dirs.forEach((d) => setO(d, false));
-    r.p5s.forEach((d) => setO(d, false));
-  }
-
-  /** 带写入：x/width/fill 同步到属性与 style（CSS 几何通道可过渡），新链跨宽用 width 过渡 */
+  /** 带写入：x/width 同步到属性与 style（CSS 几何通道可过渡），fill 只写属性 */
   function setBand(e: SVGRectElement, x: number, w: number, color: string): void {
     e.setAttribute("x", String(x));
     e.setAttribute("width", String(w));
@@ -307,125 +197,122 @@ export function createPcrScene(): SceneComponent {
     e.setAttribute("fill", color);
   }
 
-  /** 单条链带写入：original=灰全长 224..616（橙段隐藏）；synth=蓝段 + 橙段 5′ 端 */
-  function setStrandBand(band: SVGRectElement, cap: SVGRectElement, s: StrandSpec, y: number): void {
-    if (s.kind === "original") {
-      setBand(band, BAND_X, BAND_W, GRAY);
-      setO(cap, false);
-    } else {
-      const [bf, bt] = s.blue!;
-      setBand(band, bf, bt - bf, BLUE);
-      setBand(cap, capXOf(s), PRIMER_W, ORANGE);
-      setO(cap, true);
-    }
-    band.style.transform = `translateY(${y}px)`;
-    cap.style.transform = `translateY(${y}px)`;
-    setO(band, true);
-  }
-
-  /** 5′/3′ 方向标注（随链真实朝向与链端几何）：五=左端坐标、三=右端坐标决定文本与位置 */
-  function setDirEnds(dirL: SVGTextElement, dirR: SVGTextElement, five: number, three: number, y: number): void {
+  /**
+   * 方向标注：dirFive = 标注 5′ 端的那枚、dirThree = 标注 3′ 端的那枚。
+   * left/right 由 five/three 大小决定；每枚 x = 对应端 ± 11px（y 由所在 g 的整体位移承担）。
+   */
+  function setDirPair(dirFive: SVGTextElement, dirThree: SVGTextElement, five: number, three: number): void {
     const left = Math.min(five, three);
     const right = Math.max(five, three);
-    dirL.textContent = five === left ? "5′" : "3′";
-    dirR.textContent = five === left ? "3′" : "5′";
-    dirL.setAttribute("x", String(left + 11));
-    dirR.setAttribute("x", String(right - 11));
-    dirL.style.transform = `translateY(${y}px)`;
-    dirR.style.transform = `translateY(${y}px)`;
-    setO(dirL, true);
-    setO(dirR, true);
+    dirFive.textContent = "5′";
+    dirThree.textContent = "3′";
+    dirFive.setAttribute("x", String((five === left ? left : right) + (five === left ? DIR_OFF : -DIR_OFF)));
+    dirThree.setAttribute("x", String((three === left ? left : right) + (three === left ? DIR_OFF : -DIR_OFF)));
   }
 
-  function layoutRow(r: RowEls, cfg: RowCfg, p: number, targetOn: boolean): void {
-    rowOff(r);
+  /** 母链（灰全长）+ 两枚方向标注 */
+  function makeChain(key: string, spec: StrandSpec): { g: SVGGElement; band: SVGRectElement; dirs: SVGTextElement[] } {
+    const g = el("g", { class: `pcr-chain pcr-chain-${key}` });
+    const band = el("rect", { class: "pcr-band", x: String(BAND_X), y: "0", width: String(BAND_W), height: String(BAND_H), rx: String(BAND_H / 2), fill: GRAY });
+    const d1 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    const d2 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    d1.textContent = "";
+    d2.textContent = "";
+    setDirPair(d1, d2, fiveOf(spec), threeOf(spec));
+    g.append(band, d1, d2);
+    return { g, band, dirs: [d1, d2] };
+  }
 
-    switch (cfg.tag) {
-      case "pair": {
-        // s0：两条母链（灰A 5′ 左 / 灰B 5′ 右）±8 贴拢，无引物无新链
-        setStrandBand(r.bandT, r.bandTp, A_SPEC, -EX_OFF);
-        setStrandBand(r.bandB, r.bandBp, B_SPEC, EX_OFF);
-        setDirEnds(r.dirs[0], r.dirs[1], fiveOf(A_SPEC), threeOf(A_SPEC), -EX_OFF);
-        setDirEnds(r.dirs[2], r.dirs[3], fiveOf(B_SPEC), threeOf(B_SPEC), EX_OFF);
-        break;
-      }
-      case "lane": {
-        // 泳道：双链两条（都是父链/模板）±45 原位纯垂直位移分开；退火贴各链 3′ 端下方 1 支引物
-        setStrandBand(r.bandT, r.bandTp, cfg.up, -SS_OFF);
-        setStrandBand(r.bandB, r.bandBp, cfg.down, SS_OFF);
-        setDirEnds(r.dirs[0], r.dirs[1], fiveOf(cfg.up), threeOf(cfg.up), -SS_OFF);
-        setDirEnds(r.dirs[2], r.dirs[3], fiveOf(cfg.down), threeOf(cfg.down), SS_OFF);
-        if (cfg.anneal) {
-          const upP = primerOf(cfg.up);
-          const dnP = primerOf(cfg.down);
-          const upEl = upP === "L" ? r.primerL : r.primerR;
-          const dnEl = dnP === "L" ? r.primerL : r.primerR;
-          setO(upEl, true);
-          upEl.style.transform = `translateY(${-SS_OFF + PRIMER_OFF}px)`;
-          setO(dnEl, true);
-          dnEl.style.transform = `translateY(${SS_OFF + PRIMER_OFF}px)`;
-          // 引物 5′ 标注（反平行：贴各自 5′ 端）——仅退火泳道展示
-          const up5 = upP === "L" ? r.p5s[0] : r.p5s[1];
-          const dn5 = dnP === "L" ? r.p5s[0] : r.p5s[1];
-          setO(up5, true);
-          up5.style.transform = `translateY(${-SS_OFF + PRIMER_OFF}px)`;
-          setO(dn5, true);
-          dn5.style.transform = `translateY(${SS_OFF + PRIMER_OFF}px)`;
-        }
-        break;
-      }
-      case "extend": {
-        // 延伸：模板恒在 bandT(−8)、新链（橙引物段 + 蓝合成段）恒在下(+18)
-        const temp = cfg.temp;
-        setStrandBand(r.bandT, r.bandTp, temp, -EX_OFF);
-        setDirEnds(r.dirs[0], r.dirs[1], fiveOf(temp), threeOf(temp), -EX_OFF);
-        // 本轮引物：5′ 端贴模板 3′ 端（反平行）、3′ 端朝内 = 延伸起点
-        const pSide = primerOf(temp);
-        const pEl = pSide === "L" ? r.primerL : r.primerR;
-        setO(pEl, true);
-        pEl.style.transform = `translateY(${CHAIN_OFF}px)`;
-        // 合成段：从引物 3′ 端（锚点）向模板 5′ 端配满全长——L 锚 272 右伸、R 锚 568 左伸
-        const [sFrom, sTo] = synthSpan(temp);
-        const full = sTo - sFrom;
-        const w = Math.max(0, Math.round(full * p));
-        const x = pSide === "L" ? sFrom : PRIMER_R_X - w;
-        setBand(r.newEl, x, w, BLUE);
-        r.newEl.style.transform = `translateY(${CHAIN_OFF}px)`;
-        setO(r.newEl, true);
-        // 新链 5′/3′ 标注（反平行：新链 5′ = 引物 5′ 端、新链 3′ = 模板 5′ 端同侧）
-        const nFive = pSide === "L" ? PRIMER_L_X : PRIMER_R_X + PRIMER_W;
-        setDirEnds(r.dirs[2], r.dirs[3], nFive, fiveOf(temp), CHAIN_OFF);
-        if (cfg.target && targetOn) setO(r.marker, true);
-        break;
-      }
-    }
+  /** 合成单元：橙段 cap + 蓝段 band + 退火 5′ 标注 + 成链方向标注 */
+  function makeUnit(u: { key: string; spec: StrandSpec; ann: number; ext: number }): SynthUnit {
+    const g = el("g", { class: `pcr-unit pcr-unit-${u.key}` });
+    const cap = el("rect", { class: "pcr-cap", x: String(capXOf(u.spec)), y: "0", width: String(PRIMER_W), height: String(PRIMER_H), rx: String(PRIMER_H / 2), fill: ORANGE });
+    const anchor = anchorOf(u.spec);
+    const [bf, bt] = u.spec.blue!;
+    const band = el("rect", { class: "pcr-new", x: String(anchor), y: "0", width: "0", height: String(NEW_H), rx: String(NEW_H / 2), fill: BLUE });
+    const p5 = el("text", {
+      class: "pcr-p5",
+      x: String(capXOf(u.spec) === PRIMER_L_X ? PRIMER_L_X + P5_OFF : PRIMER_R_X + PRIMER_W - P5_OFF),
+      y: "4", fill: "#fff", "font-size": "9", "font-weight": "700", "text-anchor": "middle",
+    });
+    p5.textContent = "5′";
+    const d1 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    const d2 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    d1.textContent = "";
+    d2.textContent = "";
+    setDirPair(d1, d2, fiveOf(u.spec), threeOf(u.spec));
+    g.append(cap, band, p5, d1, d2);
+    return { ...u, g, cap, band, p5, d1, d2, full: bt - bf, anchor };
+  }
+
+  /** 目标产物绿虚线框（仅 s9/s10 淡入） */
+  function makeTarget(tmY: number, tmH: number): SVGGElement {
+    const g = el("g", { class: "pcr-target" });
+    g.appendChild(el("rect", { x: String(TM_X), y: String(tmY), width: String(TM_W), height: String(tmH), rx: "9", fill: "rgba(34,197,94,.07)", stroke: GREEN, "stroke-width": "2", "stroke-dasharray": "7 4" }));
+    const t = el("text", { x: String(TM_X - 6), y: String(tmY + 19), fill: "#15803d", "font-size": "11", "font-weight": "700", "text-anchor": "end" });
+    t.textContent = "目标产物";
+    g.appendChild(t);
+    return g;
   }
 
   function render(state: PcrState): void {
-    const s = state as PcrState & { stage?: string; extensionProgress?: number };
+    const s = state as PcrState;
     const stageId = String(s.stage ?? "");
-    const cfgs = ROW_MAP[stageId] ?? [];
-    const ys = ROW_YS[cfgs.length] ?? ROW_YS[1]!;
+    const idx = STAGE_INDEX[stageId] ?? 0;
+    const layout = LAYOUT[stageId];
     const p = Number(s.extensionProgress) || 0;
-    const targetOn = stageId === "s9-extend-3" || stageId === "s10-result";
     const activeTemp = TEMP_MAP[stageId] ?? null;
 
-    root.rows.forEach((r, i) => {
-      const cfg = cfgs[i];
-      if (!cfg) {
-        r.g.style.opacity = "0";
-        rowOff(r);
+    if (!root.base || !layout) return;
+
+    // 基座恒定 + 母链
+    root.base.style.transform = `translate(0,${BASE_Y}px)`;
+    if (root.chainA && root.chainB && root.chainDirs.length === 4) {
+      root.chainA.style.transform = `translateY(${layout.chainA}px)`;
+      root.chainB.style.transform = `translateY(${layout.chainB}px)`;
+      // 母链带恒可见 + 方向标注常驻可见
+      const bandA = root.chainA.querySelector<SVGRectElement>(".pcr-band");
+      const bandB = root.chainB.querySelector<SVGRectElement>(".pcr-band");
+      if (bandA) setO(bandA, true);
+      if (bandB) setO(bandB, true);
+      root.chainDirs.forEach((d) => setO(d, true));
+    }
+
+    // 合成单元：退火态（ann ≤ idx < ext）只显示橙段引物 + 5′ 标注；成链后（idx ≥ ext）橙段+蓝段+方向标注
+    root.units.forEach((u, i) => {
+      const y = layout.units[i];
+      u.g.style.transform = `translateY(${y}px)`;
+      const active = idx >= u.ann;
+      const synth = idx >= u.ext;
+      const w = idx === u.ext ? Math.max(0, Math.round(u.full * p)) : u.full;
+      if (!active) {
+        setO(u.cap, false); setO(u.band, false); setO(u.p5, false); setO(u.d1, false); setO(u.d2, false);
         return;
       }
-      r.g.style.opacity = "1";
-      r.g.style.transform = `translateY(${ys[i] ?? 250}px)`;
-      layoutRow(r, cfg, p, targetOn);
+      setO(u.cap, true);
+      // 蓝段：锚点固定，向模板 5′ 端方向展开（three 左 → 锚 568 左伸；three 右 → 锚 272 右伸）
+      if (synth) {
+        const x = u.spec.three === "left" ? u.anchor - w : Math.min(u.anchor, u.anchor + w);
+        setBand(u.band, x, w, BLUE);
+        setO(u.band, true);
+        setO(u.d1, true); setO(u.d2, true);
+        setO(u.p5, false);
+      } else {
+        setBand(u.band, u.anchor, 0, BLUE);
+        setO(u.band, false);
+        setO(u.p5, true);
+        setO(u.d1, false); setO(u.d2, false);
+      }
     });
 
+    // 目标产物：仅第 3 轮延伸完成（s9/s10）淡入
+    const targetOn = stageId === "s9-extend-3" || stageId === "s10-result";
+    root.tm.forEach((t) => setO(t, targetOn));
+
+    // 温度牌与徽章
     root.temps.forEach((t) => {
-      t.style.opacity = t.getAttribute("data-temp") === activeTemp ? "1" : "0.25";
+      setO(t, t.getAttribute("data-temp") === activeTemp);
     });
-
     const round = BADGE_ROUND[stageId];
     if (root.clear) {
       if (round) {
@@ -441,25 +328,34 @@ export function createPcrScene(): SceneComponent {
   function mount(container: HTMLElement): void {
     const wrap = document.createElement("div");
     wrap.className = "pcr-scene";
-
     const svg = el("svg", { viewBox: `0 0 ${VB_W} ${VB_H}`, role: "img" });
-    const rowsG = el("g", { class: "pcr-rows" });
-    for (let i = 0; i < 8; i++) {
-      const row = makeRow();
-      root.rows.push(row);
-      rowsG.appendChild(row.g);
-    }
-    svg.appendChild(rowsG);
-    for (const t of ["95", "55", "72"] as const) {
-      const tab = makeTempTab(t);
-      root.temps.push(tab);
-      svg.appendChild(tab);
-    }
+
+    const base = el("g", { class: "pcr-base" });
+    root.base = base;
+
+    // 两条母链（灰）+ 方向标注 4 枚
+    const a = makeChain("A", A_SPEC);
+    const b = makeChain("B", B_SPEC);
+    root.chainA = a.g; root.chainB = b.g;
+    root.chainDirs = [...a.dirs, ...b.dirs];
+    base.appendChild(a.g);
+    base.appendChild(b.g);
+
+    // 14 个合成单元
+    root.units = unitSpecs().map((d) => makeUnit(d));
+    root.units.forEach((u) => base.appendChild(u.g));
+
+    // 目标产物绿虚线框（2 个，仅 s9/s10 显示）
+    root.tm = [makeTarget(TM1_Y, TM1_H), makeTarget(TM2_Y, TM2_H)];
+    root.tm.forEach((t) => base.appendChild(t));
+
+    svg.appendChild(base);
+    for (const t of ["95", "55", "72"] as const) root.temps.push(makeTempTab(t));
+    root.temps.forEach((t) => svg.appendChild(t));
 
     const clear = document.createElement("div");
     clear.className = "pcr-clear-badge";
     clear.textContent = "";
-
     wrap.appendChild(svg);
     wrap.appendChild(clear);
     root.clear = clear;
