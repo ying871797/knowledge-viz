@@ -70,6 +70,7 @@ npm run build                 # 先 tsc --noEmit 再 vite build，产物 dist/
 - 本仓库采用子代理开发流程：进度账本在 `.superpowers/sdd/progress.md`（含各任务完成记录与遗留 minor findings），接手时先读它和 `git log`。
 - 领域术语表在 `CONTEXT.md`（阶段/元素/槽位/示意取舍等定义以它为准）；架构决策记录在 `docs/adr/`。
 - 实施方案文档放 `.proposals/*.html`（自包含 HTML，需用户审批后才能动手）；`.my_proposals/` 为历史目录勿混用。
+- **写完任何面向用户的文档（`.proposals/*.html`、CONTEXT.md 术语更新、`docs/adr/*` 等）必须立即自动打开供审阅**：Windows 用 `Start-Process -FilePath "<绝对路径>"`（ShellExecute 默认处理器，实测可靠；PowerShell 5.1 中 `cmd /c start "" "<路径>"` 的引号嵌套常解析失败，命令返回但文件未打开，勿用）用系统默认程序打开；不要写完就结束，等用户看完反馈。
 - 部署：push 到 main 触发 `.github/workflows/deploy.yml`（CI 先跑 `npm test` + build，测试挂则不部署）；首次部署需在仓库 Settings → Pages 把 Source 设为 "GitHub Actions"。`base: './'` 勿改为绝对路径。
 - 根目录的 docx 是内容素材（用户文件），不入库、不要提交。
 
