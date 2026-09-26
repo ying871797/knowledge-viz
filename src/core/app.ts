@@ -124,6 +124,9 @@ export function mountCoursePage(
   const svg = stageBox.querySelector("svg");
   let zoomCtrl: ZoomController | null = null;
   if (svg) {
+    // 移动端纵向放大：slice 裁左右纯空白（配合媒体查询 aspect-ratio 抬高显示盒）。
+    // slice 是 SVG 属性非 CSS 属性，须在装配层统一设置；桌面端盒子比例=viewBox 时 slice 与 meet 渲染一致，零变化。
+    svg.setAttribute("preserveAspectRatio", "xMidYMid slice");
     zoomCtrl = new ZoomController(svg, stageBox);
   }
 
