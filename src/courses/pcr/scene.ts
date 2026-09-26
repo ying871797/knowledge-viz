@@ -1,13 +1,15 @@
 /**
- * PCR 场景（v6.2.1 呼吸感版，基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
- * v6.2.1 重叠修复方案 .proposals/2026-09-26-005-pcr-v62-overlap-fix.html 均已批准）。
+ * PCR 场景（v6.2.2 呼吸感版，基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
+ * v6.2.1 重叠修复方案 .proposals/2026-09-26-005-pcr-v62-overlap-fix.html、
+ * v6.2.2 链距加大与目标框校准方案 .proposals/2026-09-26-006-pcr-v62-spacing-and-target.html 均已批准）。
  *
  * 模型（示取舍登记 .superpowers/sdd/progress.md）：
  * - 布局模型 = 单容器恒定基座 + 元素级垂直微排（完全按 pcr_v6_demo.html）：
  *   基座 BASE_Y=250 永不拆行、不行位置跳变；分子数 1→2→4→8 靠行内元素微排实现。
  *   安静三阈值（测试强制）：延伸/结果幕 0 位移、变性幕 ≤14px、新轮微排 ≤28px；
- *   第 3 轮 8 条模板 38px 均匀步进（v6.2 起 30→38；v6.2.1 起同对贴 19/跨对 19 对称分配，为 14px 方向标注
- *   字形让出 ±11px 身量而不侵入相邻带——缘由见 progress.md v6.2 / v6.2.1 登记）。
+ *   第 3 轮 8 条模板 40px 均匀步进（v6.2 起 30→38、v6.2.1 对称 19/19、v6.2.2 对称 20/20——P=40 为 s7→s8 ≤28px
+ *   阈值锁定的极限，P=41 无解；第 2 轮 s5/s6 保持 19/19 不动），为 14px 方向标注字形让出 ±11px 身量而不侵入
+ *   相邻带——缘由见 progress.md v6.2 / v6.2.1 / v6.2.2 登记）。
  * - 反平行语义（v6 延续）：引物 5′ 端贴模板 3′ 端内侧 24px、3′ 端朝内为延伸起点；
  *   新链 = 橙引物段（5′，原位停驻）+ 蓝合成段（3′）一条带；蓝段从引物 3′ 端锚点向模板 5′ 端配满全长
  *   （width 锚点生长，几何等价 demo 的 scaleX；L 锚 272 右伸、R 锚 568 左伸）。
@@ -123,7 +125,8 @@ function unitSpecs(): Array<{ key: string; spec: StrandSpec; ann: number; ext: n
 }
 
 // ---------- 逐幕层位表（y 相对基座 BASE_Y） ----------
-// s0/s1/s4 = demo STAGES 逐字段搬运；s2/s3 同对贴 14→19 为 v6.2.1 调整；s5-s10 为 v6.2.1 对称档距：同对 19/跨对 19（步进恒 38px），缘由见 progress.md v6.2 / v6.2.1。
+// s0/s1/s4 = demo STAGES 逐字段搬运；s2/s3 同对贴 14→19 为 v6.2.1 调整；s5/s6 保持 v6.2.1 对称档距 19/19（第 2 轮不挤不动）；
+// s7-s10 为 v6.2.2：第 3 轮对称档距同对 20/跨对 20（步进 40px，P=40 是 s7→s8 ≤28px 阈值下的极限，P=41 无解），缘由见 progress.md v6.2 / v6.2.1 / v6.2.2。
 interface ChainSlot { chainA: number; chainB: number; units: number[]; }
 /** units 顺序 = unitSpecs 顺序（newA/newB/r2×4/r3×8）；未激活单元填占位 0（不渲染） */
 const LAYOUT: Record<string, ChainSlot> = {
@@ -134,10 +137,10 @@ const LAYOUT: Record<string, ChainSlot> = {
   "s4-denature-2": { chainA: -58, chainB: 34, units: [-18, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
   "s5-anneal-2":   { chainA: -86, chainB: 54, units: [-26, 96, -67, -7, 73, 115, 0, 0, 0, 0, 0, 0, 0, 0] },
   "s6-extend-2":   { chainA: -86, chainB: 54, units: [-26, 96, -67, -7, 73, 115, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s7-denature-3": { chainA: -98, chainB: 42, units: [-38, 99, -60, 0, 80, 123, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s8-anneal-3":   { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -101, -63, -25, 13, 51, 89, 127, 165] },
-  "s9-extend-3":   { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -101, -63, -25, 13, 51, 89, 127, 165] },
-  "s10-result":    { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -101, -63, -25, 13, 51, 89, 127, 165] },
+  "s7-denature-3": { chainA: -98, chainB: 42, units: [-38, 99, -60, 0, 80, 127, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s8-anneal-3":   { chainA: -125, chainB: 35, units: [-45, 115, -85, -5, 75, 155, -105, -65, -25, 15, 55, 95, 135, 175] },
+  "s9-extend-3":   { chainA: -125, chainB: 35, units: [-45, 115, -85, -5, 75, 155, -105, -65, -25, 15, 55, 95, 135, 175] },
+  "s10-result":    { chainA: -125, chainB: 35, units: [-45, 115, -85, -5, 75, 155, -105, -65, -25, 15, 55, 95, 135, 175] },
 };
 
 /** stage id → 幕序号（s0=0 … s10=10） */
@@ -158,11 +161,11 @@ const BADGE_ROUND: Record<string, number> = {
 };
 const SUP = ["", "¹", "²", "³", "⁴", "⁵"];
 
-// 目标产物绿虚线框（demo 几何：包「目标模板层 + 其上第 3 轮新链层」；v6.2.1 为 r3-7 层位 +5 同步整形）
-const TM1_Y = -17;   // 包 A″ 层(−6) 与其上 r3-3 层(+13)：−17..21（r3-3 带 ±6 下缘 19，留 2）
-const TM1_H = 38;
-const TM2_Y = 135;   // 包 B″ 层(+146) 与其上 r3-7 层(+165)：135..173（主导带 139..171，上下等余）
-const TM2_H = 38;
+// 目标产物绿虚线框（demo 几何：包「目标模板层 + 其上第 3 轮新链层」；v6.2.2 起对称 padding 2px 校准框位）
+const TM1_Y = -13;   // 包 A″ 层(−5，带 −11..1) 与其上 r3-3 层(+15，带 9..21)：−13..23（上下各 padding 2）
+const TM1_H = 36;
+const TM2_Y = 147;   // 包 B″ 层(+155，带 149..161) 与其上 r3-7 层(+175，带 169..181)：147..183（上下各 padding 2）
+const TM2_H = 36;
 
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string>): SVGElementTagNameMap[K] {
   const e = document.createElementNS(NS, tag);

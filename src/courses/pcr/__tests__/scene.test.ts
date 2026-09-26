@@ -1,10 +1,12 @@
 /**
- * PCR 场景测试（v6.2.1 重叠修复版，基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
- * v6.2.1 重叠修复方案 .proposals/2026-09-26-005-pcr-v62-overlap-fix.html 均已批准）。
+ * PCR 场景测试（v6.2.2 链距加大版，基线 v6.1 切换安静；v6.2 方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html、
+ * v6.2.1 重叠修复方案 .proposals/2026-09-26-005-pcr-v62-overlap-fix.html、
+ * v6.2.2 链距加大与目标框校准方案 .proposals/2026-09-26-006-pcr-v62-spacing-and-target.html 均已批准）。
  *
  * 布局模型 = 单容器恒定基座 + 元素级垂直微排（s0/s1/s4 数值 = pcr_v6_demo.html 逐字段搬运；
- * s5-s10 为 v6.2.1 对称档距：同对贴 19/跨对 19（步进 38px）——v6.2.1 为 14px 方向标注字形让出 ±11px 身量，
- * 消除「标注侵入相邻带」与「s7 幕内叠带」两类目检重叠——见 .superpowers/sdd/progress.md v6.2 / v6.2.1 登记）。
+ * s5/s6 保持 v6.2.1 对称档距 19/19（第 2 轮不挤不动）；s7-s10 为 v6.2.2：第 3 轮同对 20/跨对 20（步进 40px，
+ * P=40 为「s7→s8 ≤28px」阈值下的极限，P=41 无解）——链距加大 + 目标框对称 padding 2px 校准，
+ * 见 .superpowers/sdd/progress.md v6.2 / v6.2.1 / v6.2.2 登记）。
  * 测试职责分工：几何/数量/颜色/「切换安静三阈值」由断言强制；直观性/语义类（微排观感、无瞬切）以用户目检为准。
  * 本文件不测：addEvent 无关样式细节（颜色仅测 fill/stroke）、Taq（已彻底移除，另有专项用例）。
  */
@@ -149,21 +151,21 @@ describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
     expect(on(m5.unit("r2-0").querySelector(".pcr-new"))).toBe(false);
   });
 
-  it("第 3 轮 8 条模板 38px 均匀步进（v6.2 30→38；v6.2.1 对称档距 19/19）：r3 层位 −101..+165 等差 38，与模板层交错同对贴 19、跨对 19（净距 6 ≥6 不咬合）", () => {
+  it("第 3 轮 8 条模板 40px 均匀步进（v6.2 30→38、v6.2.1 19/19、v6.2.2 对称档距 20/20）：r3 层位 −105..+175 等差 40，与模板层交错同对贴 20、跨对 20（净距 7 ≥7 不咬合）", () => {
     const m = mountAt("s9-extend-3");
     const ys = UNIT_KEYS.slice(6).map((k) => elY(m.unit(k)));
-    expect(ys).toEqual([-101, -63, -25, 13, 51, 89, 127, 165]);
-    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1], `r3 slot ${i - 1}->${i}`).toBe(38);
+    expect(ys).toEqual([-105, -65, -25, 15, 55, 95, 135, 175]);
+    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1], `r3 slot ${i - 1}->${i}`).toBe(40);
     // 8 条模板层（s9）：chainA(A) / r2-0(A²) / newA(A′) / r2-1(A″) / chainB(B) / r2-2(B²) / newB(B′) / r2-3(B″)
     const temps = [elY(m.chain("A")), elY(m.unit("r2-0")), elY(m.unit("newA")), elY(m.unit("r2-1")),
                    elY(m.chain("B")), elY(m.unit("r2-2")), elY(m.unit("newB")), elY(m.unit("r2-3"))];
-    expect(temps).toEqual([-120, -82, -44, -6, 32, 70, 108, 146]);
+    expect(temps).toEqual([-125, -85, -45, -5, 35, 75, 115, 155]);
     for (let i = 0; i < 8; i++) {
-      expect(ys[i] - temps[i], `同对 ${i} 新链贴模板 +19`).toBe(19);
+      expect(ys[i] - temps[i], `同对 ${i} 新链贴模板 +20`).toBe(20);
       if (i < 7) {
-        expect(temps[i + 1] - ys[i], `跨对 ${i}->${i + 1} 拉开 19`).toBe(19);
-        // 相邻层链带（模板±7 / 新链±6）跨对净距 = 19 − 13 = 6 ≥ 6
-        expect(temps[i + 1] - ys[i] - 13, `跨对净距 ${i}`).toBeGreaterThanOrEqual(6);
+        expect(temps[i + 1] - ys[i], `跨对 ${i}->${i + 1} 拉开 20`).toBe(20);
+        // 相邻层链带（模板±7 / 新链±6）跨对净距 = 20 − 13 = 7 ≥ 7
+        expect(temps[i + 1] - ys[i] - 13, `跨对净距 ${i}`).toBeGreaterThanOrEqual(7);
       }
     }
   });
@@ -205,10 +207,10 @@ describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
     expect(elY(m7.unit("r2-0"))).toBe(-60);
     expect(elY(m7.unit("r2-1"))).toBe(0);
     expect(elY(m7.unit("r2-2"))).toBe(80);
-    expect(elY(m7.unit("r2-3"))).toBe(123);   // v6.2.1：122→123（贴 B′ 下方 24）
+    expect(elY(m7.unit("r2-3"))).toBe(127);   // v6.2.2：123→127（s8 B″=155，位移 28 恰达阈值上限）
   });
 
-  it("v6.2.1 防回归：s9 同幕内相邻带间隙 ≥6，且方向标注字形（14px 粗体+描边 3px，身量 ±11px）不侵入任何邻带", () => {
+  it("v6.2.2 防回归：s9 同幕内相邻带间隙 ≥7，且方向标注字形（14px 粗体+描边 3px，身量 ±11px）不侵入任何邻带", () => {
     const m = mountAt("s9-extend-3");
     // 可见链带：母链 A/B（带高 14，半 7）+ 全部 14 个成链单元（带高 NEW_H=12，半 6），按 y 排序
     const bands = [
@@ -220,8 +222,8 @@ describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
     for (let i = 0; i + 1 < bands.length; i++) {
       const a = bands[i], b = bands[i + 1];
       const gap = b.y - b.half - (a.y + a.half);
-      expect(gap, `相邻带 ${a.name}(${a.y})→${b.name}(${b.y}) 间隙`).toBeGreaterThanOrEqual(6);
-      // 标注字形视觉身量（上 −10.67 / 下 +10.97）按保守 ±11px 与邻带缘分离（对称档距 19/19 保证上下各 ~2px）
+      expect(gap, `相邻带 ${a.name}(${a.y})→${b.name}(${b.y}) 间隙`).toBeGreaterThanOrEqual(7);
+      // 标注字形视觉身量（上 −10.67 / 下 +10.97）按保守 ±11px 与邻带缘分离（对称档距 20/20 保证上下各 ~3px）
       expect(a.y + 11, `${a.name} 标注下缘 vs ${b.name} 带上缘`).toBeLessThanOrEqual(b.y - b.half);
       expect(b.y - 11, `${b.name} 标注上缘 vs ${a.name} 带下缘`).toBeGreaterThanOrEqual(a.y + a.half);
     }
@@ -395,7 +397,7 @@ describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
     expect(onCount("s10-result")).toBe(0);
   });
 
-  it("目标产物绿虚线框：仅 s9/s10 出现 2 个；框 1=−17..21 包住 A″(−6)+r3-3(+13)、框 2=135..173 包住 B″(+146)+r3-7(+165)；s8 无框", () => {
+  it("目标产物绿虚线框：仅 s9/s10 出现 2 个；框 1=−13..23 包住 A″(−5)+r3-3(+15)、框 2=147..183 包住 B″(+155)+r3-7(+175)；s8 无框", () => {
     const m8 = mountAt("s8-anneal-3");
     expect(m8.targets.filter((t) => on(t)).length).toBe(0);
     const m9 = mountAt("s9-extend-3");
@@ -405,17 +407,17 @@ describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
     const r2 = t2.querySelector<R>("rect")!;
     expect(num(r1, "x")).toBe(240);
     expect(num(r1, "width")).toBe(360);
-    expect(num(r1, "y")).toBe(-17);
-    expect(num(r1, "height")).toBe(38);
+    expect(num(r1, "y")).toBe(-13);
+    expect(num(r1, "height")).toBe(36);
     expect(r1.getAttribute("stroke")).toBe(GREEN);
     expect(r1.getAttribute("stroke-dasharray")).toBe("7 4");
-    expect(num(r2, "y")).toBe(135);
-    expect(num(r2, "height")).toBe(38);
+    expect(num(r2, "y")).toBe(147);
+    expect(num(r2, "height")).toBe(36);
     // 框内层位验证：A″ 与 B″ 模板层及其上第 3 轮新链层
-    expect(elY(m9.unit("r2-1"))).toBe(-6);
-    expect(elY(m9.unit("r3-3"))).toBe(13);
-    expect(elY(m9.unit("r2-3"))).toBe(146);
-    expect(elY(m9.unit("r3-7"))).toBe(165);
+    expect(elY(m9.unit("r2-1"))).toBe(-5);
+    expect(elY(m9.unit("r3-3"))).toBe(15);
+    expect(elY(m9.unit("r2-3"))).toBe(155);
+    expect(elY(m9.unit("r3-7"))).toBe(175);
     expect(mountAt("s10-result").targets.filter((t) => on(t)).length).toBe(2);
   });
 
