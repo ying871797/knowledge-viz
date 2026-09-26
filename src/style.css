@@ -754,6 +754,21 @@ body.page-home {
   .chart-card svg text.legend-text { font-size: 18px; }
   /* 阶段名最长 9 字，放大受相邻标签间距约束，仅小幅补偿（与桌面同等的轻微重叠特征） */
   .chart-card svg text.stage-label { font-size: 13px; }
+
+  /* ===== 移动端动画区放大（收紧水平留白 + 纵向增高，viewBox 不变）=====
+     横向：场景宽度被 #app 20×2 + section 8×2 + 边框 2×2 ≈ 40px 挤压，
+     压缩 padding/gap 直接转化为场景像素（375px 屏宽 315→343）。
+     纵向：svg 显示盒按各课程实测安全上限 ×0.9 提 ratio（高/宽），
+     preserveAspectRatio=slice 由 app.ts 统一设置，裁掉左右纯空白边距、内容零损伤。
+     上限来源见 .proposals/2026-09-26-010-mobile-scene-enlarge.html Tab2；改值须先复核内容边界。 */
+  body:not(.page-home) #app { padding: 12px 8px; }        /* 原 20px 全边 → 保留垂直呼吸感 */
+  .course-grid { gap: 12px; }                             /* 原 16px，只影响课程页列间距 */
+  .course-grid section { padding: 6px; }                  /* 原 8px，取景框 ::before inset 6px 仍在 SVG 外 */
+  .mito-scene svg { aspect-ratio: 1 / 0.85; }             /* 上限 0.99×0.86；左右余量 198px */
+  .pcr-scene svg { aspect-ratio: 1 / 0.9; }               /* 上限 1.18×0.76；余量 218/244px */
+  .dna-scene svg { aspect-ratio: 1 / 0.58; }              /* 上限 0.625×0.93；余量 80/123px */
+  .meiosis-scene svg { aspect-ratio: 1 / 0.55; }          /* 上限 0.595×0.92；余量 64px */
+  .gene-scene svg { aspect-ratio: 1 / 0.52; }             /* 上限 0.566×0.92；瓶颈课程，余量 46.5px */
 }
 
 /* 减少动效偏好：关闭纯装饰动画（首页卡片入场、hover 位移、扫描光带） */

@@ -218,4 +218,21 @@ describe("mountCoursePage 装配", () => {
     const children = [...root.querySelectorAll(".chart-card, .formula-card")];
     expect(children[children.length - 1].classList.contains("formula-card")).toBe(true);
   });
+
+  it("场景 svg 装配时设置 preserveAspectRatio=slice（移动端纵向放大裁切通道）", () => {
+    // stub 场景真实插入 svg（现有 makeSceneStub 的 mount 不生成 DOM，此处单独构造）
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const scene: SceneComponent & { destroy: () => void } = {
+      mount: vi.fn((box: HTMLElement) => box.appendChild(svg)),
+      render: vi.fn(),
+      destroy: vi.fn(),
+    };
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const handle = mountCoursePage(root, makeCourse(), () => scene);
+    // slice 是 SVG 属性非 CSS 属性，须由装配层设置（配合媒体查询 aspect-ratio 纵向放大）
+    expect(svg.getAttribute("preserveAspectRatio")).toBe("xMidYMid slice");
+    handle.destroy();
+    root.remove();
+  });
 });
