@@ -233,7 +233,7 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     }
   });
 
-  it("温度牌三枚常驻；s1 高亮 95、s5 高亮 55、s3 高亮 72、s10 全灭", () => {
+  it("温度牌三枚常驻、整体居中于主体中轴（v7：x=291/381/471）；s1 高亮 95、s5 高亮 55、s3 高亮 72、s10 全灭", () => {
     const tempBy = (id: string) => {
       const { temps } = mountAt(id);
       return Object.fromEntries(temps.map((t) => [t.getAttribute("data-temp"), on(t)]));
@@ -243,6 +243,11 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     expect(tempBy("s5-anneal-2")).toEqual({ "95": false, "55": true, "72": false });
     expect(tempBy("s3-extend-1")).toEqual({ "95": false, "55": false, "72": true });
     expect(tempBy("s10-result")).toEqual({ "95": false, "55": false, "72": false });
+    // v7：三档温度牌整体居中于主体中轴 420（组区间 291..549，牌宽 78）
+    const { temps } = mountAt("s1-denature-1");
+    const xs = temps.map((t) => num(t.querySelector<R>("rect")!, "x"));
+    expect(xs).toEqual([291, 381, 471]);
+    expect((xs[0] + 78 + xs[2]) / 2).toBe(420);   // 组中轴 = 主体中轴
   });
 
   it("双灰母链全程常驻：s1 仅 A/B 灰链 ±56 分离（v6.3 单侧 46px），无引物、无合成段", () => {

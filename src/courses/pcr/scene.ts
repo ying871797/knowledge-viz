@@ -14,6 +14,7 @@
  *   直接响应「分子两条链紧凑、分子间距离大」的目检反馈；第 1/2 轮 4 分子贴距 25、间距 73/73/75 均匀；
  *   v6.3.1：s7 变性幕 4 分子同步分离（贴距 = 分子间 = 39 等距泳道，唯一整数解，A/B″ 仍卡 28 上限）——
  *   目检反馈中间两分子未拉开，修复后同轮各分子同一动作同步演出。
+ *   v7：温度牌三档整体居中于主体中轴 420（组区间 291..549），消除温度牌孤悬左上。
  *   为 14px 方向标注字形让出 ±11px 身量而不侵入相邻带（分子内最小余量 2px）——
  *   缘由见 progress.md v6.2 / v6.2.1 / v6.2.2 / v6.3 / v6.3.1 登记）。
  * - 反平行语义（v6 延续）：引物 5′ 端贴模板 3′ 端内侧 24px、3′ 端朝内为延伸起点；
@@ -184,7 +185,8 @@ function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, 
 
 function makeTempTab(temp: "95" | "55" | "72"): SVGGElement {
   const idx = temp === "95" ? 0 : temp === "55" ? 1 : 2;
-  const x = 60 + idx * 90;
+  // v7 布局精修：三档整体居中于主体中轴 420（组区间 291..549），消除温度牌孤悬左上
+  const x = 291 + idx * 90;
   const g = el("g", { class: "temp-tab", "data-temp": temp });
   g.appendChild(el("rect", { x: String(x), y: "16", width: "78", height: "20", rx: "10", fill: "#94a3b8" }));
   const t = el("text", { x: String(x + 39), y: "30", fill: "#fff", "font-size": "12", "text-anchor": "middle" });
