@@ -99,6 +99,24 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   content: "§ ";
   color: #c2402c;
 }
+/* 关键公式卡：复用曲线卡底/字号风格，行内左名右式 */
+.formula-card { background: #faf7ee; border: 1px solid #e5e0d0; border-radius: 10px; padding: 12px 16px; margin-top: 12px; }
+.formula-card h4 {
+  margin: 0 0 8px;
+  font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #2c2b26;
+  letter-spacing: .05em;
+}
+.formula-card h4::before {
+  content: "Σ ";
+  color: #c2402c;
+}
+.formula-row { display: flex; align-items: baseline; gap: 12px; padding: 2.5px 0; font-size: 13.5px; color: #334155; flex-wrap: wrap; }
+.formula-name { min-width: 104px; }
+.formula-expr { font-size: 14.5px; color: #0f172a; }
+.formula-example { margin-left: auto; color: #64748b; font-size: 12.5px; }
 /* HTML 图例：位于卡片标题下方、SVG 之外，绝不遮挡曲线 */
 .chart-legend {
   display: flex;
@@ -335,6 +353,34 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
     y2 var(--tween-ms, 1350ms) ease-out,
     width var(--tween-ms, 1350ms) ease-out,
     d var(--tween-ms, 1350ms) ease-out;
+}
+/* PCR 场景：全场分子阵列幕间补间——行位移/带分离/链生长 width 均随播放速度联动；
+   transform ease-out + opacity ease-in-out 全局统一；无 display 硬切 */
+.pcr-scene { position: relative; }
+.pcr-scene svg { display: block; }
+.pcr-scene svg g, .pcr-scene svg rect, .pcr-scene svg circle, .pcr-scene svg text {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out,
+    x var(--tween-ms, 1350ms) ease-out,
+    width var(--tween-ms, 1350ms) ease-out;
+}
+/* 温度牌：常驻灰底，当前档由 opacity 通道高亮（不引入新色相，视觉以明暗区分档位切换） */
+.pcr-scene .temp-tab rect { fill: #94a3b8; }
+.pcr-scene .temp-tab text { fill: #fff; }
+/* 计数徽章：场景右下角 HTML 层（不入 SVG viewBox，不参与缩放）；
+   v6.3.3 起 bottom 12→48 上移，与画面主体（BASE_Y 累计上移 35px）协调 */
+.pcr-clear-badge {
+  position: absolute;
+  right: 12px;
+  bottom: 48px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #166534;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
 }
 /* 拓展知识点角标（超纲内容提示） */
 .ext-badge {

@@ -56,6 +56,7 @@ npm run build                 # 先 tsc --noEmit 再 vite build，产物 dist/
 
 **动效**
 - **观感平滑优先**：所有阶段/视图切换尽量不瞬切——优先保证观感平滑，在此基础上时长才反映语义权重（重大重组慢、稳定态过渡快），复用播放器五档调速，不做逐段变速。补间时长有下限：`--tween-ms = max(300, 间隔×0.9)`。
+- **切换安静（强制）**：阶段间只呈现当前阶段语义所需的动作，一帧一事；禁止借机重组版面（不拆行、不整体位移、不缩放非目标元素）。每元素移动幅度取最小可行值，画面重心尽量不动——「延伸」幕只做新链从引物 3′ 端长出，「分离/变性」幕只做参与链上下分开。切换幅度过大 = 画面失败，须重构为最小动作。
 - 视图切换（如 DNA 复制的平面↔螺旋）须走 opacity 互斥淡入淡出，禁止用 `display` 硬切（display 不可过渡）。
 - 默认同步动画；交错（stagger）须给出教学理由
 - **过渡机制**：CSS transition（`transform` + `opacity`）为唯一过渡机制，禁止用 JS requestAnimationFrame 做补间（除 Safari 上 CSS `d` 属性的 JS 回退外）。所有场景元素的位置/角度/透明度变化均通过 `style.transform` / `style.opacity` 通道，不走 SVG attribute（`setAttribute("transform")` 不触发 CSS transition）

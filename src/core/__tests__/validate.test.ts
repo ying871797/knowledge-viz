@@ -126,7 +126,7 @@ describe("validateCourse", () => {
     };
     expect(() => validateCourse(bad)).toThrow(/数值/);
   });
-  it("gradualSegments 合法索引通过", () => {
+it("gradualSegments 合法索引通过", () => {
     const ok: Course = {
       meta: { id: "mitosis", title: "有丝分裂", chapter: "必修一", difficulty: 3 },
       stages: [
@@ -162,5 +162,22 @@ describe("validateCourse", () => {
       const bad: Course = { ...base, chartConfigs: [{ ...base.chartConfigs![0], gradualSegments: gs }] };
       expect(() => validateCourse(bad)).toThrow(/gradualSegments/);
     }
+  });
+  it("formulas 合法时原样通过", () => {
+    const withF: Course = {
+      ...valid,
+      formulas: [{ name: "分子数", expr: "2ⁿ", example: "n=3→8" }],
+    };
+    expect(validateCourse(withF)).toEqual(withF);
+  });
+  it("formulas 非数组抛错", () => {
+    const bad = { ...valid, formulas: "x" as unknown as Course["formulas"] };
+    expect(() => validateCourse(bad)).toThrow(/formulas/);
+  });
+  it("formulas 项缺少 name 或 expr 抛错", () => {
+    const badName: Course = { ...valid, formulas: [{ name: "", expr: "2ⁿ" }] };
+    expect(() => validateCourse(badName)).toThrow(/name/);
+    const badExpr: Course = { ...valid, formulas: [{ name: "分子数", expr: "" }] };
+    expect(() => validateCourse(badExpr)).toThrow(/expr/);
   });
 });

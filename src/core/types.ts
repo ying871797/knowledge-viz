@@ -22,6 +22,13 @@ export interface ChartConfig {
   gradualSegments?: number[];
 }
 
+/** 关键公式卡条目：数量名 + 公式 + 例值，静态展示（不随阶段高亮） */
+export interface FormulaInfo {
+  name: string;      // 数量名（如 "分子数"）
+  expr: string;      // 公式（如 "2ⁿ"）
+  example?: string;  // 例值（如 "n=3 → 8"）
+}
+
 /** 阶段数目数据：三条曲线的数据点来源 */
 export interface StageNumbers {
   chromosome: number;        // 细胞内染色体数
@@ -47,6 +54,8 @@ export interface Course<State = Record<string, unknown>> {
   stages: Stage<State>[];
   /** 课程自定义图表配置；有此字段时 app.ts 据此渲染曲线图表（无则无图、无练习开关） */
   chartConfigs?: ChartConfig[];
+  /** 关键公式卡（可选，通用能力）：静态展示课程末尾的关键数量公式 */
+  formulas?: FormulaInfo[];
 }
 
 /** 最小场景状态：仅靠 stage id 查槽位表（mitosis / gene-expression / dna-replication / 未来光合）
@@ -95,6 +104,17 @@ export function validateCourse<State = Record<string, unknown>>(input: unknown):
     if (n.chromatid === 0 && n.dna !== n.chromosome)
       throw new Error(`${tag} 无染色单体时 dna 应等于 chromosome`);
   });
+
+  // 若提供 formulas，进行基础校验（通用能力，schema 见 ADR-0003）
+  if (c.formulas) {
+    if (!Array.isArray(c.formulas)) throw new Error("formulas 必须是数组");
+    c.formulas.forEach((f, fi) => {
+      if (!f || typeof f !== "object" || typeof f.name !== "string" || !f.name)
+        throw new Error(`formulas[${fi}] 缺少 name`);
+      if (typeof f.expr !== "string" || !f.expr)
+        throw new Error(`formulas[${fi}] 缺少 expr`);
+    });
+  }
 
   // 若提供 chartConfigs，进行基础一致性校验
   if (c.chartConfigs) {

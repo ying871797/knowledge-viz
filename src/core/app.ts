@@ -188,6 +188,35 @@ export function mountCoursePage(
   callout.style.display = "none";
   root.appendChild(callout);
 
+  // —— 关键公式卡：图表卡之后静态渲染（通用能力 Course.formulas，见 ADR-0003）——
+  if (course.formulas?.length) {
+    const form = document.createElement("div");
+    form.className = "formula-card";
+    const fTitle = document.createElement("h4");
+    fTitle.textContent = "关键公式";
+    form.appendChild(fTitle);
+    for (const f of course.formulas) {
+      const row = document.createElement("div");
+      row.className = "formula-row";
+      const nm = document.createElement("span");
+      nm.className = "formula-name";
+      nm.textContent = f.name;
+      row.appendChild(nm);
+      const fx = document.createElement("code");
+      fx.className = "formula-expr";
+      fx.textContent = f.expr;
+      row.appendChild(fx);
+      if (f.example) {
+        const ex = document.createElement("span");
+        ex.className = "formula-example";
+        ex.textContent = f.example;
+        row.appendChild(ex);
+      }
+      form.appendChild(row);
+    }
+    root.appendChild(form);
+  }
+
   let examMode = false;
   const player = new Player(course.stages.length, applyStage, 1500);
 

@@ -12,6 +12,8 @@ import { mitosisCourse } from "./courses/mitosis/data";
 import { createMitosisScene } from "./courses/mitosis/scene";
 import { geneExpressionCourse } from "./courses/gene-expression/data";
 import { createGeneExpressionScene } from "./courses/gene-expression/scene";
+import { pcrCourse } from "./courses/pcr/data";
+import { createPcrScene } from "./courses/pcr/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -73,6 +75,18 @@ try {
   console.error("[registry]", err);
 }
 
+// PCR：聚合酶链式反应（3 曲线图 + 5 公式卡；场景为全场分子阵列，全程标注 5′/3′ 方向）
+try {
+  const pcr = validateCourse(pcrCourse);
+  registry.push({
+    meta: pcr.meta,
+    load: () => pcrCourse,
+    createScene: createPcrScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
 const root = document.getElementById("app")!;
 
 // 当前课程页的清理句柄：离开/重进课程页前必须销毁，避免播放器 interval 泄漏
@@ -119,6 +133,10 @@ const HOME_CARDS: Record<string, HomeCardInfo> = {
     desc: "DNA 转录生成 mRNA，再到核糖体翻译合成蛋白质的全程。",
     tag: "转录 · 翻译",
   },
+  pcr: {
+    desc: "变性—退火—延伸三步循环，从单分子扩增到 8 个产物、其中 2 个目标片段的完整过程。",
+    tag: "变性 · 退火 · 延伸",
+  },
 };
 
 /** 课程标本缩略图（荧光显微风格 SVG，viewBox 0 0 120 120） */
@@ -154,6 +172,13 @@ function homeArt(id: string): string {  const g = (stroke: string) => `stroke="$
         <circle cx="60" cy="52" r="4" fill="var(--a1)"/>
         <circle cx="45" cy="78" r="7" ${g("var(--a2)")} stroke-width="3" stroke-opacity=".7"/>
         <circle cx="75" cy="78" r="7" ${g("var(--a2)")} stroke-width="3" stroke-opacity=".7"/>
+      </svg>`;
+    case "pcr":
+      return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
+        <path d="M20 58 h80 M20 74 h80" ${g("var(--a1)")} stroke-opacity=".75"/>
+        <rect x="26" y="67" width="20" height="11" rx="3" fill="var(--a1)" opacity=".85"/>
+        <rect x="74" y="36" width="20" height="11" rx="3" fill="var(--a1)" opacity=".85"/>
+        <rect x="49" y="57" width="22" height="17" rx="4" fill="var(--a2)"/>
       </svg>`;
     default:
       return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
@@ -229,6 +254,7 @@ function renderHome(): void {
     ["#8ab8ff", "#c9a2ff"],   // DNA 复制
     ["#ff9d7a", "#ffd27a"],   // 有丝分裂
     ["#ff8fab", "#7fd8be"],   // 基因表达
+    ["#8aebd0", "#c9a2ff"],   // PCR
   ];
   // 按教材章节排序（册→章→节），同章节保持注册顺序（稳定排序）
   const ordered = [...registry].sort((x, y) => {

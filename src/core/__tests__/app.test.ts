@@ -197,4 +197,25 @@ describe("mountCoursePage 装配", () => {
     errSpy.mockRestore();
     root.remove();
   });
+
+  it("course.formulas 渲染「关键公式」卡，逐行显示数量名/公式/例值", () => {
+    const withFormulas: Course = {
+      ...makeCourse(),
+      formulas: [
+        { name: "分子数", expr: "2ⁿ", example: "n=3→8" },
+        { name: "累计消耗引物", expr: "2ⁿ⁺¹−2", example: "n=3→14" },
+      ],
+    };
+    const { root } = setup(withFormulas);
+    const card = root.querySelector(".formula-card")!;
+    expect(card.querySelector("h4")!.textContent).toBe("关键公式");
+    const rows = card.querySelectorAll(".formula-row");
+    expect(rows.length).toBe(2);
+    expect(rows[0].querySelector(".formula-name")!.textContent).toBe("分子数");
+    expect(rows[0].querySelector(".formula-expr")!.textContent).toBe("2ⁿ");
+    expect(rows[0].querySelector(".formula-example")!.textContent).toBe("n=3→8");
+    // 公式卡位于图表卡之后（课程页末尾信息区）
+    const children = [...root.querySelectorAll(".chart-card, .formula-card")];
+    expect(children[children.length - 1].classList.contains("formula-card")).toBe(true);
+  });
 });
