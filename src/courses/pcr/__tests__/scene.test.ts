@@ -264,87 +264,87 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     expect(UNIT_KEYS.every((k) => !on(m.unit(k).querySelector(".pcr-new")))).toBe(true);
   });
 
-  it("s2 退火引物反平行：newA 橙 556..580@y−31、newB 橙 260..284@y+81；蓝段未生、p5 两枚；5′ 端距模板 3′ 端 36px（v7.1 引物本体内移）", () => {
+  it("s2 退火引物反平行：newA 橙 548..572@y−31、newB 橙 268..292@y+81；蓝段未生、p5 两枚；5′ 端距模板 3′ 端 44px（v7.1/v7.2 引物本体内移）", () => {
     const m = mountAt("s2-anneal-1");
     const aCap = m.unit("newA").querySelector<R>(".pcr-cap")!;
     const bCap = m.unit("newB").querySelector<R>(".pcr-cap")!;
     expect(on(aCap)).toBe(true);
-    expect(num(aCap, "x")).toBe(556);
+    expect(num(aCap, "x")).toBe(548);
     expect(num(aCap, "width")).toBe(24);
     expect(elY(m.unit("newA"))).toBe(-31);
     expect(on(bCap)).toBe(true);
-    expect(num(bCap, "x")).toBe(260);
+    expect(num(bCap, "x")).toBe(268);
     expect(elY(m.unit("newB"))).toBe(81);
     // 蓝段（合成段）未开始：宽 0 且隐藏
     expect(on(m.unit("newA").querySelector(".pcr-new"))).toBe(false);
     expect(on(m.unit("newB").querySelector(".pcr-new"))).toBe(false);
-    // 反平行 36px：A 3′ 端 616 → R 引物 5′ 端 580；B 3′ 端 224 → L 引物 5′ 端 260
-    expect(num(aCap, "x") + num(aCap, "width")).toBe(616 - 36);
-    expect(num(bCap, "x")).toBe(224 + 36);
+    // 反平行 44px：A 3′ 端 616 → R 引物 5′ 端 572；B 3′ 端 224 → L 引物 5′ 端 268
+    expect(num(aCap, "x") + num(aCap, "width")).toBe(616 - 44);
+    expect(num(bCap, "x")).toBe(224 + 44);
     // 退火引物 5′ 标注：2 枚（贴各引物 5′ 端 4px，v7.1 文本微调已撤销，随元素本体内移）
     const p5x = m.p5s.filter((t) => on(t)).map((t) => num(t, "x")).sort((a, b) => a - b);
     expect(p5x.length).toBe(2);
-    expect(p5x).toEqual([264, 576]); // L 引物 5′ 端 260+4 / R 引物 5′ 端 580−4
+    expect(p5x).toEqual([272, 568]); // L 引物 5′ 端 268+4 / R 引物 5′ 端 572−4
   });
 
-  it("s3 延伸完成：A′ 蓝 224..556、B′ 蓝 284..616（配满全长）；p5 熄灭、方向标注随链亮起", () => {
+  it("s3 延伸完成：A′ 蓝 224..548、B′ 蓝 292..616（配满全长）；p5 熄灭、方向标注随链亮起", () => {
     const m = mountAt("s3-extend-1");
     const aBand = m.unit("newA").querySelector<R>(".pcr-new")!;
     const bBand = m.unit("newB").querySelector<R>(".pcr-new")!;
     expect(on(aBand)).toBe(true);
     expect(num(aBand, "x")).toBe(224);
-    expect(num(aBand, "width")).toBe(332);
+    expect(num(aBand, "width")).toBe(324);
     expect(on(bBand)).toBe(true);
-    expect(num(bBand, "x")).toBe(284);
-    expect(num(bBand, "width")).toBe(332);
+    expect(num(bBand, "x")).toBe(292);
+    expect(num(bBand, "width")).toBe(324);
     expect(m.p5s.filter((t) => on(t)).length).toBe(0); // 成链后 5′ 由 dirs 承担
     expect(m.dirs.filter((t) => on(t)).length).toBe(4 + 4); // A/B + A′/B′
   });
 
-  it("蓝段锚点生长：锚=引物 3′ 端（R 556 左伸、L 284 右伸），p=0/0.5/1 钉住锚点配满全长", () => {
+  it("蓝段锚点生长：锚=引物 3′ 端（R 548 左伸、L 292 右伸），p=0/0.5/1 钉住锚点配满全长", () => {
     const m = mountAt("s3-extend-1");
     const aBand = m.unit("newA").querySelector<R>(".pcr-new")!;
     const bBand = m.unit("newB").querySelector<R>(".pcr-new")!;
     renderAt(m, 0.5);
-    expect(num(aBand, "x")).toBe(556 - Math.round(332 * 0.5)); // 锚 556 左伸
-    expect(num(bBand, "x")).toBe(284);                          // 锚 284 右伸
-    expect(num(aBand, "width")).toBe(Math.round(332 * 0.5));
-    expect(num(bBand, "width")).toBe(Math.round(332 * 0.5));
+    expect(num(aBand, "x")).toBe(548 - Math.round(324 * 0.5)); // 锚 548 左伸
+    expect(num(bBand, "x")).toBe(292);                          // 锚 292 右伸
+    expect(num(aBand, "width")).toBe(Math.round(324 * 0.5));
+    expect(num(bBand, "width")).toBe(Math.round(324 * 0.5));
     renderAt(m, 0);
-    expect(num(aBand, "x")).toBe(556); // 零长仍钉锚点（引物 3′ 端）
-    expect(num(bBand, "x")).toBe(284);
+    expect(num(aBand, "x")).toBe(548); // 零长仍钉锚点（引物 3′ 端）
+    expect(num(bBand, "x")).toBe(292);
     expect(num(aBand, "width")).toBe(0);
     expect(num(bBand, "width")).toBe(0);
     renderAt(m, 1);
     expect(num(aBand, "x")).toBe(224);
-    expect(num(bBand, "x")).toBe(284);
-    expect(num(aBand, "width")).toBe(332);
-    expect(num(bBand, "width")).toBe(332);
+    expect(num(bBand, "x")).toBe(292);
+    expect(num(aBand, "width")).toBe(324);
+    expect(num(bBand, "width")).toBe(324);
   });
 
-  it("第 2 轮链组成（s6）：A² 蓝 224..556/橙 556、A″ 橙 260+蓝 284..580、B² 蓝 284..616、B″ 橙 556+蓝 260..556", () => {
+  it("第 2 轮链组成（s6）：A² 蓝 224..548/橙 548、A″ 橙 268+蓝 292..572、B² 蓝 292..616、B″ 橙 548+蓝 268..548", () => {
     const m = mountAt("s6-extend-2");
     const specOf = (k: string) => {
       const u = m.unit(k);
       return { capX: num(u.querySelector(".pcr-cap"), "x"), bx: num(u.querySelector(".pcr-new"), "x"), bw: num(u.querySelector(".pcr-new"), "width") };
     };
-    expect(specOf("r2-0")).toEqual({ capX: 556, bx: 224, bw: 332 }); // A²（模板 A）
-    expect(specOf("r2-1")).toEqual({ capX: 260, bx: 284, bw: 296 }); // A″（模板 A′，正确长度）
-    expect(specOf("r2-2")).toEqual({ capX: 260, bx: 284, bw: 332 }); // B²（模板 B）
-    expect(specOf("r2-3")).toEqual({ capX: 556, bx: 260, bw: 296 }); // B″（模板 B′，正确长度）
+    expect(specOf("r2-0")).toEqual({ capX: 548, bx: 224, bw: 324 }); // A²（模板 A）
+    expect(specOf("r2-1")).toEqual({ capX: 268, bx: 292, bw: 280 }); // A″（模板 A′，正确长度）
+    expect(specOf("r2-2")).toEqual({ capX: 268, bx: 292, bw: 324 }); // B²（模板 B）
+    expect(specOf("r2-3")).toEqual({ capX: 548, bx: 268, bw: 280 }); // B″（模板 B′，正确长度）
   });
 
   it("第 3 轮链组成（s9）：8 条新链蓝段与头橙段成带，两端到模板 5′ 端", () => {
     const m = mountAt("s9-extend-3");
     const exp: Array<{ capX: number; bx: number; bw: number }> = [
-      { capX: 556, bx: 224, bw: 332 }, // r3-0：模板 A
-      { capX: 260, bx: 284, bw: 296 }, // r3-1：模板 A²（≡A′）
-      { capX: 260, bx: 284, bw: 296 }, // r3-2：模板 A′
-      { capX: 556, bx: 260, bw: 296 }, // r3-3：模板 A″
-      { capX: 260, bx: 284, bw: 332 }, // r3-4：模板 B
-      { capX: 556, bx: 260, bw: 296 }, // r3-5：模板 B²（≡B′）
-      { capX: 556, bx: 260, bw: 296 }, // r3-6：模板 B′
-      { capX: 260, bx: 284, bw: 296 }, // r3-7：模板 B″
+      { capX: 548, bx: 224, bw: 324 }, // r3-0：模板 A
+      { capX: 268, bx: 292, bw: 280 }, // r3-1：模板 A²（≡A′）
+      { capX: 268, bx: 292, bw: 280 }, // r3-2：模板 A′
+      { capX: 548, bx: 268, bw: 280 }, // r3-3：模板 A″
+      { capX: 268, bx: 292, bw: 324 }, // r3-4：模板 B
+      { capX: 548, bx: 268, bw: 280 }, // r3-5：模板 B²（≡B′）
+      { capX: 548, bx: 268, bw: 280 }, // r3-6：模板 B′
+      { capX: 268, bx: 292, bw: 280 }, // r3-7：模板 B″
     ];
     UNIT_KEYS.slice(6).forEach((k, i) => {
       const u = m.unit(k);
@@ -380,21 +380,21 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     // 母链：A 5′ 224 / 3′ 616；B 3′ 224 / 5′ 616（保持 11px）
     expect(pairs("s4-denature-2", ".pcr-chain-A")).toEqual([{ t: "5′", x: 235 }, { t: "3′", x: 605 }]);
     expect(pairs("s4-denature-2", ".pcr-chain-B")).toEqual([{ t: "3′", x: 235 }, { t: "5′", x: 605 }]);
-    // A′：5′ 580（引物 R 5′ 端）/ 3′ 224（模板 A 5′ 端）；B′：5′ 260 / 3′ 616
-    expect(pairs("s4-denature-2", ".pcr-unit-newA")).toEqual([{ t: "3′", x: 235 }, { t: "5′", x: 569 }]);
-    expect(pairs("s4-denature-2", ".pcr-unit-newB")).toEqual([{ t: "5′", x: 271 }, { t: "3′", x: 605 }]);
-    // A″：5′ 260 / 3′ 580；B″：3′ 260 / 5′ 580
-    expect(pairs("s7-denature-3", ".pcr-unit-r2-1")).toEqual([{ t: "5′", x: 271 }, { t: "3′", x: 569 }]);
-    expect(pairs("s7-denature-3", ".pcr-unit-r2-3")).toEqual([{ t: "3′", x: 271 }, { t: "5′", x: 569 }]);
+    // A′：5′ 572（引物 R 5′ 端）/ 3′ 224（模板 A 5′ 端）；B′：5′ 268 / 3′ 616
+    expect(pairs("s4-denature-2", ".pcr-unit-newA")).toEqual([{ t: "3′", x: 235 }, { t: "5′", x: 561 }]);
+    expect(pairs("s4-denature-2", ".pcr-unit-newB")).toEqual([{ t: "5′", x: 279 }, { t: "3′", x: 605 }]);
+    // A″：5′ 268 / 3′ 572；B″：3′ 268 / 5′ 572
+    expect(pairs("s7-denature-3", ".pcr-unit-r2-1")).toEqual([{ t: "5′", x: 279 }, { t: "3′", x: 561 }]);
+    expect(pairs("s7-denature-3", ".pcr-unit-r2-3")).toEqual([{ t: "3′", x: 279 }, { t: "5′", x: 561 }]);
   });
 
-  it("新链 3′ 端与模板 5′ 端同侧（p=1 远端）：A→224、A′→580、B→616、B′→260", () => {
+  it("新链 3′ 端与模板 5′ 端同侧（p=1 远端）：A→224、A′→572、B→616、B′→268", () => {
     const m = mountAt("s6-extend-2");
     const bandOf = (k: string) => m.unit(k).querySelector<R>(".pcr-new")!;
     expect(num(bandOf("r2-0"), "x")).toBe(224);                             // 模板 A 5′ 端左缘
-    expect(num(bandOf("r2-1"), "x") + num(bandOf("r2-1"), "width")).toBe(580); // 模板 A′ 5′ 端
+    expect(num(bandOf("r2-1"), "x") + num(bandOf("r2-1"), "width")).toBe(572); // 模板 A′ 5′ 端
     expect(num(bandOf("r2-2"), "x") + num(bandOf("r2-2"), "width")).toBe(616); // 模板 B 5′ 端
-    expect(num(bandOf("r2-3"), "x")).toBe(260);                             // 模板 B′ 5′ 端左缘
+    expect(num(bandOf("r2-3"), "x")).toBe(268);                             // 模板 B′ 5′ 端左缘
   });
 
   it("退火 5′ 标注（p5）数量随轮次 2→4→8；延伸/结果熄灭（s3/s10 为 0）", () => {
@@ -414,8 +414,8 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     expect(on(t1) && on(t2)).toBe(true);
     const r1 = t1.querySelector<R>("rect")!;
     const r2 = t2.querySelector<R>("rect")!;
-    expect(num(r1, "x")).toBe(252);
-    expect(num(r1, "width")).toBe(336);
+    expect(num(r1, "x")).toBe(260);
+    expect(num(r1, "width")).toBe(320);
     expect(num(r1, "y")).toBe(-7);
     expect(num(r1, "height")).toBe(36);
     expect(r1.getAttribute("stroke")).toBe(GREEN);
@@ -430,22 +430,22 @@ describe("PCR 场景（v6.3 分子间距：单容器微排）", () => {
     expect(mountAt("s10-result").targets.filter((t) => on(t)).length).toBe(2);
   });
 
-  it("目标判据（v6.1 核心）：A″ = 橙 260..284 + 蓝 284..580，其上新链蓝 260..556（两端到 260/580）；B″ 对称", () => {
+  it("目标判据（v6.1 核心）：A″ = 橙 268..292 + 蓝 292..572，其上新链蓝 268..548（两端到 268/572）；B″ 对称", () => {
     const m = mountAt("s9-extend-3");
     const bandOf = (k: string) => m.unit(k).querySelector<R>(".pcr-new")!;
-    // A″ 分子：模板 r2-1（橙 260 + 蓝 284..580=296）——蓝段右端 580 = 目标右界标
-    expect(num(m.unit("r2-1").querySelector(".pcr-cap"), "x")).toBe(260);
-    expect(num(bandOf("r2-1"), "x") + num(bandOf("r2-1"), "width")).toBe(580);
-    // A″ 上第 3 轮新链 r3-3：从引物 R 3′ 端 556 配满到模板 A″ 5′ 端 260 → 蓝 260..556
-    expect(num(bandOf("r3-3"), "x")).toBe(260);
-    expect(num(bandOf("r3-3"), "width")).toBe(296);
-    expect(num(bandOf("r3-3"), "x") + num(bandOf("r3-3"), "width") + 24).toBe(580); // 橙段补足到 580
-    // B″ 分子：模板 r2-3（橙 556 + 蓝 260..556）——新链 r3-7 蓝 284..580
-    expect(num(m.unit("r2-3").querySelector(".pcr-cap"), "x")).toBe(556);
-    expect(num(bandOf("r2-3"), "x")).toBe(260);
-    expect(num(bandOf("r2-3"), "width")).toBe(296);
-    expect(num(bandOf("r3-7"), "x") - 24).toBe(260); // r3-7 蓝 284..580，橙段补到 260
-    expect(num(bandOf("r3-7"), "x") + num(bandOf("r3-7"), "width")).toBe(580);
+    // A″ 分子：模板 r2-1（橙 268 + 蓝 292..572=280）——蓝段右端 572 = 目标右界标
+    expect(num(m.unit("r2-1").querySelector(".pcr-cap"), "x")).toBe(268);
+    expect(num(bandOf("r2-1"), "x") + num(bandOf("r2-1"), "width")).toBe(572);
+    // A″ 上第 3 轮新链 r3-3：从引物 R 3′ 端 548 配满到模板 A″ 5′ 端 268 → 蓝 268..548
+    expect(num(bandOf("r3-3"), "x")).toBe(268);
+    expect(num(bandOf("r3-3"), "width")).toBe(280);
+    expect(num(bandOf("r3-3"), "x") + num(bandOf("r3-3"), "width") + 24).toBe(572); // 橙段补足到 572
+    // B″ 分子：模板 r2-3（橙 548 + 蓝 268..548）——新链 r3-7 蓝 292..572
+    expect(num(m.unit("r2-3").querySelector(".pcr-cap"), "x")).toBe(548);
+    expect(num(bandOf("r2-3"), "x")).toBe(268);
+    expect(num(bandOf("r2-3"), "width")).toBe(280);
+    expect(num(bandOf("r3-7"), "x") - 24).toBe(268); // r3-7 蓝 292..572，橙段补到 268
+    expect(num(bandOf("r3-7"), "x") + num(bandOf("r3-7"), "width")).toBe(572);
   });
 
   it("计数徽章：s3/s6/s9/s10 显示「目标产物 0/0/2/2（2ⁿ−2n）」，s0 隐藏", () => {
