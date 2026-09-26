@@ -368,11 +368,12 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 /* 温度牌：常驻灰底，当前档由 opacity 通道高亮（不引入新色相，视觉以明暗区分档位切换） */
 .pcr-scene .temp-tab rect { fill: #94a3b8; }
 .pcr-scene .temp-tab text { fill: #fff; }
-/* 计数徽章：场景右下角 HTML 层（不入 SVG viewBox，不参与缩放） */
+/* 计数徽章：场景右下角 HTML 层（不入 SVG viewBox，不参与缩放）；
+   v6.3.3 起 bottom 12→48 上移，与画面主体（BASE_Y 累计上移 35px）协调 */
 .pcr-clear-badge {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  bottom: 48px;
   padding: 5px 12px;
   font-size: 13px;
   font-weight: 600;
