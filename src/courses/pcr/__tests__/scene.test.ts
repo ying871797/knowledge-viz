@@ -1,7 +1,8 @@
 /**
  * PCR 场景测试（v6.1 切换安静版，方案 .proposals/2026-09-26-003-pcr-v6-animation-quiet.html 已批准）。
  *
- * 布局模型 = 单容器恒定基座 + 元素级垂直微排（数值 = pcr_v6_demo.html 逐字段搬运）。
+ * 布局模型 = 单容器恒定基座 + 元素级垂直微排（s0-s4 数值 = pcr_v6_demo.html 逐字段搬运；
+ * s5-s10 为 v6.2 重排：第 3 轮步进 30→38px，目检反馈排列紧凑、用户授权偏离 demo——见 .superpowers/sdd/progress.md v6.2 登记）。
  * 测试职责分工：几何/数量/颜色/「切换安静三阈值」由断言强制；直观性/语义类（微排观感、无瞬切）以用户目检为准。
  * 本文件不测：addEvent 无关样式细节（颜色仅测 fill/stroke）、Taq（已彻底移除，另有专项用例）。
  */
@@ -105,7 +106,7 @@ function bandCount(id: string): number {
   return n;
 }
 
-describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
+describe("PCR 场景（v6.2 呼吸感：单容器微排）", () => {
   it("元素池零增删：s0 与 s10 两次渲染后 SVG 元素总数不变且 > 90", () => {
     const container = document.createElement("div");
     document.body.appendChild(container);
@@ -146,14 +147,22 @@ describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
     expect(on(m5.unit("r2-0").querySelector(".pcr-new"))).toBe(false);
   });
 
-  it("第 3 轮 8 条模板 30px 均匀步进：r3-0..r3-7 层位 −78..+132 等差 30，不咬合", () => {
+  it("第 3 轮 8 条模板 38px 均匀步进（v6.2 30→38）：r3 层位 −106..+160 等差 38，与模板层交错同对贴 14、跨对 24（净距 10 ≥10 不咬合）", () => {
     const m = mountAt("s9-extend-3");
     const ys = UNIT_KEYS.slice(6).map((k) => elY(m.unit(k)));
-    expect(ys).toEqual([-78, -48, -18, 12, 42, 72, 102, 132]);
-    for (let i = 1; i < ys.length; i++) {
-      expect(ys[i] - ys[i - 1], `r3 slot ${i - 1}->${i}`).toBe(30);
-      // 相邻层链带（±7px）净距 = 30 − 14 = 16 ≥ 0 不咬合
-      expect(ys[i] - ys[i - 1] - 14).toBeGreaterThanOrEqual(0);
+    expect(ys).toEqual([-106, -68, -30, 8, 46, 84, 122, 160]);
+    for (let i = 1; i < ys.length; i++) expect(ys[i] - ys[i - 1], `r3 slot ${i - 1}->${i}`).toBe(38);
+    // 8 条模板层（s9）：chainA(A) / r2-0(A²) / newA(A′) / r2-1(A″) / chainB(B) / r2-2(B²) / newB(B′) / r2-3(B″)
+    const temps = [elY(m.chain("A")), elY(m.unit("r2-0")), elY(m.unit("newA")), elY(m.unit("r2-1")),
+                   elY(m.chain("B")), elY(m.unit("r2-2")), elY(m.unit("newB")), elY(m.unit("r2-3"))];
+    expect(temps).toEqual([-120, -82, -44, -6, 32, 70, 108, 146]);
+    for (let i = 0; i < 8; i++) {
+      expect(ys[i] - temps[i], `同对 ${i} 新链贴模板 +14`).toBe(14);
+      if (i < 7) {
+        expect(temps[i + 1] - ys[i], `跨对 ${i}->${i + 1} 拉开 24`).toBe(24);
+        // 相邻层链带（±7px）跨对净距 = 24 − 14 = 10 ≥ 10
+        expect(temps[i + 1] - ys[i] - 14, `跨对净距 ${i}`).toBeGreaterThanOrEqual(10);
+      }
     }
   });
 
@@ -180,21 +189,21 @@ describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
     }
   });
 
-  it("变性层位表锚定（demo 数值）：s4 与 s7 各层 y 精确", () => {
+  it("变性层位表锚定：s4 demo 数值、s7 v6.2 数值，各层 y 精确", () => {
     const m4 = mountAt("s4-denature-2");
     expect(elY(m4.chain("A"))).toBe(-58);
     expect(elY(m4.chain("B"))).toBe(34);
     expect(elY(m4.unit("newA"))).toBe(-18);   // A′ 下移贴 A 下方（变性分离）
     expect(elY(m4.unit("newB"))).toBe(68);    // B′ 下移贴 B 下方
     const m7 = mountAt("s7-denature-3");
-    expect(elY(m7.chain("A"))).toBe(-92);
-    expect(elY(m7.chain("B"))).toBe(34);
-    expect(elY(m7.unit("newA"))).toBe(-20);
-    expect(elY(m7.unit("newB"))).toBe(88);
-    expect(elY(m7.unit("r2-0"))).toBe(-62);
-    expect(elY(m7.unit("r2-1"))).toBe(10);
-    expect(elY(m7.unit("r2-2"))).toBe(64);
-    expect(elY(m7.unit("r2-3"))).toBe(118);
+    expect(elY(m7.chain("A"))).toBe(-98);
+    expect(elY(m7.chain("B"))).toBe(42);
+    expect(elY(m7.unit("newA"))).toBe(-38);
+    expect(elY(m7.unit("newB"))).toBe(84);
+    expect(elY(m7.unit("r2-0"))).toBe(-60);
+    expect(elY(m7.unit("r2-1"))).toBe(0);
+    expect(elY(m7.unit("r2-2"))).toBe(80);
+    expect(elY(m7.unit("r2-3"))).toBe(122);
   });
 
   it("温度牌三枚常驻；s1 高亮 95、s5 高亮 55、s3 高亮 72、s10 全灭", () => {
@@ -321,6 +330,19 @@ describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
     expect(m10.dirs.filter((t) => on(t)).length).toBe(32);
   });
 
+  it("方向标注可读性（v6.2 目检反馈难辨认）：pcr-dir 14px 粗体深灰 #0f172a + 白描边 3px（paint-order stroke fill）y=5；p5 字号 10", () => {
+    const m = mountAt("s9-extend-3");
+    const d = m.dirs[0];
+    expect(d.getAttribute("font-size")).toBe("14");
+    expect(d.getAttribute("font-weight")).toBe("700");
+    expect(d.getAttribute("fill")).toBe("#0f172a");
+    expect(d.getAttribute("stroke")).toBe("#f8fafc");
+    expect(d.getAttribute("stroke-width")).toBe("3");
+    expect(d.getAttribute("paint-order")).toBe("stroke fill");
+    expect(d.getAttribute("y")).toBe("5");
+    expect(m.p5s[0].getAttribute("font-size")).toBe("10");
+  });
+
   it("标注随链真实朝向（v6 核心）：母链五三端 + 各合成链反平行（5′ = 引物 5′ 端、3′ = 模板 5′ 端同侧），x 贴链端 11px", () => {
     const pairs = (id: string, sel: string) => dirPairs(mountAt(id).svg.querySelector<G>(sel)!);
     // 母链：A 5′ 224 / 3′ 616；B 3′ 224 / 5′ 616
@@ -352,7 +374,7 @@ describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
     expect(onCount("s10-result")).toBe(0);
   });
 
-  it("目标产物绿虚线框：仅 s9/s10 出现 2 个；框 1=−13..19 包住 A″(−2)+r3-3(+12)、框 2=110..144 包住 B″(+118)+r3-7(+132)；s8 无框", () => {
+  it("目标产物绿虚线框：仅 s9/s10 出现 2 个；框 1=−17..15 包住 A″(−6)+r3-3(+8)、框 2=138..172 包住 B″(+146)+r3-7(+160)；s8 无框", () => {
     const m8 = mountAt("s8-anneal-3");
     expect(m8.targets.filter((t) => on(t)).length).toBe(0);
     const m9 = mountAt("s9-extend-3");
@@ -362,17 +384,17 @@ describe("PCR 场景（v6.1 切换安静：单容器微排）", () => {
     const r2 = t2.querySelector<R>("rect")!;
     expect(num(r1, "x")).toBe(240);
     expect(num(r1, "width")).toBe(360);
-    expect(num(r1, "y")).toBe(-13);
+    expect(num(r1, "y")).toBe(-17);
     expect(num(r1, "height")).toBe(32);
     expect(r1.getAttribute("stroke")).toBe(GREEN);
     expect(r1.getAttribute("stroke-dasharray")).toBe("7 4");
-    expect(num(r2, "y")).toBe(110);
+    expect(num(r2, "y")).toBe(138);
     expect(num(r2, "height")).toBe(34);
     // 框内层位验证：A″ 与 B″ 模板层及其上第 3 轮新链层
-    expect(elY(m9.unit("r2-1"))).toBe(-2);
-    expect(elY(m9.unit("r3-3"))).toBe(12);
-    expect(elY(m9.unit("r2-3"))).toBe(118);
-    expect(elY(m9.unit("r3-7"))).toBe(132);
+    expect(elY(m9.unit("r2-1"))).toBe(-6);
+    expect(elY(m9.unit("r3-3"))).toBe(8);
+    expect(elY(m9.unit("r2-3"))).toBe(146);
+    expect(elY(m9.unit("r3-7"))).toBe(160);
     expect(mountAt("s10-result").targets.filter((t) => on(t)).length).toBe(2);
   });
 

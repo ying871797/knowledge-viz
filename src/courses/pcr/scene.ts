@@ -1,10 +1,11 @@
 /**
- * PCR 场景（v6.1 切换安静版，方案 .proposals/2026-09-26-003-pcr-v6-animation-quiet.html 已批准）。
+ * PCR 场景（v6.2 呼吸感版，基线 v6.1 切换安静；本版方案 .proposals/2026-09-26-004-pcr-v61-breathe-space.html 已批准）。
  *
  * 模型（示取舍登记 .superpowers/sdd/progress.md）：
  * - 布局模型 = 单容器恒定基座 + 元素级垂直微排（完全按 pcr_v6_demo.html）：
  *   基座 BASE_Y=250 永不拆行、不行位置跳变；分子数 1→2→4→8 靠行内元素微排实现。
- *   安静三阈值（测试强制）：延伸/结果幕 0 位移、变性幕 ≤14px、新轮微排 ≤28px；8 条模板 30px 均匀步进。
+ *   安静三阈值（测试强制）：延伸/结果幕 0 位移、变性幕 ≤14px、新轮微排 ≤28px；
+ *   第 3 轮 8 条模板 38px 均匀步进（v6.2 起 30→38，目检反馈排列紧凑，用户授权偏离 demo——缘由见 progress.md v6.2 登记）。
  * - 反平行语义（v6 延续）：引物 5′ 端贴模板 3′ 端内侧 24px、3′ 端朝内为延伸起点；
  *   新链 = 橙引物段（5′，原位停驻）+ 蓝合成段（3′）一条带；蓝段从引物 3′ 端锚点向模板 5′ 端配满全长
  *   （width 锚点生长，几何等价 demo 的 scaleX；L 锚 272 右伸、R 锚 568 左伸）。
@@ -31,6 +32,11 @@ const PRIMER_R_X = 568;                      // 568..592：R 引物（5′ 端 5
 const NEW_H = 12;                            // 合成段蓝段高
 const DIR_OFF = 11;                          // 方向标注文本中心距链端 11px
 const P5_OFF = 4;                            // 退火引物 5′ 标注中心距引物 5′ 端 4px
+/** 方向标注静态样式（v6.2 起 14px 粗体深灰 + 白描边，目检反馈 5′/3′ 难以辨认） */
+const DIR_TEXT_ATTRS: Record<string, string> = {
+  class: "pcr-dir", x: "0", y: "5", fill: "#0f172a", "font-size": "14", "font-weight": "700",
+  "text-anchor": "middle", stroke: "#f8fafc", "stroke-width": "3", "paint-order": "stroke fill",
+};
 const TM_X = 240;                            // 目标产物绿虚线框：240..600 包住靶区 248..592
 const TM_W = 360;
 
@@ -114,7 +120,8 @@ function unitSpecs(): Array<{ key: string; spec: StrandSpec; ann: number; ext: n
   ];
 }
 
-// ---------- 逐幕层位表（y 相对基座 BASE_Y；数值 = demo STAGES 逐字段搬运） ----------
+// ---------- 逐幕层位表（y 相对基座 BASE_Y） ----------
+// s0-s4 = demo STAGES 逐字段搬运；s5-s10 为 v6.2 重排：第 3 轮步进 30→38px（目检反馈紧凑，用户授权偏离 demo，缘由见 progress.md v6.2）。
 interface ChainSlot { chainA: number; chainB: number; units: number[]; }
 /** units 顺序 = unitSpecs 顺序（newA/newB/r2×4/r3×8）；未激活单元填占位 0（不渲染） */
 const LAYOUT: Record<string, ChainSlot> = {
@@ -123,12 +130,12 @@ const LAYOUT: Record<string, ChainSlot> = {
   "s2-anneal-1":   { chainA: -44, chainB: 44, units: [-30, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
   "s3-extend-1":   { chainA: -44, chainB: 44, units: [-30, 58, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
   "s4-denature-2": { chainA: -58, chainB: 34, units: [-18, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s5-anneal-2":   { chainA: -84, chainB: 42, units: [-12, 96, -70, 2, 56, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s6-extend-2":   { chainA: -84, chainB: 42, units: [-12, 96, -70, 2, 56, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s7-denature-3": { chainA: -92, chainB: 34, units: [-20, 88, -62, 10, 64, 118, 0, 0, 0, 0, 0, 0, 0, 0] },
-  "s8-anneal-3":   { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
-  "s9-extend-3":   { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
-  "s10-result":    { chainA: -92, chainB: 28, units: [-32, 88, -62, -2, 58, 118, -78, -48, -18, 12, 42, 72, 102, 132] },
+  "s5-anneal-2":   { chainA: -86, chainB: 54, units: [-26, 96, -72, -12, 68, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s6-extend-2":   { chainA: -86, chainB: 54, units: [-26, 96, -72, -12, 68, 110, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s7-denature-3": { chainA: -98, chainB: 42, units: [-38, 84, -60, 0, 80, 122, 0, 0, 0, 0, 0, 0, 0, 0] },
+  "s8-anneal-3":   { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -106, -68, -30, 8, 46, 84, 122, 160] },
+  "s9-extend-3":   { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -106, -68, -30, 8, 46, 84, 122, 160] },
+  "s10-result":    { chainA: -120, chainB: 32, units: [-44, 108, -82, -6, 70, 146, -106, -68, -30, 8, 46, 84, 122, 160] },
 };
 
 /** stage id → 幕序号（s0=0 … s10=10） */
@@ -150,9 +157,9 @@ const BADGE_ROUND: Record<string, number> = {
 const SUP = ["", "¹", "²", "³", "⁴", "⁵"];
 
 // 目标产物绿虚线框（demo 几何：包「目标模板层 + 其上第 3 轮新链层」）
-const TM1_Y = -13;   // 包 A″ 层(−2) 与其上 r3-3 层(+12)：−13..19
+const TM1_Y = -17;   // 包 A″ 层(−6) 与其上 r3-3 层(+8)：−17..15
 const TM1_H = 32;
-const TM2_Y = 110;   // 包 B″ 层(+118) 与其上 r3-7 层(+132)：110..144
+const TM2_Y = 138;   // 包 B″ 层(+146) 与其上 r3-7 层(+160)：138..172
 const TM2_H = 34;
 
 function el<K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string>): SVGElementTagNameMap[K] {
@@ -214,8 +221,8 @@ export function createPcrScene(): SceneComponent {
   function makeChain(key: string, spec: StrandSpec): { g: SVGGElement; band: SVGRectElement; dirs: SVGTextElement[] } {
     const g = el("g", { class: `pcr-chain pcr-chain-${key}` });
     const band = el("rect", { class: "pcr-band", x: String(BAND_X), y: "0", width: String(BAND_W), height: String(BAND_H), rx: String(BAND_H / 2), fill: GRAY });
-    const d1 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
-    const d2 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    const d1 = el("text", { ...DIR_TEXT_ATTRS });
+    const d2 = el("text", { ...DIR_TEXT_ATTRS });
     d1.textContent = "";
     d2.textContent = "";
     setDirPair(d1, d2, fiveOf(spec), threeOf(spec));
@@ -233,11 +240,11 @@ export function createPcrScene(): SceneComponent {
     const p5 = el("text", {
       class: "pcr-p5",
       x: String(capXOf(u.spec) === PRIMER_L_X ? PRIMER_L_X + P5_OFF : PRIMER_R_X + PRIMER_W - P5_OFF),
-      y: "4", fill: "#fff", "font-size": "9", "font-weight": "700", "text-anchor": "middle",
+      y: "4", fill: "#fff", "font-size": "10", "font-weight": "700", "text-anchor": "middle",
     });
     p5.textContent = "5′";
-    const d1 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
-    const d2 = el("text", { class: "pcr-dir", x: "0", y: "4", fill: "#334155", "font-size": "12", "text-anchor": "middle" });
+    const d1 = el("text", { ...DIR_TEXT_ATTRS });
+    const d2 = el("text", { ...DIR_TEXT_ATTRS });
     d1.textContent = "";
     d2.textContent = "";
     setDirPair(d1, d2, fiveOf(u.spec), threeOf(u.spec));
