@@ -15,14 +15,17 @@
  *   v6.3.1：s7 变性幕 4 分子同步分离（贴距 = 分子间 = 39 等距泳道，唯一整数解，A/B″ 仍卡 28 上限）——
  *   目检反馈中间两分子未拉开，修复后同轮各分子同一动作同步演出。
  *   v7：温度牌三档整体居中于主体中轴 420（组区间 291..549），消除温度牌孤悬左上。
+ *   v7.1：引物与新合成链元素本体向带内平移——引物 5′ 端距模板 3′ 端 24→36px（L 5′ 端 248→260、
+ *   R 5′ 端 592→580，引物宽 24 不变），合成链随锚点整体内移、目标产物界标 248..592→260..580（344→320px），
+ *   长短链因 5′ 端离旧链 3′ 端更远而更易分辨（方向标注保持单一 11px，不做文字微调）。
  *   为 14px 方向标注字形让出 ±11px 身量而不侵入相邻带（分子内最小余量 2px）——
  *   缘由见 progress.md v6.2 / v6.2.1 / v6.2.2 / v6.3 / v6.3.1 登记）。
- * - 反平行语义（v6 延续）：引物 5′ 端贴模板 3′ 端内侧 24px、3′ 端朝内为延伸起点；
+ * - 反平行语义（v6 延续）：引物 5′ 端距模板 3′ 端 36px（v7.1 起 24→36 向内拉开）、3′ 端朝内为延伸起点；
  *   新链 = 橙引物段（5′，原位停驻）+ 蓝合成段（3′）一条带；蓝段从引物 3′ 端锚点向模板 5′ 端配满全长
- *   （width 锚点生长，几何等价 demo 的 scaleX；L 锚 272 右伸、R 锚 568 左伸）。
+ *   （width 锚点生长，几何等价 demo 的 scaleX；L 锚 284 右伸、R 锚 556 左伸）。
  * - 合成单元（14 个固定池）= A′/B′（第 1 轮）+ r2×4（第 2 轮：A²/A″/B²/B″）+ r3×8（第 3 轮）。
  *   每单元 = 橙段 cap（5′ 端）+ 蓝段 band（3′ 端）+ 退火 5′ 标注 + 成链方向标注；激活幕由 ann/ext 声明。
- * - 去 Taq、方向标注随链真实朝向（贴链端 11px）、目标产物绿虚线框 + 徽标（仅 s9/s10）。
+ * - 去 Taq、方向标注随链真实朝向（统一距链端 11px）、目标产物绿虚线框 + 徽标（仅 s9/s10）。
  */
 import type { SceneComponent } from "../../core/types";
 import type { PcrState } from "./data";
@@ -36,20 +39,20 @@ const BASE_Y = 215;                          // 场景基座（恒定，永不�
 const BAND_X = 224;                          // 全长链左缘
 const BAND_W = 392;                          // 全长链跨 224..616
 const BAND_H = 14;
-const PRIMER_W = 24;                         // 反平行引物宽（5′ 端贴模板 3′ 端内侧 24px）
+const PRIMER_W = 24;                         // 反平行引物宽（5′ 端距模板 3′ 端 36px，v7.1 起 24→36 向内拉开）
 const PRIMER_H = 10;                         // 橙段高（退火引物/成链 5′ 端同一元素，恒 10px，忠实 demo 9px 近似）
-const PRIMER_L_X = 248;                      // 248..272：L 引物（5′ 端 248）
-const PRIMER_R_X = 568;                      // 568..592：R 引物（5′ 端 592）
+const PRIMER_L_X = 260;                      // 260..284：L 引物（5′ 端 260 = B 3′ 端 224+36，v7.1 248→260）
+const PRIMER_R_X = 556;                      // 556..580：R 引物（5′ 端 580 = A 3′ 端 616−36，v7.1 568→556）
 const NEW_H = 12;                            // 合成段蓝段高
-const DIR_OFF = 11;                          // 方向标注文本中心距链端 11px
-const P5_OFF = 4;                            // 退火引物 5′ 标注中心距引物 5′ 端 4px
+const DIR_OFF = 11;                          // 方向标注文本中心距链端 11px（母链/3′/合成链 5′ 统一）
+const P5_OFF = 4;                            // 退火引物 5′ 标注中心距引物 5′ 端 4px（v7.1 文本微调已撤销，还原基线）
 /** 方向标注静态样式（v6.2 起 14px 粗体深灰 + 白描边，目检反馈 5′/3′ 难以辨认） */
 const DIR_TEXT_ATTRS: Record<string, string> = {
   class: "pcr-dir", x: "0", y: "5", fill: "#0f172a", "font-size": "14", "font-weight": "700",
   "text-anchor": "middle", stroke: "#f8fafc", "stroke-width": "3", "paint-order": "stroke fill",
 };
-const TM_X = 240;                            // 目标产物绿虚线框：240..600 包住靶区 248..592
-const TM_W = 360;
+const TM_X = 252;                            // 目标产物绿虚线框：252..588 包住靶区 260..580（padding 8 对称）
+const TM_W = 336;
 
 const GRAY = "#64748b";    // 母链（旧链/模板）
 const BLUE = "#2563eb";    // 合成段（新链 3′ 端）
@@ -68,12 +71,12 @@ interface StrandSpec {
 /** 8 种链形态（模板/新链几何复用：|A′|≡|A²|、|B′|≡|B²|） */
 const A_SPEC: StrandSpec = { kind: "original", three: "right" };                  // A：灰 224..616，5′ 224 / 3′ 616
 const B_SPEC: StrandSpec = { kind: "original", three: "left" };                   // B：灰 224..616，3′ 224 / 5′ 616
-const AP_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [224, 568] };   // A′/A²：橙 568..592 + 蓝 224..568
-const AS_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 592] };  // A″：橙 248..272 + 蓝 272..592
-const BP_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [272, 616] };  // B′/B²：橙 248..272 + 蓝 272..616
-const BS_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [248, 568] };   // B″：橙 568..592 + 蓝 248..568
+const AP_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [224, 556] };   // A′/A²：橙 556..580 + 蓝 224..556
+const AS_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [284, 580] };  // A″：橙 260..284 + 蓝 284..580
+const BP_SPEC: StrandSpec = { kind: "synth", three: "right", blue: [284, 616] };  // B′/B²：橙 260..284 + 蓝 284..616
+const BS_SPEC: StrandSpec = { kind: "synth", three: "left", blue: [260, 556] };   // B″：橙 556..580 + 蓝 260..556
 
-/** 链 5′ 端坐标：母链 A=224/B=616；合成链 = 自身橙段外侧端（three 左→592、three 右→248） */
+/** 链 5′ 端坐标：母链 A=224/B=616；合成链 = 自身橙段外侧端（three 左→580、three 右→260） */
 function fiveOf(s: StrandSpec): number {
   if (s.kind === "original") return s.three === "right" ? BAND_X : BAND_X + BAND_W;
   return s.three === "left" ? PRIMER_R_X + PRIMER_W : PRIMER_L_X;
@@ -85,12 +88,12 @@ function threeOf(s: StrandSpec): number {
   return s.three === "left" ? s.blue![0] : s.blue![1];
 }
 
-/** 合成链自身橙段（5′ 端）起始 x：three 左 → 568（右侧）、three 右 → 248（左侧） */
+/** 合成链自身橙段（5′ 端）起始 x：three 左 → 556（右侧）、three 右 → 260（左侧） */
 function capXOf(s: StrandSpec): number {
   return s.three === "left" ? PRIMER_R_X : PRIMER_L_X;
 }
 
-/** 合成链蓝段锚点 x（引物 3′ 端，延伸起点）：three 左 → 568（左伸）、three 右 → 272（右伸） */
+/** 合成链蓝段锚点 x（引物 3′ 端，延伸起点）：three 左 → 556（左伸）、three 右 → 284（右伸） */
 function anchorOf(s: StrandSpec): number {
   return s.three === "left" ? PRIMER_R_X : PRIMER_L_X + PRIMER_W;
 }
@@ -222,7 +225,8 @@ export function createPcrScene(): SceneComponent {
 
   /**
    * 方向标注：dirFive = 标注 5′ 端的那枚、dirThree = 标注 3′ 端的那枚。
-   * left/right 由 five/three 大小决定；每枚 x = 对应端 ± 11px（y 由所在 g 的整体位移承担）。
+   * left/right 由 five/three 大小决定；每枚 x = 对应端 ± 偏移（y 由所在 g 的整体位移承担）。
+   * 偏移统一 DIR_OFF=11（母链与合成链一致；v7.1 元素本体内移后标注不再做文字级微调）。
    */
   function setDirPair(dirFive: SVGTextElement, dirThree: SVGTextElement, five: number, three: number): void {
     const left = Math.min(five, three);
@@ -313,7 +317,7 @@ export function createPcrScene(): SceneComponent {
         return;
       }
       setO(u.cap, true);
-      // 蓝段：锚点固定，向模板 5′ 端方向展开（three 左 → 锚 568 左伸；three 右 → 锚 272 右伸）
+      // 蓝段：锚点固定，向模板 5′ 端方向展开（three 左 → 锚 556 左伸；three 右 → 锚 284 右伸）
       if (synth) {
         const x = u.spec.three === "left" ? u.anchor - w : Math.min(u.anchor, u.anchor + w);
         setBand(u.band, x, w, BLUE);
