@@ -357,14 +357,20 @@ describe("细胞呼吸场景 · 无氧模式断言", () => {
     expect(maxAnaerobic).toBeLessThan(aerobicMax);
   });
 
-  it("无氧条件幕与能量幕都给出酒精发酵反应式（画面正文中出现精确计量）", () => {
-    for (const id of ["anaerobic-condition", "anaerobic-yield"]) {
-      const m = mountAt(id);
-      expect(m.eqLayer.style.opacity, id).toBe("1");
-      const texts = [...m.eqLayer.querySelectorAll<T>("text")].map((t) => t.textContent);
-      expect(texts, id).toEqual(["C₆H₁₂O₆", "2C₂H₅OH + 2CO₂ + 少量能量"]);
+  it("无氧模式反应式只在能量幕出现一次（早期版本 p0 显示 → p1~p3 消失 → p4 重现，属闪烁式节奏）", () => {
+    // 全 5 幕逐一断言，把「只出现一次」锁死——只断言首末两幕会漏掉中间三幕的消失
+    for (const s of ANAEROBIC) {
+      const m = mountAt(s.id);
+      expect(m.eqLayer.style.opacity, `${s.id}：反应式应只在能量幕出现`).toBe(
+        s.id === "anaerobic-yield" ? "1" : "0",
+      );
       m.container.remove();
     }
+    // 出现的那一幕必须给出酒精发酵精确计量
+    const m = mountAt("anaerobic-yield");
+    const texts = [...m.eqLayer.querySelectorAll<T>("text")].map((t) => t.textContent);
+    expect(texts).toEqual(["C₆H₁₂O₆", "2C₂H₅OH + 2CO₂ + 少量能量"]);
+    m.container.remove();
   });
 });
 

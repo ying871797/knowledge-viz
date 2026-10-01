@@ -19,6 +19,8 @@ import {
   cellularRespirationAnaerobic,
 } from "./courses/cellular-respiration/data";
 import { createRespirationScene } from "./courses/cellular-respiration/scene";
+import { photosynthesisCourse } from "./courses/photosynthesis/data";
+import { createPhotosynthesisScene } from "./courses/photosynthesis/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -105,6 +107,18 @@ try {
   console.error("[registry]", err);
 }
 
+// 光合作用：单课程 9 幕（必修一 1-5.4；无曲线图 → 无练习模式）
+try {
+  const photo = validateCourse(photosynthesisCourse);
+  registry.push({
+    meta: photo.meta,
+    load: () => photosynthesisCourse,
+    createScene: createPhotosynthesisScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
 const root = document.getElementById("app")!;
 
 // 当前课程页的清理句柄：离开/重进课程页前必须销毁，避免播放器 interval 泄漏
@@ -159,6 +173,10 @@ const HOME_CARDS: Record<string, HomeCardInfo> = {
     desc: "有氧呼吸三个阶段的场所与产物，以及无氧呼吸共用第 1 阶段的全过程。",
     tag: "有氧 · 无氧",
   },
+  photosynthesis: {
+    desc: "光反应在类囊体薄膜、暗反应在叶绿体基质，两个场所同时进行、彼此循环供能。",
+    tag: "光反应 · 暗反应",
+  },
 };
 
 /** 课程标本缩略图（荧光显微风格 SVG，viewBox 0 0 120 120） */
@@ -210,6 +228,15 @@ function homeArt(id: string): string {  const g = (stroke: string) => `stroke="$
         <circle cx="48" cy="76" r="6" fill="var(--a2)" opacity=".7"/>
         <ellipse cx="86" cy="60" rx="26" ry="34" ${g("var(--a2)")} stroke-opacity=".8"/>
         <ellipse cx="86" cy="60" rx="18" ry="25" ${g("var(--a1)")} stroke-width="4"/>
+      </svg>`;
+    case "photosynthesis":
+      // 标本图：叶绿体轮廓 + 上半基粒堆叠（类囊体薄膜）+ 下半基质区（琥珀），一眼对应两个场所
+      return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
+        <ellipse cx="60" cy="60" rx="50" ry="34" ${g("var(--a1)")} stroke-opacity=".8"/>
+        <ellipse cx="60" cy="40" rx="36" ry="9" ${g("var(--a2)")} stroke-opacity=".85"/>
+        <ellipse cx="60" cy="47" rx="36" ry="9" ${g("var(--a2)")} stroke-opacity=".7"/>
+        <ellipse cx="60" cy="54" rx="36" ry="9" ${g("var(--a2)")} stroke-opacity=".55"/>
+        <ellipse cx="60" cy="80" rx="30" ry="11" ${g("var(--a1)")} stroke-opacity=".5"/>
       </svg>`;
     default:
       return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
@@ -287,6 +314,7 @@ function renderHome(): void {
     ["#ff8fab", "#7fd8be"],   // 基因表达
     ["#8aebd0", "#c9a2ff"],   // PCR
     ["#ffc46b", "#7fc8f8"],   // 细胞呼吸
+    ["#8ee6a8", "#ffe08a"],   // 光合作用
   ];
   // 按教材章节排序（册→章→节），同章节保持注册顺序（稳定排序）
   const ordered = [...registry].sort((x, y) => {

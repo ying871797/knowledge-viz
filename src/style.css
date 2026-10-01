@@ -399,6 +399,27 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
 /* 嵴：内膜向内折叠的示意线（第 3 阶段场所用琥珀色系与内膜高亮同色相） */
 .resp-scene .crista { stroke: #f59e0b; stroke-width: 2.5; stroke-opacity: .5; stroke-linecap: round; }
 
+/* 光合作用场景：定位上下文 + 全 SVG 元素幕间补间
+   （载体 [H]/ATP 从类囊体侧下移到基质侧、两场所高亮强度互调、分子显隐均需平滑过渡，
+     静态帧之间不允许瞬切；transform ease-out + opacity ease-in-out 全局统一） */
+.photo-scene { position: relative; }
+.photo-scene svg { display: block; }
+.photo-scene svg g, .photo-scene svg rect, .photo-scene svg ellipse,
+.photo-scene svg circle, .photo-scene svg text {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out;
+}
+/* 叶绿体双层膜：外膜填淡绿底，内膜只描边（两层都填色会读不出层次） */
+.photo-scene .chloro-outer { fill: rgba(240,253,244,.7); stroke: #94a3b8; stroke-width: 2; }
+.photo-scene .chloro-inner { fill: none; stroke: #94a3b8; stroke-width: 2; }
+/* 类囊体盘：基粒 = 类囊体堆叠（3 堆 × 3 片，示意） */
+.photo-scene .granum { fill: #34d399; stroke: #059669; stroke-width: 1.5; }
+/* 两处场所高亮：类囊体绿 / 基质琥珀。opacity 由槽位表逐幕写 style（从不归零），
+   随幕平滑互调是本课「两场所同时存在」反误导设计的视觉载体 */
+.photo-scene .site-thylakoid { fill: rgba(16,185,129,.16); }
+.photo-scene .site-stroma { fill: rgba(245,158,11,.14); }
+
 /* 拓展知识点角标（超纲内容提示） */
 .ext-badge {
   position: absolute;
@@ -787,6 +808,7 @@ body.page-home {
   .meiosis-scene svg { aspect-ratio: 1 / 0.55; }          /* 上限 0.595×0.92；余量 64px */
   .gene-scene svg { aspect-ratio: 1 / 0.52; }             /* 上限 0.566×0.92；瓶颈课程，余量 46.5px */
   .resp-scene svg { aspect-ratio: 1 / 0.55; }              /* 上限 0.55；slice 左右各裁 25.5px，内容左右余量 36/53px（viewBox 960×500）*/
+  .photo-scene svg { aspect-ratio: 1 / 0.68; }             /* 上限 0.68；slice 左右各裁 112.4px，内容实测横向 x 152..813（叶绿体外膜 152/808 + 总反应式右式至 813），余量 39.6/34.6px */
 }
 
 /* 减少动效偏好：关闭纯装饰动画（首页卡片入场、hover 位移、扫描光带） */
@@ -796,4 +818,16 @@ body.page-home {
   .card-link:hover .card-art .art { transform: none; }
   .card-link:hover .card-art::after { transform: translateX(-120%); }
   .card-link:hover .card-arrow { transform: none; }
+
+  /* 课程场景补间降级（细胞呼吸 / 光合作用）：保留 opacity 淡变、去掉 transform 位移。
+     淡变不是装饰而是教学信息——它告诉学生「谁出现、谁消失」（如呼吸第 3 幕 O₂ 消失、
+     H₂O 出现；光合水的光解 H₂O 消失、O₂ 与 [H] 出现），砍掉会真的看不懂；
+     而 transform 位移只是把同一状态换个位置画，属可牺牲的动效。
+     故此处只覆盖 transition 的两条声明，不改元素的最终 transform 值——阶段切换后
+     分子仍落在正确槽位，只是瞬间就位而非滑过去。
+     其余 5 门课程（mito/pcr/dna/meiosis/gene）同样存在该缺口，属独立改动，不在本次范围。 */
+  .resp-scene svg *,
+  .photo-scene svg * {
+    transition: opacity 200ms ease-in-out;
+  }
 }

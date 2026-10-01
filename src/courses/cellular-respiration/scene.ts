@@ -304,6 +304,10 @@ const LAYOUT: Record<string, SlotMap> = {
 
   // ========== 无氧模式 ==========
   // 0 条件：无氧 —— O₂ 不参与、线粒体整体淡化
+  //    eq 保持 null：反应式是全课收尾核对，只在第 4 幕（能量去向）出现一次。
+  //    早期版本在此幕也显示 eq，导致「p0 显示 → p1~p3 消失 → p4 重现」的闪烁节奏
+  //    （违反「一阶段一信息」「切换安静」），且学生会误以为反应式绑定某一幕。
+  //    总反应式的文字仍由该幕 narration 第 2 句口述，信息不丢。
   "anaerobic-condition": {
     glucose: CELL.glucose,
     o2: CELL.o2,
@@ -318,7 +322,7 @@ const LAYOUT: Record<string, SlotMap> = {
     show: { glucose: true, o2: false, pyruvate: false, co2: false, h2o: false, alcohol: false },
     hl: "none",
     mitoDim: true,
-    eq: EQ_ALCOHOL,
+    eq: null,
   },
   // 1 第 1 阶段（与有氧共用）
   "anaerobic-stage1": {
