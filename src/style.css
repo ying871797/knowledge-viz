@@ -382,6 +382,23 @@ body { font-family: "Microsoft YaHei", system-ui, sans-serif; margin: 0; backgro
   border: 1px solid #bbf7d0;
   border-radius: 10px;
 }
+/* 细胞呼吸场景：定位上下文 + 全 SVG 元素幕间补间
+   （[H] 从汇集槽飞向线粒体内膜、CO₂ 迁入基质并移向外膜、分子显隐均需平滑过渡，
+     静态帧之间不允许瞬切；transform ease-out + opacity ease-in-out 全局统一） */
+.resp-scene { position: relative; }
+.resp-scene svg { display: block; }
+.resp-scene svg g, .resp-scene svg rect, .resp-scene svg ellipse,
+.resp-scene svg circle, .resp-scene svg text {
+  transition:
+    transform var(--tween-ms, 1350ms) ease-out,
+    opacity var(--tween-ms, 1350ms) ease-in-out;
+}
+/* 线粒体双层膜：外膜填淡底，内膜只描边（内膜与基质的分界靠描边，避免两层都填色读不出层次） */
+.resp-scene .mito-outer { fill: rgba(248,250,252,.9); stroke: #94a3b8; stroke-width: 2; }
+.resp-scene .mito-inner { fill: none; stroke: #94a3b8; stroke-width: 2; }
+/* 嵴：内膜向内折叠的示意线（第 3 阶段场所用琥珀色系与内膜高亮同色相） */
+.resp-scene .crista { stroke: #f59e0b; stroke-width: 2.5; stroke-opacity: .5; stroke-linecap: round; }
+
 /* 拓展知识点角标（超纲内容提示） */
 .ext-badge {
   position: absolute;
@@ -769,6 +786,7 @@ body.page-home {
   .dna-scene svg { aspect-ratio: 1 / 0.58; }              /* 上限 0.625×0.93；余量 80/123px */
   .meiosis-scene svg { aspect-ratio: 1 / 0.55; }          /* 上限 0.595×0.92；余量 64px */
   .gene-scene svg { aspect-ratio: 1 / 0.52; }             /* 上限 0.566×0.92；瓶颈课程，余量 46.5px */
+  .resp-scene svg { aspect-ratio: 1 / 0.55; }              /* 上限 0.55；slice 左右各裁 25.5px，内容左右余量 36/53px（viewBox 960×500）*/
 }
 
 /* 减少动效偏好：关闭纯装饰动画（首页卡片入场、hover 位移、扫描光带） */

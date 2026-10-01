@@ -15,6 +15,9 @@ const R_LIMITS: Record<string, number> = {
   ".dna-scene": 0.625,   // 上限 0.625（余量 80px / 123px）
   ".meiosis-scene": 0.595, // 上限 0.595（余量 64px / 64px）
   ".gene-scene": 0.566,  // 上限 0.566（瓶颈课程，余量 46.5px / 46.5px）
+  // 上限 0.55：viewBox 960×500 原生比 0.5208；ratio=0.55 时 slice 左右各裁 480×(1−0.5208/0.55)=25.5px，
+  // 内容实测横向 x 36..907（细胞轮廓左边 36 / CO₂ 移至外膜后的最右缘 907），余量 10.5px / 27.5px
+  ".resp-scene": 0.55,
 };
 
 /** 提取某选择器在 ≤720px 媒体查询块内的 aspect-ratio 数值（1 / r 语法） */

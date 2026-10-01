@@ -14,6 +14,11 @@ import { geneExpressionCourse } from "./courses/gene-expression/data";
 import { createGeneExpressionScene } from "./courses/gene-expression/scene";
 import { pcrCourse } from "./courses/pcr/data";
 import { createPcrScene } from "./courses/pcr/scene";
+import {
+  cellularRespirationAerobic,
+  cellularRespirationAnaerobic,
+} from "./courses/cellular-respiration/data";
+import { createRespirationScene } from "./courses/cellular-respiration/scene";
 
 /** 课程注册表条目：新增知识点时在此登记即可；load 可按模式参数返回对应课程数据 */
 interface CourseEntry {
@@ -87,6 +92,19 @@ try {
   console.error("[registry]", err);
 }
 
+// 细胞呼吸：有氧 / 无氧双模式（必修一 1-5.3）
+try {
+  const aerobic = validateCourse(cellularRespirationAerobic);
+  const anaerobic = validateCourse(cellularRespirationAnaerobic);
+  registry.push({
+    meta: aerobic.meta,
+    load: (mode?: string) => (mode === "anaerobic" ? anaerobic : aerobic),
+    createScene: createRespirationScene,
+  });
+} catch (err) {
+  console.error("[registry]", err);
+}
+
 const root = document.getElementById("app")!;
 
 // 当前课程页的清理句柄：离开/重进课程页前必须销毁，避免播放器 interval 泄漏
@@ -137,6 +155,10 @@ const HOME_CARDS: Record<string, HomeCardInfo> = {
     desc: "变性—退火—延伸三步循环，从单分子扩增到 8 个产物、其中 2 个目标片段的完整过程。",
     tag: "变性 · 退火 · 延伸",
   },
+  "cellular-respiration": {
+    desc: "有氧呼吸三个阶段的场所与产物，以及无氧呼吸共用第 1 阶段的全过程。",
+    tag: "有氧 · 无氧",
+  },
 };
 
 /** 课程标本缩略图（荧光显微风格 SVG，viewBox 0 0 120 120） */
@@ -179,6 +201,15 @@ function homeArt(id: string): string {  const g = (stroke: string) => `stroke="$
         <rect x="26" y="67" width="20" height="11" rx="3" fill="var(--a1)" opacity=".85"/>
         <rect x="74" y="36" width="20" height="11" rx="3" fill="var(--a1)" opacity=".85"/>
         <rect x="49" y="57" width="22" height="17" rx="4" fill="var(--a2)"/>
+      </svg>`;
+    case "cellular-respiration":
+      // 标本图：左侧细胞（细胞质基质）+ 右侧线粒体（内膜高亮），一眼对应两个场所
+      return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
+        <rect x="10" y="26" width="48" height="68" rx="16" ${g("var(--a1)")} stroke-opacity=".7"/>
+        <circle cx="26" cy="46" r="6" fill="var(--a2)"/>
+        <circle cx="48" cy="76" r="6" fill="var(--a2)" opacity=".7"/>
+        <ellipse cx="86" cy="60" rx="26" ry="34" ${g("var(--a2)")} stroke-opacity=".8"/>
+        <ellipse cx="86" cy="60" rx="18" ry="25" ${g("var(--a1)")} stroke-width="4"/>
       </svg>`;
     default:
       return `<svg class="art" viewBox="0 0 120 120" aria-hidden="true">
@@ -255,6 +286,7 @@ function renderHome(): void {
     ["#ff9d7a", "#ffd27a"],   // 有丝分裂
     ["#ff8fab", "#7fd8be"],   // 基因表达
     ["#8aebd0", "#c9a2ff"],   // PCR
+    ["#ffc46b", "#7fc8f8"],   // 细胞呼吸
   ];
   // 按教材章节排序（册→章→节），同章节保持注册顺序（稳定排序）
   const ordered = [...registry].sort((x, y) => {
