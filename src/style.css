@@ -830,11 +830,28 @@ body.page-home {
      `.resp-scene svg g` (0,1,2)，于是 g/rect/ellipse/circle/text 的 transform 过渡照旧生效，
      只有 path/line 等未被基础规则命中的元素才真降级——该写法曾静默失效。
      mobileScene.test.ts 有断言保证两处选择器列表同步。
-     其余 5 门课程（mito/pcr/dna/meiosis/gene）尚无减少动效处理，属独立改动，不在本次范围。 */
+     其余 5 门课程（mito/pcr/dna/meiosis/gene）的降级见下方第二个规则块。 */
   .resp-scene svg g, .resp-scene svg rect, .resp-scene svg ellipse,
   .resp-scene svg circle, .resp-scene svg text,
   .photo-scene svg g, .photo-scene svg rect, .photo-scene svg ellipse,
   .photo-scene svg circle, .photo-scene svg text {
+    transition: opacity 200ms ease-in-out;
+  }
+
+  /* 其余 5 门课（减数/有丝分裂、DNA复制、基因表达、PCR）：同上——只保留 opacity 淡变，
+     去掉 transform/几何位移；逐条复用各课基础规则的选择器列表（严禁通配符兜底）。
+     减数分裂与有丝分裂共用同一套类选择器（.chromatid/.cell-outline/.spindle-line 等）。 */
+  .chromatid,
+  .chromatid path, .chromatid circle, .chromatid text,
+  .cell-outline, .polar-body, .sperm-tail,
+  .cell-wall, .nuclear-membrane, .cell-plate, .spindle-line,
+  .meiosis-scene .spindle-line, .mito-scene .spindle-line,
+  .meiosis-scene .spindle-line.grow, .mito-scene .spindle-line.grow,
+  .dna-scene svg g, .dna-scene svg rect, .dna-scene svg line,
+  .dna-scene svg path, .dna-scene svg text,
+  .gene-scene svg path, .gene-scene svg rect, .gene-scene svg circle,
+  .gene-scene svg line, .gene-scene svg text, .gene-scene svg g,
+  .pcr-scene svg g, .pcr-scene svg rect, .pcr-scene svg circle, .pcr-scene svg text {
     transition: opacity 200ms ease-in-out;
   }
 }
