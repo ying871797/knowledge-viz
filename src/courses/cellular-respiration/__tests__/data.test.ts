@@ -14,6 +14,7 @@
  */
 import { describe, expect, it } from "vitest";
 import { validateCourse } from "../../../core/types";
+import { chartSeriesViolations } from "../../../test-utils/chartGuards";
 import {
   cellularRespirationAerobic,
   cellularRespirationAnaerobic,
@@ -179,41 +180,18 @@ describe("细胞呼吸 · 曲线图数据", () => {
   });
 
   /**
-   * 防回归门禁：图内不允许出现「冗余序列」或「无法靠线型区分的平台重合」。
-   * 拆分前两者同时存在——有氧图三条高值序列的平台段互相盖住（O₂ 与 CO₂ 在第 6~7 幕同为 6、
-   * CO₂ 与 H₂O 在第 8~9 幕同为 6，9 幕里没有一幕是四条线分开的）；无氧图酒精与 CO₂ 更是
-   * 同值同色、整张图 100% 重叠。二者都会让曲线图无法回答「哪条线是哪个量」。
-   * 两处豁免：
-   *   - y=0（都还没有，两线贴在轴上，不构成辨识冲突）
-   *   - 线型可区分（至少一条 dashed）时的重合——dashed 是与颜色并列的第二区分通道，
-   *     NumberChart 会同时改路径 stroke-dasharray 与图例色块。本课唯一用到的是图②的
-   *     CO₂/H₂O：累计 6 与净增 6 同为 6 是总反应式的配平事实，拆成两张单线图会拆散
-   *     「进 6 出 6」的对照，故选择让它重合但可区分，而不是消灭重合。
+   * 防回归门禁（跨课程共享，实现见 test-utils/chartGuards.ts）：
+   * 图内不允许出现「冗余序列」或「同 (颜色, 线型) 的平台重合」。
+   * 原口径只看线型、不看颜色（会把异色重合误判为违规），P4 通用化时升级为双通道。
+   * 拆分前两者同时存在——有氧图 O₂/CO₂ 在第 6~7 幕同为 6、CO₂/H₂O 在第 8~9 幕同为 6；
+   * 无氧图酒精与 CO₂ 同值同色整张图 100% 重叠。颜色或线型任一不同即视为可辨；
+   * y=0 处两线贴在轴上，豁免。本课唯一保留的重合是图② CO₂/H₂O（配平事实，靠 dashed 区分）。
    */
-  it("图内无冗余序列、无平台重合", () => {
-    const violations: string[] = [];
-    for (const [name, c] of [["有氧", aerobic], ["无氧", anaerobic]] as const) {
-      for (const cfg of cfgOf(c)) {
-        const S = cfg.series;
-        for (let a = 0; a < S.length; a++) {
-          for (let b = a + 1; b < S.length; b++) {
-            const tag = `${name}/${cfg.title}/${S[a].label}↔${S[b].label}`;
-            // ① 冗余：两条序列数值完全相同 = 同一条线被画了两遍
-            if (S[a].values.join() === S[b].values.join()) violations.push(`${tag} 数值完全相同（冗余）`);
-            // ② 平台重合：绘图区内（y>0）连续 ≥2 幕同值 = 后画的完全盖住先画的。
-            //    线型相同（都没 dashed）才违规——线型可区分时重合是允许的表达。
-            if (!!S[a].dashed !== !!S[b].dashed) continue;
-            let run = 0;
-            S[a].values.forEach((va, i) => {
-              run = va > 0 && va === S[b].values[i] ? run + 1 : 0;
-              // run===2 只在每段重合的首个帧报一次；用 >=2 会让长平台重复刷屏
-              if (run === 2) violations.push(`${tag} 第 ${i - 1}~${i} 幕起在 y=${va} 连续重合（线型亦相同）`);
-            });
-          }
-        }
-      }
-    }
-    expect(violations).toEqual([]);
+  it("图内无冗余序列、无可辨性平台重合（跨课程共享门禁）", () => {
+    const bad = [aerobic, anaerobic].flatMap((c) =>
+      cfgOf(c).flatMap((cfg) => chartSeriesViolations(cfg, c.stages.length)),
+    );
+    expect(bad).toEqual([]);
   });
 
   it("图②里 CO₂ 与 H₂O 的配平重合必须由虚线兜底（防止后人把 dashed 删掉后两条线重新盖死）", () => {

@@ -4,6 +4,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { pcrCourse } from "../data";
+import { chartSeriesViolations } from "../../../test-utils/chartGuards";
 
 const stages = pcrCourse.stages;
 
@@ -72,5 +73,12 @@ describe("PCR 课程数据", () => {
       expect(f.expr).toContain("ⁿ");
       expect(f.example).toMatch(/^n=3 → \d+$/);
     }
+  });
+
+  it("图内无冗余序列、无可辨性平台重合（跨课程共享门禁）", () => {
+    const bad = pcrCourse.chartConfigs!.flatMap((cfg) =>
+      chartSeriesViolations(cfg, stages.length),
+    );
+    expect(bad).toEqual([]);
   });
 });

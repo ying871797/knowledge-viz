@@ -1,6 +1,7 @@
 ﻿import { describe, it, expect } from "vitest";
 import { meiosisCourse, oogenesisCourse } from "../data";
 import { validateCourse } from "../../../core/types";
+import { chartSeriesViolations } from "../../../test-utils/chartGuards";
 import type { MeiosisState } from "../data";
 
 describe("减数分裂课程数据", () => {
@@ -53,5 +54,17 @@ describe("卵细胞模式课程数据（oogenesisCourse）", () => {
     const sperm = meiosisCourse.stages[5].sceneState as unknown as MeiosisState;
     expect(sperm.unequal).toBeUndefined();
     expect(sperm.polarBodies).toBeUndefined();
+  });
+});
+
+describe("减数分裂 · 图表可辨性门禁（跨课程共享）", () => {
+  it.each([
+    ["减数分裂（精子）", meiosisCourse],
+    ["减数分裂（卵细胞）", oogenesisCourse],
+  ])("%s：图内无冗余序列、无可辨性平台重合", (_name, course) => {
+    const bad = course.chartConfigs!.flatMap((cfg) =>
+      chartSeriesViolations(cfg, course.stages.length),
+    );
+    expect(bad).toEqual([]);
   });
 });
