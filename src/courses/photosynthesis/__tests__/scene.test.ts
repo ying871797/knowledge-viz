@@ -423,28 +423,32 @@ describe("光合作用场景 · 布局可读性（几何断言）", () => {
   });
 
   it("可见分子的整体内容边界不超出 viewBox（0 0 960 500）", () => {
-    const halfOf = (el: Element): number => {
-      const rect = el.querySelector("rect");
-      if (rect) return Math.max(Number(rect.getAttribute("width")), Number(rect.getAttribute("height"))) / 2;
-      const circle = el.querySelector("circle");
-      if (circle) return Number(circle.getAttribute("r"));
-      return 30;
-    };
+    // 用真实包围盒 absBox，而非「首个 rect/circle 的半宽」：并排多粒的组（如 O₂ 3 粒）
+    // 旧写法只取第一粒尺寸，整组溢出会被漏掉。
     for (const s of STAGES) {
       const m = mountAt(s.id);
       for (const [name, els] of moleculeGroups(m)) {
         for (const el of els) {
           if (!vis(el)) continue;
-          const p = pos(el);
-          const half = halfOf(el);
-          expect(p.x - half, `${s.id}：${name} 左溢出`).toBeGreaterThanOrEqual(0);
-          expect(p.x + half, `${s.id}：${name} 右溢出`).toBeLessThanOrEqual(960);
-          expect(p.y - half, `${s.id}：${name} 上溢出`).toBeGreaterThanOrEqual(0);
-          expect(p.y + half, `${s.id}：${name} 下溢出`).toBeLessThanOrEqual(500);
+          const b = absBox(el);
+          expect(b.x1, `${s.id}：${name} 左溢出`).toBeGreaterThanOrEqual(0);
+          expect(b.x2, `${s.id}：${name} 右溢出`).toBeLessThanOrEqual(960);
+          expect(b.y1, `${s.id}：${name} 上溢出`).toBeGreaterThanOrEqual(0);
+          expect(b.y2, `${s.id}：${name} 下溢出`).toBeLessThanOrEqual(500);
         }
       }
       m.container.remove();
     }
+  });
+
+  it("图例配色：不同分子族的色块两两不同（同色会把两族读成同一物质）", () => {
+    const scene = createPhotosynthesisScene();
+    const legend = scene.legend ?? [];
+    expect(legend.length, "光合场景应有图例").toBeGreaterThan(0);
+    const dup = legend
+      .map((l) => l.color.toLowerCase())
+      .filter((c, i, arr) => arr.indexOf(c) !== i);
+    expect(dup, `图例存在同色项：${legend.map((l) => `${l.label}=${l.color}`).join(", ")}`).toEqual([]);
   });
 
   it("叶绿体轮廓与基粒全部落在 viewBox 内（背景层不出画）", () => {

@@ -235,4 +235,24 @@ describe("mountCoursePage 装配", () => {
     handle.destroy();
     root.remove();
   });
+
+  it("destroy() 关闭自动播放定时器，且可重复调用（防 interval 泄漏）", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const handle = mountCoursePage(root, makeCourse(), () => makeSceneStub().scene);
+      // 控制条按钮顺序：上一步 / 播放 / 下一步
+      const play = [...root.querySelectorAll<HTMLButtonElement>(".player-bar button")][1];
+      play.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(vi.getTimerCount(), "点击播放应产生 1 个定时器").toBe(1);
+      handle.destroy();
+      expect(vi.getTimerCount(), "destroy 后不得残留定时器（重新挂载会泄漏）").toBe(0);
+      // 幂等：路由层可能重复清理，第二次 destroy 不得抛错
+      expect(() => handle.destroy()).not.toThrow();
+      root.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

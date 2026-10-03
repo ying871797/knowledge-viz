@@ -825,9 +825,16 @@ body.page-home {
      而 transform 位移只是把同一状态换个位置画，属可牺牲的动效。
      故此处只覆盖 transition 的两条声明，不改元素的最终 transform 值——阶段切换后
      分子仍落在正确槽位，只是瞬间就位而非滑过去。
-     其余 5 门课程（mito/pcr/dna/meiosis/gene）同样存在该缺口，属独立改动，不在本次范围。 */
-  .resp-scene svg *,
-  .photo-scene svg * {
+     ⚠ 必须逐条复用上方基础规则的选择器列表，不能用 `.resp-scene svg *` / `.photo-scene svg *`
+     兜底：通配符 `*` 不贡献特异性，`.resp-scene svg *` 为 (0,1,1)，会输给基础规则的
+     `.resp-scene svg g` (0,1,2)，于是 g/rect/ellipse/circle/text 的 transform 过渡照旧生效，
+     只有 path/line 等未被基础规则命中的元素才真降级——该写法曾静默失效。
+     mobileScene.test.ts 有断言保证两处选择器列表同步。
+     其余 5 门课程（mito/pcr/dna/meiosis/gene）尚无减少动效处理，属独立改动，不在本次范围。 */
+  .resp-scene svg g, .resp-scene svg rect, .resp-scene svg ellipse,
+  .resp-scene svg circle, .resp-scene svg text,
+  .photo-scene svg g, .photo-scene svg rect, .photo-scene svg ellipse,
+  .photo-scene svg circle, .photo-scene svg text {
     transition: opacity 200ms ease-in-out;
   }
 }

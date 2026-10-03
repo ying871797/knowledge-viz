@@ -18,7 +18,7 @@
  * - 背景/细参考线类图元默认不视为遮挡物（细胞轮廓、纺锤丝、氢键、刻度等）
  */
 import type { Course } from "../core/types";
-import { spanCenterX } from "../core/numberChart";
+import { spanCenterX, W, M } from "../core/numberChart";
 
 export type Box = { x1: number; y1: number; x2: number; y2: number };
 
@@ -374,4 +374,32 @@ export function expectStageLabelsFit(labels: string[], opts: { fontSize?: number
       bad.map((v) => `"${v.a}" × "${v.b}"：间距 ${v.gap}px < 需要 ${v.need}px`).join("\n  "),
     );
   }
+}
+
+/** 越出绘图区的阶段标签（含左右缘坐标，单位 viewBox） */
+export interface StageLabelOverflow {
+  label: string; index: number; left: number; right: number;
+}
+
+/**
+ * 阶段标签横向是否越出绘图区（[M.left, W−M.right]）。
+ * `stageLabelViolations` 只查相邻遮挡：首/末标签没有「相邻」，或 n=1 时它整段空转，
+ * 过长标签会压到纵轴刻度或越过右缘而无人发现。此处按 spanCenterX 的落点 ± 半宽判定。
+ */
+export function stageLabelPlotOverflow(
+  labels: string[],
+  opts: { fontSize?: number } = {},
+): StageLabelOverflow[] {
+  const fs = opts.fontSize ?? 13;
+  const lo = M.left;
+  const hi = W - M.right;
+  const out: StageLabelOverflow[] = [];
+  labels.forEach((label, i) => {
+    const cx = spanCenterX(i, labels.length);
+    const half = textWidth(label, fs) / 2;
+    if (cx - half < lo - 1e-9 || cx + half > hi + 1e-9) {
+      out.push({ label, index: i, left: +(cx - half).toFixed(1), right: +(cx + half).toFixed(1) });
+    }
+  });
+  return out;
 }

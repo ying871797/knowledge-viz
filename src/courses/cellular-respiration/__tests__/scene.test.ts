@@ -486,27 +486,32 @@ describe("细胞呼吸场景 · 布局可读性（几何断言）", () => {
   });
 
   it("可见分子的整体内容边界不超出 viewBox（0 0 960 500）", () => {
-    const halfOf = (el: Element): number => {
-      const rect = el.querySelector("rect");
-      if (rect) return Math.max(Number(rect.getAttribute("width")), Number(rect.getAttribute("height"))) / 2;
-      const circle = el.querySelector("circle");
-      if (circle) return Number(circle.getAttribute("r"));
-      return 63;
-    };
+    // 用真实包围盒 absBox，而非「首个 rect/circle 的半宽」：O₂ 是 3 粒并排的组，
+    // 旧写法只取第一粒 r=15，真实半宽 63（±48 + r15），多球组的溢出会被整段漏掉。
     for (const s of ALL_STAGES) {
       const m = mountAt(s.id);
       const all = [m.glucose, m.o2, ...m.pyruvate, ...m.co2, ...m.h2o, ...m.alcohol, ...m.h, ...m.atp];
       for (const el of all) {
         if (!vis(el)) continue;
-        const p = pos(el);
-        const half = halfOf(el);
-        expect(p.x - half, `${s.id}：${el.getAttribute("class")} 左溢出`).toBeGreaterThanOrEqual(0);
-        expect(p.x + half, `${s.id}：${el.getAttribute("class")} 右溢出`).toBeLessThanOrEqual(960);
-        expect(p.y - half, `${s.id}：${el.getAttribute("class")} 上溢出`).toBeGreaterThanOrEqual(0);
-        expect(p.y + half, `${s.id}：${el.getAttribute("class")} 下溢出`).toBeLessThanOrEqual(500);
+        const b = absBox(el);
+        const cls = el.getAttribute("class");
+        expect(b.x1, `${s.id}：${cls} 左溢出`).toBeGreaterThanOrEqual(0);
+        expect(b.x2, `${s.id}：${cls} 右溢出`).toBeLessThanOrEqual(960);
+        expect(b.y1, `${s.id}：${cls} 上溢出`).toBeGreaterThanOrEqual(0);
+        expect(b.y2, `${s.id}：${cls} 下溢出`).toBeLessThanOrEqual(500);
       }
       m.container.remove();
     }
+  });
+
+  it("图例配色：不同分子族的色块两两不同（同色会把两族读成同一物质）", () => {
+    const scene = createRespirationScene();
+    const legend = scene.legend ?? [];
+    expect(legend.length, "呼吸场景应有图例").toBeGreaterThan(0);
+    const dup = legend
+      .map((l) => l.color.toLowerCase())
+      .filter((c, i, arr) => arr.indexOf(c) !== i);
+    expect(dup, `图例存在同色项：${legend.map((l) => `${l.label}=${l.color}`).join(", ")}`).toEqual([]);
   });
 });
 

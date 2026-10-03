@@ -224,6 +224,26 @@ describe("细胞呼吸 · 曲线图数据", () => {
     expect([co2.dashed, h2o.dashed].filter(Boolean).length).toBe(1);
   });
 
+  it("同一张图内各序列的（颜色, 线型）组合两两不同（同色实线 = 两条线读不出谁是谁）", () => {
+    // 颜色是与线型并列的区分通道；同图两条同色实线时 NumberChart 无法自动防重叠。
+    // numberChart.ts 的兜底调色板（未声明 color 时按序列下标取模）。
+    const FALLBACK = ["#2563eb", "#dc2626", "#b45309"];
+    const violations: string[] = [];
+    for (const [name, c] of [["有氧", aerobic], ["无氧", anaerobic]] as const) {
+      for (const cfg of cfgOf(c)) {
+        const seen = new Map<string, string>();
+        cfg.series.forEach((s, i) => {
+          const color = (s.color ?? FALLBACK[i % FALLBACK.length]).toLowerCase();
+          const key = `${color}|${s.dashed ? "dashed" : "solid"}`;
+          const prev = seen.get(key);
+          if (prev) violations.push(`${name}/${cfg.title}：「${prev}」与「${s.label}」同为 ${key}`);
+          else seen.set(key, s.label);
+        });
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
   it("有氧图：葡萄糖在第 1 阶段末归零、CO₂ 在第 2 阶段末出现、O₂ 在第 3 阶段末归零", () => {
     const series = seriesOf(aerobic);
     // 幕序：0 总览 1 ①场所 2 ①分解 3 ①产物 4 ②场所 5 ②脱羧 6 ③场所 7 ③生成水 8 总反应式

@@ -48,3 +48,44 @@ describe("style.css 移动端动画区放大", () => {
     expect(r).toBeGreaterThan(0.5); // 必须 >0.5：低于 0.5 会改成裁上下而非左右空白
   });
 });
+
+/**
+ * 减少动效降级的选择器完备性守卫。
+ * 背景：`.resp-scene svg *` 里的 `*` 不贡献特异性，`.resp-scene svg *`(0,1,1) 会输给基础规则
+ * `.resp-scene svg g`(0,1,2)，于是 g/rect/circle/text/ellipse 的 transform 过渡照旧生效——
+ * 该写法曾让「减少动效」静默失效。此用例强制 reduce-motion 块逐条复用基础过渡选择器。
+ */
+describe("style.css 减少动效降级选择器", () => {
+  const BASE = ["g", "rect", "ellipse", "circle", "text"];
+
+  /** 基础 transition 规则里声明的场景元素选择器（取 reduce-motion 块之前的部分） */
+  function baseTransitionSelectors(): string[] {
+    const head = css.slice(0, css.indexOf("@media (prefers-reduced-motion"));
+    const re = /\.(?:resp|photo)-scene svg (g|rect|ellipse|circle|text)/g;
+    return [...new Set([...head.matchAll(re)].map((m) => m[0]))];
+  }
+
+  /** reduce-motion 媒体查询块的正文（本文件最后一节，块内规则均缩进，`\n}` 只匹配块尾） */
+  function reduceBlock(): string {
+    const m = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/);
+    if (!m) throw new Error("未找到 prefers-reduced-motion: reduce 媒体查询块");
+    // 去注释：块内解说文字会举反例选择器（`.resp-scene svg *`），不剔除会架空这两条断言
+    return m[1].replace(/\/\*[\s\S]*?\*\//g, "");
+  }
+
+  it("基础过渡选择器全部存在（防止选择器被改名后本门禁空转）", () => {
+    for (const scene of [".resp-scene", ".photo-scene"]) {
+      for (const el of BASE) expect(baseTransitionSelectors()).toContain(`${scene} svg ${el}`);
+    }
+  });
+
+  it("reduce-motion 块逐条复用基础过渡选择器（通配符 * 特异性更低会静默失效）", () => {
+    const block = reduceBlock();
+    const missing = baseTransitionSelectors().filter((sel) => !block.includes(sel));
+    expect(missing, `reduce-motion 块未覆盖：${missing.join(", ")}（不得用通配符兜底）`).toEqual([]);
+  });
+
+  it("reduce-motion 块不残留通配符兜底写法", () => {
+    expect(reduceBlock()).not.toMatch(/\.(?:resp|photo)-scene svg \*/);
+  });
+});

@@ -7,7 +7,7 @@ import {
   cellularRespirationAerobic,
   cellularRespirationAnaerobic,
 } from "../../courses/cellular-respiration/data";
-import { expectStageLabelsFit } from "../../test-utils/textAudit";
+import { expectStageLabelsFit, stageLabelPlotOverflow } from "../../test-utils/textAudit";
 
 /**
  * 解析 buildStepPath 产出的 d，追踪笔位。
@@ -155,6 +155,33 @@ describe("曲线图阶段标签间距（回归：标签互相遮挡）", () => {
     expect(oogenesisCourse.stages[1].chartLabel).toBe("间期复制");
     // PCR 11 个阶段 → 段宽仅 60px，完整标题必然挤爆，故逐段提供短标签
     expect(pcrCourse.stages.every((s) => s.chartLabel)).toBe(true);
+  });
+});
+
+describe("曲线图阶段标签绘图区包含性（回归：首/末标签压纵轴或越右缘）", () => {
+  // stageLabelViolations 只查「相邻」遮挡，首/末标签与 n=1 的情形它整段空转；
+  // 本组断言标签横向落在 [M.left, W−M.right] 内（与移动端字号 13px 一致）。
+  it.each([
+    ["减数分裂（精子）", meiosisCourse],
+    ["减数分裂（卵细胞）", oogenesisCourse],
+    ["有丝分裂", mitosisCourse],
+    ["PCR", pcrCourse],
+    ["细胞呼吸（有氧）", cellularRespirationAerobic],
+    ["细胞呼吸（无氧）", cellularRespirationAnaerobic],
+  ])("%s：阶段标签不越出绘图区", (_name, course) => {
+    const bad = stageLabelPlotOverflow(course.stages.map((s) => s.chartLabel ?? s.title), { fontSize: 13 });
+    expect(
+      bad,
+      `越界标签：${bad.map((b) => `"${b.label}"(${b.left}..${b.right})`).join(", ")}`,
+    ).toEqual([]);
+  });
+  it("超长首标签会被门禁抓到（验证门禁生效）", () => {
+    // n=9 时首段中心 = 44 + 660/9/2 = 80.7；6 个汉字 = 78px 宽 → 左缘 41.7 < M.left(44)
+    const labels = ["间期复制阶段", ...Array.from({ length: 8 }, () => "甲")];
+    const bad = stageLabelPlotOverflow(labels, { fontSize: 13 });
+    expect(bad).toHaveLength(1);
+    expect(bad[0].index).toBe(0);
+    expect(bad[0].left).toBeLessThan(44);
   });
 });
 
