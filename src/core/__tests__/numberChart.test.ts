@@ -3,6 +3,10 @@ import { NumberChart, spanX, spanCenterX, buildStepPath, yFor, W, M } from "../n
 import { meiosisCourse, oogenesisCourse } from "../../courses/meiosis/data";
 import { mitosisCourse } from "../../courses/mitosis/data";
 import { pcrCourse } from "../../courses/pcr/data";
+import {
+  cellularRespirationAerobic,
+  cellularRespirationAnaerobic,
+} from "../../courses/cellular-respiration/data";
 import { expectStageLabelsFit } from "../../test-utils/textAudit";
 
 /**
@@ -132,11 +136,16 @@ describe("课程数据的渐变段声明", () => {
 });
 
 describe("曲线图阶段标签间距（回归：标签互相遮挡）", () => {
+  // 覆盖全部 5 门有图课程（细胞呼吸两模式）。曲线图文字不经过 textAudit 的 collectVisualConflicts
+  // （6 个 runSceneAudit 调用点都只传场景自己的 svg），本断言是图表文字唯一的自动门禁，
+  // 新增有图课程时必须一并登记，否则其标签间距只能靠目检。
   it.each([
     ["减数分裂（精子）", meiosisCourse],
     ["减数分裂（卵细胞）", oogenesisCourse],
     ["有丝分裂", mitosisCourse],
     ["PCR", pcrCourse],
+    ["细胞呼吸（有氧，9 段为全项目最多）", cellularRespirationAerobic],
+    ["细胞呼吸（无氧）", cellularRespirationAnaerobic],
   ])("%s：阶段标签在移动端字号 13px 下不互相遮挡", (_name, course) => {
     expectStageLabelsFit(course.stages.map((s) => s.chartLabel ?? s.title), { fontSize: 13 });
   });

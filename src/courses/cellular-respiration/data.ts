@@ -53,16 +53,43 @@ export const ANAEROBIC_STAGE_IDS = [
 
 // —— 有氧呼吸 ——
 
-/** 有氧呼吸曲线图：只画总反应式唯一确定计量的三种物质 + 水的净增量 */
-const aerobicChart: ChartConfig = {
-  title: "物质存留与产出（1 分子葡萄糖为基准）",
-  series: [
-    { label: "剩余葡萄糖", color: C_GLUCOSE, values: [1, 1, 0, 0, 0, 0, 0, 0, 0] },
-    { label: "剩余 O₂", color: C_O2, values: [6, 6, 6, 6, 6, 6, 6, 0, 0] },
-    { label: "累计产出 CO₂", color: C_CO2, values: [0, 0, 0, 0, 0, 6, 6, 6, 6] },
-    { label: "净增 H₂O", color: C_H2O, values: [0, 0, 0, 0, 0, 0, 0, 6, 6] },
-  ],
-};
+/**
+ * 有氧呼吸曲线图（两张）：只画总反应式唯一确定计量的物质 + 水的净增量。
+ *
+ * 【为何拆成两张】原为「1 张 4 序列」，但三条高值序列的平台段彼此重合：
+ * O₂ 与 CO₂ 在第 6~7 幕（1 起数）同为 6，CO₂ 与 H₂O 在第 8~9 幕同为 6，
+ * 后画的把先画的完全盖住——9 幕里没有任何一幕是四条线分开的，色相也涨到 4 个（超「色相 ≤3」）。
+ * 故按代谢课唯一的二元结构（进什么 → 出什么）正交切分，图内两条线方向一致，
+ * 图例由 4 项降到 2 项，唯一残留的跨序列重合是图②的 CO₂ 与 H₂O。
+ *
+ * 【CO₂ 与 H₂O 的重合是事实，用虚线而非拆图处理】第 3 阶段完成后累计 6 CO₂ 与净增 6 H₂O
+ * 同时成立，这正是总反应式 C₆H₁₂O₆ + 6O₂ + 6H₂O → 6CO₂ + 12H₂O 的配平状态，
+ * 拆成两张单线图会把这个「进 6 出 6」的对照拆散。故给 H₂O 加 dashed：
+ * NumberChart 会同时给路径加 stroke-dasharray 并把图例色块改成虚线（numberChart.ts:173/198），
+ * 于是实线 CO₂ 从虚线缝隙中透出，图形与图例都不靠颜色单独区分——零 core 改动。
+ *
+ * 【纵轴取舍】图①纵轴由 O₂ 决定（yMax=6），葡萄糖恒在 1、仅占绘图高度 17%，是一条贴地矮线。
+ * 这不是缺陷而是事实：只有同轴对比才看得出「葡萄糖第 1 阶段就耗尽、O₂ 撑到第 3 阶段」。
+ * 单设 yMax 需改 NumberChart 构造签名（共享组件，影响 6 门课），代价大于收益，故不拆第三条轴。
+ * 上述性质由 __tests__/data.test.ts 的「图内无冗余序列、无平台重合」门禁锁死。
+ */
+const aerobicCharts: ChartConfig[] = [
+  {
+    title: "反应物的存留（1 分子葡萄糖为基准）",
+    series: [
+      { label: "剩余葡萄糖", color: C_GLUCOSE, values: [1, 1, 0, 0, 0, 0, 0, 0, 0] },
+      { label: "剩余 O₂", color: C_O2, values: [6, 6, 6, 6, 6, 6, 6, 0, 0] },
+    ],
+  },
+  {
+    title: "产物的累计（1 分子葡萄糖为基准）",
+    series: [
+      { label: "累计产出 CO₂", color: C_CO2, values: [0, 0, 0, 0, 0, 6, 6, 6, 6] },
+      // dashed：与上一条的累计值在第 8~9 幕同为 6（配平事实），用虚线让两者在图形与图例上都可区分
+      { label: "净增 H₂O", color: C_H2O, values: [0, 0, 0, 0, 0, 0, 0, 6, 6], dashed: true },
+    ],
+  },
+];
 
 const aerobicStages: Stage<RespirationState>[] = [
   {
@@ -184,7 +211,7 @@ export const cellularRespirationAerobic: Course<RespirationState> = {
     difficulty: 4,
   },
   stages: aerobicStages,
-  chartConfigs: [aerobicChart],
+  chartConfigs: aerobicCharts,
   formulas: [
     {
       name: "有氧总反应式",
@@ -219,13 +246,19 @@ export const cellularRespirationAerobic: Course<RespirationState> = {
 /**
  * 无氧呼吸曲线图：1 葡萄糖 → 2 丙酮酸 → 2 酒精 + 2 CO₂。
  * 第 1 阶段与有氧完全相同，所以「剩余葡萄糖」归零发生在第 2 幕。
+ *
+ * 【示意取舍】酒精与 CO₂ 严格 1:1 且同时产出，原来两条序列数值完全相同、
+ * 连颜色都用同一个 C_CO2 —— 等于把同一条线画了两遍，两遍之间没有任何视觉差异，
+ * 且 NumberChart 无去重逻辑（逐条画 path + circle），于是两组数据点叠在同一处。
+ * 合并为一条，把「各 2 分子」的配平关系写进图例：既保住「无氧也放 CO₂」这个高频错点
+ * 澄清点，又让图上不可能再出现两条重合线。颜色沿用 C_CO2（呼吸主线以 CO₂ 计量），
+ * 物质归属以图例文字为准，颜色不作为唯一区分通道。
  */
 const anaerobicChart: ChartConfig = {
   title: "物质存留与产出（1 分子葡萄糖为基准）",
   series: [
     { label: "剩余葡萄糖", color: C_GLUCOSE, values: [1, 0, 0, 0, 0] },
-    { label: "累计产出 CO₂", color: C_CO2, values: [0, 0, 0, 2, 2] },
-    { label: "累计产出酒精", color: C_CO2, values: [0, 0, 0, 2, 2] },
+    { label: "产物：酒精 + CO₂（各 2 分子）", color: C_CO2, values: [0, 0, 0, 2, 2] },
   ],
 };
 
