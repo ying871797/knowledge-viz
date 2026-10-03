@@ -80,12 +80,25 @@ export function validateCourse<State = Record<string, unknown>>(input: unknown):
   const c = input as Course<State>;
   if (!c || typeof c !== "object") throw new Error("课程数据必须是对象");
   if (!c.meta?.id || !c.meta?.title) throw new Error("meta.id/meta.title 缺失");
+  // difficulty 若提供须为 1..5 整数：main.ts 难度圆点按 4−difficulty 生成，越界会抛 RangeError（白屏）
+  const difficulty = c.meta.difficulty;
+  if (difficulty !== undefined && (!Number.isInteger(difficulty) || difficulty < 1 || difficulty > 5))
+    throw new Error("meta.difficulty 必须是 1..5 的整数");
   if (!Array.isArray(c.stages) || c.stages.length === 0) throw new Error("stages 必须为非空数组");
 
+  const seenStageIds = new Set<string>();
   c.stages.forEach((s, i) => {
     const tag = s.id ?? `stage[${i}]`;
     if (!s.id || !s.title) throw new Error(`${tag} 缺少 id/title`);
+    // stage.id 必须唯一：重复会让槽位表/路由行为未定义（两份数据指向同一幕）
+    if (seenStageIds.has(s.id)) throw new Error(`stage id 重复：${s.id}`);
+    seenStageIds.add(s.id);
     if (!Array.isArray(s.narration)) throw new Error(`${tag}.narration 必须是数组`);
+    // 讲解元素须为非空字符串：空串/空白会在讲解面板留下空白帧
+    s.narration.forEach((line, li) => {
+      if (typeof line !== "string" || !line.trim())
+        throw new Error(`${tag}.narration[${li}] 必须是非空字符串`);
+    });
     if (!s.sceneState || typeof s.sceneState !== "object" || Array.isArray(s.sceneState))
       throw new Error(`${tag}.sceneState 必须是对象`);
     // numbers 全程可选：仅在存在时校验数值与自洽性（是否画图由 chartConfigs 决定，两者互不影响）
@@ -122,16 +135,26 @@ export function validateCourse<State = Record<string, unknown>>(input: unknown):
     c.chartConfigs.forEach((config, ci) => {
       if (!config.title || typeof config.title !== "string")
         throw new Error(`chartConfigs[${ci}] 缺少 title`);
-      if (!Array.isArray(config.series)) throw new Error(`chartConfigs[${ci}] series 必须是数组`);
+      // 空 series = 空图（无任何提示）；label 图内须唯一（同名两线图例无法区分）
+      if (!Array.isArray(config.series) || config.series.length === 0)
+        throw new Error(`chartConfigs[${ci}].series 必须是非空数组`);
+      // tickStep 须为正整数：0/负数/NaN 会让刻度循环异常（NaN 时只剩 0 刻度）
+      if (config.tickStep !== undefined && (!Number.isInteger(config.tickStep) || config.tickStep <= 0))
+        throw new Error(`chartConfigs[${ci}].tickStep 必须是正整数`);
+      const seenLabels = new Set<string>();
       config.series.forEach((series, si) => {
         if (!series.label || typeof series.label !== "string")
           throw new Error(`chartConfigs[${ci}].series[${si}] 缺少 label`);
+        if (seenLabels.has(series.label))
+          throw new Error(`chartConfigs[${ci}] label 重复：${series.label}`);
+        seenLabels.add(series.label);
         if (!Array.isArray(series.values))
           throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是数组`);
         if (series.values.length !== c.stages.length)
           throw new Error(`chartConfigs[${ci}].series[${si}] values 长度必须等于 stages 数量（${c.stages.length}）`);
-        if (series.values.some((v) => typeof v !== "number" || !Number.isFinite(v)))
-          throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是有限数值`);
+        // 数值须非负：负值会被画到基线以下，纵轴语义失效
+        if (series.values.some((v) => !isNonNegNum(v)))
+          throw new Error(`chartConfigs[${ci}].series[${si}] values 必须是非负有限数值`);
       });
       // 渐变段索引：必须落在 stages 范围内、不重复（越界会让斜坡画到绘图区外）
       if (config.gradualSegments !== undefined) {

@@ -354,7 +354,11 @@ function renderHome(): void {
     foot.className = "card-foot";
     const diff = document.createElement("span");
     diff.className = "card-diff";
-    diff.textContent = `难度 ${"●".repeat(entry.meta.difficulty)}${"○".repeat(4 - entry.meta.difficulty)}`;
+    // 双保险：difficulty 已由 validateCourse 限定 1..5；此处在渲染层再兜底一次，
+    // 防止渲染层被单独调用时 4−difficulty 为负导致 String.repeat 抛 RangeError（白屏）。
+    // 显示保持原有 4 格布局（d≤4 时输出与旧实现逐字一致）
+    const d = Math.round(entry.meta.difficulty);
+    diff.textContent = `难度 ${"●".repeat(Math.max(0, d))}${"○".repeat(Math.max(0, 4 - d))}`;
     const tag = document.createElement("span");
     tag.className = "card-tag";
     tag.textContent = info?.tag ?? "分步动画";
