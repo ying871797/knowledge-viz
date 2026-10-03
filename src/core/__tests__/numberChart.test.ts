@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { NumberChart, spanX, spanCenterX, buildStepPath, yFor, W, M } from "../numberChart";
+import { NumberChart, spanX, spanCenterX, buildStepPath, yFor, W, H, M } from "../numberChart";
 import { meiosisCourse, oogenesisCourse } from "../../courses/meiosis/data";
 import { mitosisCourse } from "../../courses/mitosis/data";
 import { pcrCourse } from "../../courses/pcr/data";
@@ -314,5 +314,35 @@ describe("NumberChart 渲染", () => {
     chart.setExamMode(false);
     container.querySelectorAll<SVGTextElement>("text.stage-label")
       .forEach((t) => expect(t.hasAttribute("visibility")).toBe(false));
+  });
+});
+
+describe("NumberChart 防御纵深（P3）", () => {
+  it("yFor 在 yMax≤0 时回落基线（不返回 NaN/Infinity）", () => {
+    const baseline = H - M.bottom;
+    expect(yFor(1, 0)).toBe(baseline);
+    expect(yFor(1, -3)).toBe(baseline);
+    expect(yFor(1, NaN)).toBe(baseline);
+  });
+
+  it("setActive 越界按隐藏处理，色带不越出画布", () => {
+    const container = document.createElement("div");
+    const chart = new NumberChart(container, ["甲", "乙", "丙"]);
+    chart.setSeries([{ label: "DNA", values: [1, 2, 3] }]);
+    const band = container.querySelector<SVGRectElement>("rect.marker")!;
+    chart.setActive(1);
+    expect(band.getAttribute("visibility")).toBe("visible");
+    chart.setActive(999);
+    expect(band.getAttribute("visibility"), "越界索引须隐藏").toBe("hidden");
+    chart.setActive(-1);
+    expect(band.getAttribute("visibility")).toBe("hidden");
+  });
+
+  it("tickStep 为 NaN 时回落到 1（否则刻度循环只画一个 0）", () => {
+    const container = document.createElement("div");
+    const chart = new NumberChart(container, ["甲"], String, NaN);
+    chart.setSeries([{ label: "DNA", values: [3] }]);
+    const texts = [...container.querySelectorAll("text.axis-text")].map((t) => t.textContent);
+    expect(texts).toEqual(["0", "1", "2", "3"]);
   });
 });

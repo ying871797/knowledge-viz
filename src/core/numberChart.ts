@@ -31,6 +31,8 @@ export function spanCenterX(i: number, n: number): number {
 
 /** 纵轴映射：数值 v 在 yMax 范围内的 y 坐标（值越大越靠上） */
 export function yFor(v: number, yMax: number): number {
+  // yMax≤0（含 NaN）时映射无意义：回落基线，避免返回 NaN/Infinity 污染整条路径
+  if (!(yMax > 0)) return H - M.bottom;
   return H - M.bottom - (v / yMax) * (H - M.top - M.bottom);
 }
 
@@ -126,7 +128,7 @@ export class NumberChart {
     // 前置约定：使用 tickStep 的课程其全部数据值须为 step 的整数倍（buildChartConfigs 由
     // dna=dpc×chromosome、chromosome∈{n,2n,4n} 保证），使每个数据点恰好落在网格线上；
     // 若未来引入非倍数数据，顶部刻度需另行收口到 yMax。
-    const step = Math.max(1, Math.round(this.tickStep));
+    const step = Number.isFinite(this.tickStep) ? Math.max(1, Math.round(this.tickStep)) : 1;
     for (let v = 0; v <= yMax; v += step) {
       const y = yFor(v, yMax);
       if (v > 0) g.appendChild(el("line", { x1: M.left, y1: y, x2: W - M.right, y2: y, stroke: "#e2e8f0" }));
@@ -212,9 +214,11 @@ export class NumberChart {
 
   /** 高亮第 i 个时期段：色带覆盖整段 + 该段数据点放大 */
   setActive(i: number): void {
-    this.activeIndex = i;
-    const visible = !this.examMode && i >= 0;
     const n = this.labels.length;
+    // 越界索引（<0 或 ≥n）按隐藏处理：色带只落在合法时期段内，不把 x/width 算到画布外
+    const valid = Number.isInteger(i) && i >= 0 && i < n;
+    this.activeIndex = valid ? i : -1;
+    const visible = !this.examMode && valid;
     this.markerBand.setAttribute("visibility", visible ? "visible" : "hidden");
     if (!visible) return;
     this.markerBand.setAttribute("x", String(spanX(i, n)));
