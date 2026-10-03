@@ -209,14 +209,25 @@ describe("光合作用场景 · 反误导：两场所始终同时可见", () => 
       m.container.remove();
     }
     const rel = mountAt("photo-relation");
-    // 两条方向相反的箭头（下行 = 光反应→暗反应；上行 = 暗反应→光反应）
+    // 两条方向相反的箭头（下行 = 光反应→暗反应；上行 = 暗反应→光反应）。
+    // 只断言结构性质（方向 + 连接同一对层面 + 横向不叠放），不锁具体坐标——布局微调不应碎测试
     const paths = [...rel.arrows.querySelectorAll("path.rel-arrow")];
     expect(paths).toHaveLength(2);
-    const down = /M(\d+) 214 L(\d+) 262/.exec(paths[0].getAttribute("d")!);
-    const up = /M(\d+) 262 L(\d+) 214/.exec(paths[1].getAttribute("d")!);
-    expect(down, "第一条必须是下行箭头").not.toBeNull();
-    expect(up, "第二条必须是上行箭头").not.toBeNull();
-    expect(down![1], "上下两箭头必须在不同 x 上（不叠放）").not.toBe(up![1]);
+    const ends = (p: Element) => {
+      const m = /^M\s*(-?[\d.]+)[ ,]+(-?[\d.]+)\s*L\s*(-?[\d.]+)[ ,]+(-?[\d.]+)/.exec(
+        p.getAttribute("d") ?? "",
+      );
+      if (!m) throw new Error(`关系幕箭头路径不是 M…L…：${p.getAttribute("d")}`);
+      return { x1: +m[1], y1: +m[2], x2: +m[3], y2: +m[4] };
+    };
+    const [down, up] = [ends(paths[0]), ends(paths[1])];
+    expect(down.y2, "第一条须为下行箭头（光反应→暗反应）").toBeGreaterThan(down.y1);
+    expect(up.y2, "第二条须为上行箭头（暗反应→光反应）").toBeLessThan(up.y1);
+    // 两条箭头连接同一对层面、方向相反
+    expect(down.y1, "上下箭头须连接同一对层面").toBe(up.y2);
+    expect(down.y2, "上下箭头须连接同一对层面").toBe(up.y1);
+    // 横向不叠放：不同 x，否则两条线会互相盖住
+    expect(down.x1, "上下两箭头必须在不同 x 上（不叠放）").not.toBe(up.x1);
     rel.container.remove();
   });
 });
