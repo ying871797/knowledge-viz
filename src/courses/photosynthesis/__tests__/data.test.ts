@@ -110,8 +110,9 @@ describe("光合作用 · 讲解文案忠实教材", () => {
   });
 
   it("不写 ATP 具体个数（教材对 ATP/[H] 只给定性表述）", () => {
-    expect(allNarration).not.toMatch(/\d+\s*(个|分子)?\s*ATP/);
-    expect(allNarration).not.toMatch(/\d+\s*(个|分子)?\s*\[H\]/);
+    // 阿拉伯数字与中文数字两种写法都要拦：只拦 \d 会漏掉「三十六 ATP」
+    expect(allNarration).not.toMatch(/\d+\s*(个|分子)?\s*(ATP|\[H\])/);
+    expect(allNarration).not.toMatch(/[一二三四五六七八九十百千]\s*(个|分子)?\s*(ATP|\[H\])/);
   });
 
   it("明示分子为示意计数（防误教化学计量）", () => {

@@ -83,7 +83,9 @@ describe("细胞呼吸 · 讲解文案忠实教材", () => {
   });
 
   it("不写 ATP 具体个数（教材只给「少量/大量」，版本间数字有争议）", () => {
+    // 阿拉伯数字与中文数字两种写法都要拦：只拦 \d 会漏掉「三十六 ATP」
     expect(allNarration).not.toMatch(/\d+\s*(个|分子)?\s*ATP/);
+    expect(allNarration).not.toMatch(/[一二三四五六七八九十百千]\s*(个|分子)?\s*ATP/);
     expect(allNarration).not.toMatch(/36\s*(个|分子)?\s*ATP|38\s*ATP|2\s*ATP/);
   });
 
@@ -204,7 +206,8 @@ describe("细胞呼吸 · 曲线图数据", () => {
             let run = 0;
             S[a].values.forEach((va, i) => {
               run = va > 0 && va === S[b].values[i] ? run + 1 : 0;
-              if (run >= 2) violations.push(`${tag} 第 ${i - 1}~${i} 幕在 y=${va} 连续重合（线型亦相同）`);
+              // run===2 只在每段重合的首个帧报一次；用 >=2 会让长平台重复刷屏
+              if (run === 2) violations.push(`${tag} 第 ${i - 1}~${i} 幕起在 y=${va} 连续重合（线型亦相同）`);
             });
           }
         }
