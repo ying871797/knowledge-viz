@@ -180,4 +180,59 @@ it("gradualSegments 合法索引通过", () => {
     const badExpr: Course = { ...valid, formulas: [{ name: "分子数", expr: "" }] };
     expect(() => validateCourse(badExpr)).toThrow(/expr/);
   });
+
+  // —— 语义加固（P1）：结构合法但语义非法的数据必须被拦下 ——
+  it("chartConfigs values 含负值抛错（负值会画到基线以下）", () => {
+    const bad: Course = {
+      ...valid,
+      chartConfigs: [{ title: "x", series: [{ label: "DNA", values: [1, -1] }] }],
+    };
+    expect(() => validateCourse(bad)).toThrow(/非负/);
+  });
+  it("chartConfigs 空 series 抛错（空图无提示）", () => {
+    const bad: Course = { ...valid, chartConfigs: [{ title: "x", series: [] }] };
+    expect(() => validateCourse(bad)).toThrow(/series 必须是非空数组/);
+  });
+  it("chartConfigs 图内 label 重复抛错（同名两线图例无法区分）", () => {
+    const bad: Course = {
+      ...valid,
+      chartConfigs: [
+        { title: "x", series: [{ label: "DNA", values: [1, 2] }, { label: "DNA", values: [2, 2] }] },
+      ],
+    };
+    expect(() => validateCourse(bad)).toThrow(/label 重复/);
+  });
+  it("chartConfigs tickStep 非正整数抛错，合法值通过", () => {
+    const course = (tickStep: number | undefined): Course => ({
+      ...valid,
+      chartConfigs: [{ title: "x", series: [{ label: "DNA", values: [1, 2] }], tickStep }],
+    });
+    for (const t of [0, -2, 1.5, NaN]) {
+      expect(() => validateCourse(course(t)), `tickStep=${t}`).toThrow(/tickStep/);
+    }
+    expect(validateCourse(course(2))).toBeTruthy();
+  });
+  it("narration 含空串/非字符串元素抛错（空白讲解帧）", () => {
+    const blank = structuredClone(valid);
+    blank.stages[0].narration = ["  "];
+    expect(() => validateCourse(blank)).toThrow(/narration\[0\]/);
+    const nonStr = structuredClone(valid);
+    nonStr.stages[0].narration = [42 as unknown as string];
+    expect(() => validateCourse(nonStr)).toThrow(/narration\[0\]/);
+  });
+  it("stage.id 重复抛错（槽位表/路由行为未定义）", () => {
+    const bad = structuredClone(valid);
+    bad.stages[1].id = bad.stages[0].id;
+    expect(() => validateCourse(bad)).toThrow(/stage id 重复/);
+  });
+  it("meta.difficulty 越界/非整数抛错，1..5 通过", () => {
+    for (const d of [0, 6, 2.5, NaN]) {
+      const bad = { ...valid, meta: { ...valid.meta, difficulty: d } };
+      expect(() => validateCourse(bad), `difficulty=${d}`).toThrow(/difficulty/);
+    }
+    for (const d of [1, 5]) {
+      const ok = { ...valid, meta: { ...valid.meta, difficulty: d } };
+      expect(validateCourse(ok)).toBeTruthy();
+    }
+  });
 });

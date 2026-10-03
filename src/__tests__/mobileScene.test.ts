@@ -18,6 +18,10 @@ const R_LIMITS: Record<string, number> = {
   // 上限 0.55：viewBox 960×500 原生比 0.5208；ratio=0.55 时 slice 左右各裁 480×(1−0.5208/0.55)=25.5px，
   // 内容实测横向 x 36..907（细胞轮廓左边 36 / CO₂ 移至外膜后的最右缘 907），余量 10.5px / 27.5px
   ".resp-scene": 0.55,
+  // 上限 0.68：ratio=0.68 时 slice 左右各裁 480×(1−0.5208/0.68)=112.4px；
+  // 内容实测横向 x 152..813（叶绿体外膜左缘 152、p8 总反应式右式文本右缘 813），余量 39.6px / 34.6px。
+  // 上界测算：余量留 20px 时可放到 0.718，取 0.68 留一档冗余。
+  ".photo-scene": 0.68,
 };
 
 /** 提取某选择器在 ≤720px 媒体查询块内的 aspect-ratio 数值（1 / r 语法） */
@@ -42,5 +46,80 @@ describe("style.css 移动端动画区放大", () => {
     const r = ratioOf(selector);
     expect(r).toBeLessThanOrEqual(R_LIMITS[selector]);
     expect(r).toBeGreaterThan(0.5); // 必须 >0.5：低于 0.5 会改成裁上下而非左右空白
+  });
+});
+
+/**
+ * 减少动效降级的选择器完备性守卫（P5 起覆盖全部 7 门课）。
+ * 背景：`.resp-scene svg *` 里的 `*` 不贡献特异性，`.resp-scene svg *`(0,1,1) 会输给基础规则
+ * `.resp-scene svg g`(0,1,2)，于是 transform 过渡照旧生效——该写法曾让「减少动效」静默失效。
+ * 本守卫从基础 CSS 动态提取全部「场景过渡选择器」，强制 reduce-motion 块逐条复用。
+ */
+describe("style.css 减少动效降级选择器", () => {
+  /** 去掉 CSS 注释：解说文字会举反例选择器，不剔除会架空断言 */
+  function stripComments(s: string): string {
+    return s.replace(/\/\*[\s\S]*?\*\//g, "");
+  }
+
+  /** 基础 transition 规则中归属场景的选择器（取 reduce-motion 块之前的部分，动态提取） */
+  function sceneTransitionSelectors(): string[] {
+    const head = stripComments(css.slice(0, css.indexOf("@media (prefers-reduced-motion")));
+    // 场景归属：带 -scene 前缀，或命中共用的场景类根（减数/有丝分裂用类选择器而非 svg 后代）
+    const SCENE_ROOTS =
+      /-scene\b|\.chromatid|\.cell-outline|\.polar-body|\.sperm-tail|\.cell-wall|\.nuclear-membrane|\.cell-plate|\.spindle-line/;
+    const out: string[] = [];
+    // 规则体不含花括号（媒体查询已在外层），可按「选择器{声明}」逐块匹配
+    for (const m of head.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+      if (!/transition\s*:/.test(m[2])) continue;
+      const sel = m[1].replace(/\s+/g, " ").trim();
+      if (!SCENE_ROOTS.test(sel)) continue;
+      sel
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((s) => out.push(s));
+    }
+    return [...new Set(out)];
+  }
+
+  /** reduce-motion 媒体查询块正文（本文件最后一节，块内规则均缩进，`\n}` 只匹配块尾） */
+  function reduceBlock(): string {
+    const m = css.match(/@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}/);
+    if (!m) throw new Error("未找到 prefers-reduced-motion: reduce 媒体查询块");
+    return stripComments(m[1]);
+  }
+
+  const selectors = sceneTransitionSelectors();
+
+  it("动态提取到全部 7 门课的场景过渡选择器哨兵（防提取逻辑失效后门禁空转）", () => {
+    // 当前基础规则共 40 条场景过渡选择器（见下方哨兵覆盖各类形态）。
+    // 数量不符即说明提取器漏抓或基础规则被改动——须同步核对 reduce-motion 块与 reduce 列表
+    expect(selectors.length).toBe(40);
+    for (const sentinel of [
+      ".resp-scene svg g", ".photo-scene svg g",
+      ".dna-scene svg g", ".gene-scene svg g", ".pcr-scene svg g",
+      ".chromatid", ".chromatid path",
+      ".cell-outline", ".cell-wall", ".spindle-line",
+      ".meiosis-scene .spindle-line.grow", ".mito-scene .spindle-line",
+    ]) {
+      expect(selectors, `未提取到哨兵选择器：${sentinel}`).toContain(sentinel);
+    }
+    // 不得把交互控件选择器误纳
+    for (const ui of [".card-link", ".exam-toggle", ".stage-node"]) {
+      expect(selectors).not.toContain(ui);
+    }
+  });
+
+  it("reduce-motion 块逐条复用基础过渡选择器（通配符 * 特异性更低会静默失效）", () => {
+    const block = reduceBlock();
+    const missing = selectors.filter((sel) => !block.includes(sel));
+    expect(missing, `reduce-motion 块未覆盖：${missing.join(", ")}（不得用通配符兜底）`).toEqual([]);
+  });
+
+  it("reduce-motion 块不残留场景通配符兜底写法", () => {
+    const block = reduceBlock();
+    for (const scene of ["resp", "photo", "dna", "gene", "pcr", "meiosis", "mito"]) {
+      expect(block).not.toContain(`.${scene}-scene svg *`);
+    }
   });
 });

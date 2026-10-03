@@ -235,4 +235,64 @@ describe("mountCoursePage 装配", () => {
     handle.destroy();
     root.remove();
   });
+
+  it("destroy() 关闭自动播放定时器，且可重复调用（防 interval 泄漏）", () => {
+    vi.useFakeTimers();
+    try {
+      const root = document.createElement("div");
+      document.body.appendChild(root);
+      const handle = mountCoursePage(root, makeCourse(), () => makeSceneStub().scene);
+      // 控制条按钮顺序：上一步 / 播放 / 下一步
+      const play = [...root.querySelectorAll<HTMLButtonElement>(".player-bar button")][1];
+      play.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(vi.getTimerCount(), "点击播放应产生 1 个定时器").toBe(1);
+      handle.destroy();
+      expect(vi.getTimerCount(), "destroy 后不得残留定时器（重新挂载会泄漏）").toBe(0);
+      // 幂等：路由层可能重复清理，第二次 destroy 不得抛错
+      expect(() => handle.destroy()).not.toThrow();
+      root.remove();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("scene.render 抛错时降级为该幕占位提示，不向外抛，切到合法阶段可恢复（P2）", () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    // 仅对 sceneState.id==="b" 抛错，模拟槽位表缺键 / stage 拼错
+    const scene: SceneComponent & { destroy: () => void } = {
+      mount: vi.fn(),
+      render: vi.fn((state: Record<string, unknown>) => {
+        if ((state as { id?: string }).id === "b") throw new Error("未知槽位：b");
+      }),
+      destroy: vi.fn(),
+    };
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    expect(() => mountCoursePage(root, makeCourse(), () => scene)).not.toThrow();
+    const err = root.querySelector<HTMLElement>(".scene-error")!;
+    // 初始第 0 幕渲染成功：占位隐藏
+    expect(err.style.display).toBe("none");
+    const nodes = [...root.querySelectorAll<HTMLButtonElement>(".controls .stage-node")];
+    // 切到第 2 幕 → render 抛错 → 占位可见且带错误信息
+    nodes[1].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(err.style.display).toBe("block");
+    expect(err.textContent).toContain("课程数据异常");
+    expect(err.textContent).toContain("未知槽位：b");
+    // 切到第 3 幕（合法）→ 占位隐藏，页面结构未被破坏
+    nodes[2].dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(err.style.display).toBe("none");
+    expect(root.querySelector(".course-grid")).toBeTruthy();
+    errSpy.mockRestore();
+    root.remove();
+  });
+
+  it("播放键 aria-label 随播放状态更新（屏读器不读到过期动作，P6）", () => {
+    const { root } = setup();
+    const play = [...root.querySelectorAll<HTMLButtonElement>(".player-bar button")][1];
+    expect(play.getAttribute("aria-label")).toBe("播放");
+    play.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(play.getAttribute("aria-label")).toBe("暂停");
+    play.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(play.getAttribute("aria-label")).toBe("播放");
+  });
 });

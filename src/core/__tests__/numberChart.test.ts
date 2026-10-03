@@ -1,9 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
-import { NumberChart, spanX, spanCenterX, buildStepPath, yFor, W, M } from "../numberChart";
+import { NumberChart, spanX, spanCenterX, buildStepPath, yFor, W, H, M } from "../numberChart";
 import { meiosisCourse, oogenesisCourse } from "../../courses/meiosis/data";
 import { mitosisCourse } from "../../courses/mitosis/data";
 import { pcrCourse } from "../../courses/pcr/data";
-import { expectStageLabelsFit } from "../../test-utils/textAudit";
+import {
+  cellularRespirationAerobic,
+  cellularRespirationAnaerobic,
+} from "../../courses/cellular-respiration/data";
+import { expectStageLabelsFit, stageLabelPlotOverflow } from "../../test-utils/textAudit";
 
 /**
  * 解析 buildStepPath 产出的 d，追踪笔位。
@@ -132,11 +136,16 @@ describe("课程数据的渐变段声明", () => {
 });
 
 describe("曲线图阶段标签间距（回归：标签互相遮挡）", () => {
+  // 覆盖全部 5 门有图课程（细胞呼吸两模式）。曲线图文字不经过 textAudit 的 collectVisualConflicts
+  // （6 个 runSceneAudit 调用点都只传场景自己的 svg），本断言是图表文字唯一的自动门禁，
+  // 新增有图课程时必须一并登记，否则其标签间距只能靠目检。
   it.each([
     ["减数分裂（精子）", meiosisCourse],
     ["减数分裂（卵细胞）", oogenesisCourse],
     ["有丝分裂", mitosisCourse],
     ["PCR", pcrCourse],
+    ["细胞呼吸（有氧，9 段为全项目最多）", cellularRespirationAerobic],
+    ["细胞呼吸（无氧）", cellularRespirationAnaerobic],
   ])("%s：阶段标签在移动端字号 13px 下不互相遮挡", (_name, course) => {
     expectStageLabelsFit(course.stages.map((s) => s.chartLabel ?? s.title), { fontSize: 13 });
   });
@@ -146,6 +155,33 @@ describe("曲线图阶段标签间距（回归：标签互相遮挡）", () => {
     expect(oogenesisCourse.stages[1].chartLabel).toBe("间期复制");
     // PCR 11 个阶段 → 段宽仅 60px，完整标题必然挤爆，故逐段提供短标签
     expect(pcrCourse.stages.every((s) => s.chartLabel)).toBe(true);
+  });
+});
+
+describe("曲线图阶段标签绘图区包含性（回归：首/末标签压纵轴或越右缘）", () => {
+  // stageLabelViolations 只查「相邻」遮挡，首/末标签与 n=1 的情形它整段空转；
+  // 本组断言标签横向落在 [M.left, W−M.right] 内（与移动端字号 13px 一致）。
+  it.each([
+    ["减数分裂（精子）", meiosisCourse],
+    ["减数分裂（卵细胞）", oogenesisCourse],
+    ["有丝分裂", mitosisCourse],
+    ["PCR", pcrCourse],
+    ["细胞呼吸（有氧）", cellularRespirationAerobic],
+    ["细胞呼吸（无氧）", cellularRespirationAnaerobic],
+  ])("%s：阶段标签不越出绘图区", (_name, course) => {
+    const bad = stageLabelPlotOverflow(course.stages.map((s) => s.chartLabel ?? s.title), { fontSize: 13 });
+    expect(
+      bad,
+      `越界标签：${bad.map((b) => `"${b.label}"(${b.left}..${b.right})`).join(", ")}`,
+    ).toEqual([]);
+  });
+  it("超长首标签会被门禁抓到（验证门禁生效）", () => {
+    // n=9 时首段中心 = 44 + 660/9/2 = 80.7；6 个汉字 = 78px 宽 → 左缘 41.7 < M.left(44)
+    const labels = ["间期复制阶段", ...Array.from({ length: 8 }, () => "甲")];
+    const bad = stageLabelPlotOverflow(labels, { fontSize: 13 });
+    expect(bad).toHaveLength(1);
+    expect(bad[0].index).toBe(0);
+    expect(bad[0].left).toBeLessThan(44);
   });
 });
 
@@ -278,5 +314,35 @@ describe("NumberChart 渲染", () => {
     chart.setExamMode(false);
     container.querySelectorAll<SVGTextElement>("text.stage-label")
       .forEach((t) => expect(t.hasAttribute("visibility")).toBe(false));
+  });
+});
+
+describe("NumberChart 防御纵深（P3）", () => {
+  it("yFor 在 yMax≤0 时回落基线（不返回 NaN/Infinity）", () => {
+    const baseline = H - M.bottom;
+    expect(yFor(1, 0)).toBe(baseline);
+    expect(yFor(1, -3)).toBe(baseline);
+    expect(yFor(1, NaN)).toBe(baseline);
+  });
+
+  it("setActive 越界按隐藏处理，色带不越出画布", () => {
+    const container = document.createElement("div");
+    const chart = new NumberChart(container, ["甲", "乙", "丙"]);
+    chart.setSeries([{ label: "DNA", values: [1, 2, 3] }]);
+    const band = container.querySelector<SVGRectElement>("rect.marker")!;
+    chart.setActive(1);
+    expect(band.getAttribute("visibility")).toBe("visible");
+    chart.setActive(999);
+    expect(band.getAttribute("visibility"), "越界索引须隐藏").toBe("hidden");
+    chart.setActive(-1);
+    expect(band.getAttribute("visibility")).toBe("hidden");
+  });
+
+  it("tickStep 为 NaN 时回落到 1（否则刻度循环只画一个 0）", () => {
+    const container = document.createElement("div");
+    const chart = new NumberChart(container, ["甲"], String, NaN);
+    chart.setSeries([{ label: "DNA", values: [3] }]);
+    const texts = [...container.querySelectorAll("text.axis-text")].map((t) => t.textContent);
+    expect(texts).toEqual(["0", "1", "2", "3"]);
   });
 });

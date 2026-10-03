@@ -153,6 +153,13 @@ export function mountCoursePage(
   }
   stageBox.appendChild(sceneHUD);
 
+  // 场景渲染异常占位（P2）：scene.render 抛错（如 sceneState.stage 拼错、槽位表缺键）时显示，
+  // 把「交互中途整页报错」降级为「该幕占位 + 控制台报错」；不清空场景 DOM，保证切回合法阶段仍可渲染
+  const sceneError = document.createElement("p");
+  sceneError.className = "load-error scene-error";
+  sceneError.style.display = "none";
+  stageBox.appendChild(sceneError);
+
   // —— HTML 图例覆盖层（固定在底部，不参与 SVG 缩放）——
   if (scene.legend?.length) {
     const legendDiv = document.createElement("div");
@@ -237,7 +244,16 @@ export function mountCoursePage(
     } else {
       notes.render(stage.title, stage.narration);
     }
-    scene.render(stage.sceneState);
+    try {
+      scene.render(stage.sceneState);
+      sceneError.style.display = "none";
+    } catch (err) {
+      // 场景未识别该幕：降级为该幕占位提示，不向外抛（避免整页交互中断）。
+      // 保留场景已挂载 DOM，切到其余合法阶段时重新渲染成功即自动隐藏占位
+      console.error("[course] 场景渲染失败：", err);
+      sceneError.textContent = `课程数据异常：${(err as Error).message}`;
+      sceneError.style.display = "block";
+    }
     // 步数徽标：第 x/N 步
     stepBadge.textContent = `第${i + 1}/${course.stages.length}步`;
     if (chartsEnabled) {
@@ -254,6 +270,8 @@ export function mountCoursePage(
     const playText = btnPlay.querySelector(".btn-text") as HTMLElement;
     playIcon.textContent = player.isPlaying ? "⏸" : "▶";
     playText.textContent = player.isPlaying ? "暂停" : "播放";
+    // aria-label 会覆盖可见文字：须随状态同步，否则屏读器在播放中仍读「播放」（与实际动作相反）
+    btnPlay.setAttribute("aria-label", player.isPlaying ? "暂停" : "播放");
   }
 
   // 双向联动：曲线数据点点击 → 跳转该阶段（先暂停自动播放）
